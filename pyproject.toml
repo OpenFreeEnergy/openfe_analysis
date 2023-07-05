@@ -17,7 +17,7 @@ authors=[
 ]
 dependencies = [
   'MDAnalysis',
-  'numpy',
+  'openfe',
 ]
 description="Analysis of free energy calculations."
 readme="README.md"
