@@ -6,7 +6,7 @@ requires=[
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "alibaby"
+name = "openfe_analysis"
 dynamic = ["version"]
 authors=[
     {name="Benjamin Ries", email="benjamin-ries@outlook.com"},
@@ -29,7 +29,7 @@ classifiers = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/OpenFreeEnergy/alibaby"
+"Homepage" = "https://github.com/OpenFreeEnergy/openfe_analysis"
 
 [tool.versioningit]
 default-version = "1+unknown"
@@ -45,4 +45,4 @@ match = ["*"]
 default-tag = "0.0.0"
 
 [tool.versioningit.write]
-file = "src/alibaby/_version.py"
+file = "src/openfe_analysis/_version.py"
