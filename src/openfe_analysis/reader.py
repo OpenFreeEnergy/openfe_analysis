@@ -2,11 +2,18 @@ from MDAnalysis.coordinates.base import ReaderBase, Timestep
 import netCDF4 as nc
 from openfe.utils import handle_trajectories
 from openff.units import unit
+from typing import Optional
 
 
 class FEReader(ReaderBase):
-    """A MDAnalysis Reader for nc files created by openfe RFE Protocol"""
-    _state_id: int
+    """A MDAnalysis Reader for nc files created by openfe RFE Protocol
+
+    Looks along a multistate .nc file along one of two axes:
+    - constant state/lambda (varying replica)
+    - constant replica (varying lambda)
+    """
+    _state_id: Optional[int]
+    _replica_id: Optional[int]
     _frame_index: int
     _dataset: nc.Dataset
 
@@ -21,10 +28,12 @@ class FEReader(ReaderBase):
         convert_units : bool
           convert positions to A
         """
-        try:
-            self._state_id = kwargs.pop('state_id')
-        except KeyError:
-            raise ValueError("Specify the state_id")
+        self._state_id = kwargs.pop('state_id', None)
+        self._replica_id = kwargs.pop('replica_id', None)
+        if not ((self._state_id is None) ^ (self._replica_id is None)):
+            raise ValueError("Specify one and only one of state or replica, "
+                             f"got state id={self._state_id} "
+                             f"replica_id={self._replica_id}")
 
         super().__init__(filename, convert_units, **kwargs)
 
@@ -56,13 +65,22 @@ class FEReader(ReaderBase):
     def _read_frame(self, frame: int) -> Timestep:
         self._frame_index = frame
 
+        if self._state_id:
+            rep = handle_trajectories._state_to_replica(
+                self._dataset,
+                self._state_id,
+                self._frame_index
+            )
+        else:
+            rep = self._replica_id
+
         pos = handle_trajectories._state_positions_at_frame(
             self._dataset,
-            self._state_id,
+            rep,
             self._frame_index)
         dim = handle_trajectories._get_unitcell(
             self._dataset,
-            self._state_id,
+            rep,
             self._frame_index)
 
         self.ts.positions = (pos.to(unit.angstrom)).m
