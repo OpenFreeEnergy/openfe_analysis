@@ -5,6 +5,30 @@ from openff.units import unit
 from typing import Optional
 
 
+def _determine_dt(ds) -> float:
+    # first grab integrator timestep
+    mcmc_move_data = ds.groups['mcmc_moves']['move0'][0].split('\n')
+    in_timestep = False
+    for line in mcmc_move_data:
+        if line.startswith('timestep'):
+            in_timestep = True
+        if in_timestep and line.strip().startswith('value'):
+            timestep = float(line.split()[-1]) / 1000.  # convert to ps
+            break
+    else:
+        raise ValueError("Didn't find timestep")
+    # next get the save interval
+    option_data = ds.variables['options'][0].split('\n')
+    for line in option_data:
+        if line.startswith('online_analysis_interval'):
+            nsteps = float(line.split()[-1])
+            break
+    else:
+        raise ValueError("Didn't find online_analysis_interval")
+
+    return timestep * nsteps
+
+
 class FEReader(ReaderBase):
     """A MDAnalysis Reader for nc files created by openfe RFE Protocol
 
@@ -40,6 +64,7 @@ class FEReader(ReaderBase):
         self._dataset = nc.Dataset(filename)
         self._n_atoms = self._dataset.dimensions['atom'].size
         self.ts = Timestep(self._n_atoms)
+        self._dt = _determine_dt(self._dataset)
         self._read_frame(0)
 
     @property
@@ -86,8 +111,13 @@ class FEReader(ReaderBase):
         self.ts.positions = (pos.to(unit.angstrom)).m
         self.ts.dimensions = dim
         self.ts.frame = self._frame_index
+        self.ts.time = self._frame_index * self._dt
 
         return self.ts
+
+    @property
+    def dt(self) -> float:
+        return self._dt
 
     def _reopen(self):
         self._frame_index = -1
