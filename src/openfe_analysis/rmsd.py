@@ -41,11 +41,9 @@ def gather_rms_data(pdb_topology, dataset):
         'ligand_wander': [],
     }
 
-    n_lambda = 11  # detect number of lambda windows
+    n_lambda = 11  # todo: detect number of lambda windows
     for i in range(n_lambda):
         u = make_Universe(pdb_topology, dataset, state=i)
-
-        # todo: apply centering transformation to universe
 
         prot = u.select_atoms('protein and name CA')
         if prot:
@@ -60,6 +58,8 @@ def gather_rms_data(pdb_topology, dataset):
             output['ligand_RMSD'].append(rmsd)
 
             output['ligand_wander'].append(ligand_wander(ligand))
+
+    output['time(ps)'] = list(np.arange(len(u.trajectory)) * u.trajectory.dt)
 
     return output
 
