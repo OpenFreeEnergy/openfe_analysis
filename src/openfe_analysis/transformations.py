@@ -11,7 +11,9 @@ class NoJump(TransformationBase):
         self.prev = ag.center_of_mass()
 
     def _transform(self, ts):
-        if ts.frame != 0:
+        if ts.frame == 0:
+            self.prev = self.ag.center_of_mass()
+        else:
             box = self.ag.dimensions[:3]
             current_position = self.ag.center_of_mass()
 
