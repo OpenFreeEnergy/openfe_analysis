@@ -74,7 +74,7 @@ class FEReader(ReaderBase):
         else:
             rep = self._replica_id
 
-        pos = handle_trajectories._state_positions_at_frame(
+        pos = handle_trajectories._replica_positions_at_frame(
             self._dataset,
             rep,
             self._frame_index)
