@@ -38,6 +38,7 @@ def gather_rms_data(pdb_topology, dataset):
     output = {
         'protein_RMSD': [],
         'ligand_RMSD': [],
+        'ligand_wander': [],
     }
 
     n_lambda = 11  # detect number of lambda windows
@@ -58,6 +59,8 @@ def gather_rms_data(pdb_topology, dataset):
 
             output['ligand_RMSD'].append(rmsd)
 
+            output['ligand_wander'].append(ligand_wander(ligand))
+
     return output
 
 
@@ -76,6 +79,24 @@ def generate_rmsd(ag: mda.AtomGroup) -> list[float]:
             rms.rmsd(ag.positions, p1, weights=w,
                      center=False, superposition=False
                      )
+        )
+
+    return output
+
+
+def ligand_wander(ag) -> list[float]:
+    """Tracks motion of ligand over time
+
+    Returns list of displacement relative to start point
+
+    Note: this is done on the centered trajectory, so it's a little off
+    """
+    start = ag.center_of_mass()
+
+    output = []
+    for ts in ag.universe.trajectory:
+        output.append(
+            mda.lib.distances.calc_bonds(start, ag.center_of_mass())
         )
 
     return output
