@@ -65,7 +65,7 @@ class FEReader(ReaderBase):
     def _read_frame(self, frame: int) -> Timestep:
         self._frame_index = frame
 
-        if self._state_id:
+        if self._state_id is not None:
             rep = handle_trajectories._state_to_replica(
                 self._dataset,
                 self._state_id,
