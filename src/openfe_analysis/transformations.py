@@ -3,6 +3,47 @@ from MDAnalysis.transformations.base import TransformationBase
 from MDAnalysis.analysis.align import rotation_matrix
 
 
+class NoJump(TransformationBase):
+    """Stops an AtomGroup from moving more than half a box length between frames"""
+    def __init__(self, ag):
+        super().__init__()
+        self.ag = ag
+        self.prev = ag.center_of_mass()
+
+    def _transform(self, ts):
+        if ts.frame != 0:
+            box = self.ag.dimensions[:3]
+            current_position = self.ag.center_of_mass()
+
+            diff = current_position - self.prev
+            adjustment = box * np.rint(diff / box)
+
+            self.ag.positions -= adjustment
+            self.prev = self.ag.center_of_mass()
+
+        return ts
+
+
+class Minimiser(TransformationBase):
+    """Minimises the difference from ags to central_ag by choosing image"""
+    def __init__(self, central_ag, *ags):
+        super().__init__()
+        self.central_ag = central_ag
+        self.other_ags = ags
+
+    def _transform(self, ts):
+        center = self.central_ag.center_of_mass()
+        box = self.central_ag.dimensions[:3]
+
+        for ag in self.other_ags:
+            vec = ag.center_of_mass() - center
+
+            # this only works for orthogonal boxes
+            ag.positions -= np.rint(vec / box) * box
+
+        return ts
+
+
 class Aligner(TransformationBase):
     """On-the-fly transformation to align a trajectory to minimise RMSD
 
