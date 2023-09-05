@@ -70,7 +70,7 @@ def gather_rms_data(pdb_topology, dataset):
                              center=False, superposition=False)
                 )
                 this_ligand_wander.append(
-                    mda.lib.distances.calc_bonds(ligand.center_of_mass, ligand_initial_com)
+                    mda.lib.distances.calc_bonds(ligand.center_of_mass(), ligand_initial_com)
                 )
 
         if prot:
