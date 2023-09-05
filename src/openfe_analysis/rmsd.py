@@ -46,57 +46,39 @@ def gather_rms_data(pdb_topology, dataset):
         u = make_Universe(pdb_topology, dataset, state=i)
 
         prot = u.select_atoms('protein and name CA')
-        if prot:
-            rmsd = generate_rmsd(prot)
-
-            output['protein_RMSD'].append(rmsd)
-
         ligand = u.select_atoms('resname UNK')
+
+        prot_start = prot.positions
+        prot_weights = prot.masses / np.mean(prot.masses)
+        ligand_start = ligand.positions
+        ligand_initial_com = ligand.center_of_mass()
+        ligand_weights = ligand.masses / np.mean(ligand.masses)
+
+        this_protein_rmsd = []
+        this_ligand_rmsd = []
+        this_ligand_wander = []
+
+        for ts in u.trajectory:
+            if prot:
+                this_protein_rmsd.append(
+                    rms.rmsd(prot.positions, prot_start, prot_weights,
+                             center=False, superposition=False)
+                )
+            if ligand:
+                this_ligand_rmsd.append(
+                    rms.rmsd(ligand.positions, ligand_start, ligand_weights,
+                             center=False, superposition=False)
+                )
+                this_ligand_wander.append(
+                    mda.lib.distances.calc_bonds(ligand.center_of_mass, ligand_initial_com)
+                )
+
+        if prot:
+            output['protein_RMSD'].append(this_protein_rmsd)
         if ligand:
-            rmsd = generate_rmsd(ligand)
-
-            output['ligand_RMSD'].append(rmsd)
-
-            output['ligand_wander'].append(ligand_wander(ligand))
+            output['ligand_RMSD'].append(this_ligand_rmsd)
+            output['ligand_wander'].append(this_ligand_wander)
 
     output['time(ps)'] = list(np.arange(len(u.trajectory)) * u.trajectory.dt)
-
-    return output
-
-
-def generate_rmsd(ag: mda.AtomGroup) -> list[float]:
-    """Returns the RMSD for ag over the trajectory"""
-    p1 = ag.positions
-    w = ag.masses / np.mean(ag.masses)
-
-    output = []
-    for ts in ag.universe.trajectory:
-        # this rmsd call wouldn't usually work
-        # except for the trajectory transform we have going on
-        # for the protein case, we have already aligned
-        # for the ligand case, it maintains the protein alignment
-        output.append(
-            rms.rmsd(ag.positions, p1, weights=w,
-                     center=False, superposition=False
-                     )
-        )
-
-    return output
-
-
-def ligand_wander(ag) -> list[float]:
-    """Tracks motion of ligand over time
-
-    Returns list of displacement relative to start point
-
-    Note: this is done on the centered trajectory, so it's a little off
-    """
-    start = ag.center_of_mass()
-
-    output = []
-    for ts in ag.universe.trajectory:
-        output.append(
-            mda.lib.distances.calc_bonds(start, ag.center_of_mass())
-        )
 
     return output
