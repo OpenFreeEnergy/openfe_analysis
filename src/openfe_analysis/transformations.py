@@ -1,10 +1,27 @@
+"""Transformations
+
+Many on-the-fly transformations which are used to manipulate trajectories as
+they are read.  This allows a trajectory to avoid periodic-boundary issues
+and to automatically align the system to a protein structure.
+"""
 import numpy as np
+from numpy import typing as npt
+import MDAnalysis as mda
 from MDAnalysis.transformations.base import TransformationBase
 from MDAnalysis.analysis.align import rotation_matrix
 
 
 class NoJump(TransformationBase):
-    """Stops an AtomGroup from moving more than half a box length between frames"""
+    """Stops an AtomGroup from moving more than half a box length between frames
+
+    This transformation prevents an AtomGroup "teleporting" across the box
+    border between two subsequent frames.  This then simplifies the calculation
+    of motion over time.
+    """
+    ag: mda.AtomGroup
+    prev: npt.NDArray
+
+
     def __init__(self, ag):
         super().__init__()
         self.ag = ag
@@ -27,7 +44,15 @@ class NoJump(TransformationBase):
 
 
 class Minimiser(TransformationBase):
-    """Minimises the difference from ags to central_ag by choosing image"""
+    """Minimises the difference from ags to central_ag by choosing image
+
+    This transformation will translate any AtomGroup in *ags* in multiples of
+    the box vectors in order to minimise the distance between the center of mass
+    to the center of mass of each ag.
+    """
+    central_ag: mda.AtomGroup
+    other_ags: list[mda.AtomGroup]
+
     def __init__(self, central_ag, *ags):
         super().__init__()
         self.central_ag = central_ag
@@ -50,11 +75,11 @@ class Aligner(TransformationBase):
     """On-the-fly transformation to align a trajectory to minimise RMSD
 
     centers all coordinates onto origin
-    rotates entire universe to minimise rmsd of **ref_ag**
+    rotates **entire universe** to minimise rmsd relative to **ref_ag**
     """
-    ref_pos: np.ndarray
-    ref_idx: np.ndarray
-    weights: np.ndarray
+    ref_pos: npt.NDArray
+    ref_idx: npt.NDArray
+    weights: npt.NDArray
 
     def __init__(self, ref_ag):
         super().__init__()
