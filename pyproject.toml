@@ -9,15 +9,13 @@ build-backend = "setuptools.build_meta"
 name = "openfe_analysis"
 dynamic = ["version"]
 authors=[
-    {name="Benjamin Ries", email="benjamin-ries@outlook.com"},
-    {name="David Swenson", email="dwhswenson@gmail.com"},
     {name="Irfan Alibay", email="irfan.alibay@gmail.com"},
-    {name="Mike Henry", email="mike.henry@choderalab.org"},
     {name="Richard J Gowers", email="richardjgowers@gmail.com"},
 ]
 dependencies = [
   'MDAnalysis',
-  'openfe',
+  'numpy',
+  'netCDF4',
 ]
 description="Analysis of free energy calculations."
 readme="README.md"
