@@ -1,8 +1,10 @@
 from MDAnalysis.coordinates.base import ReaderBase, Timestep
 import netCDF4 as nc
-from openfe.utils import handle_trajectories
 from openff.units import unit
 from typing import Optional
+
+
+from . import handle_trajectories
 
 
 def _determine_dt(ds) -> float:
