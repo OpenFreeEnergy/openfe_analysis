@@ -28,7 +28,15 @@ def make_Universe(top, trj, state):
 
 
 def gather_rms_data(pdb_topology, dataset):
-    """
+    """Generate structural analysis of RBFE simulation
+
+    Parameters
+    ----------
+    pdb_topology : pathlib.Path
+      path to pdb topology
+    dataset : pathlib.Path
+      path to nc trajectory
+
     Produces:
     - protein RMSD
     - ligand RMSD
