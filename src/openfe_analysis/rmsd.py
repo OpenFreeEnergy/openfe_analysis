@@ -10,7 +10,21 @@ from .transformations import (
 )
 
 
-def make_Universe(top, trj, state):
+def make_Universe(top: pathlib.Path,
+                  trj: nc.Dataset,
+                  state: int) -> mda.Universe:
+    """Makes a Universe and applies some transformations
+
+    Identifies two AtomGroups:
+    - protein, defined as having standard amino acid names, then filtered
+      down to CA
+    - ligand, defined as resname UNK
+
+    Then applies some transformations
+    - prevents the protein from jumping between periodic images
+    - moves the ligand to the image closest to the protein
+    - aligns the entire system to minimise the protein RMSD
+    """
     u = mda.Universe(
         top, trj, state_id=state,
         format='openfe RFE',
@@ -29,7 +43,8 @@ def make_Universe(top, trj, state):
     return u
 
 
-def gather_rms_data(pdb_topology, dataset):
+def gather_rms_data(pdb_topology: pathlib.Path,
+                    dataset: pathlib.Path) -> dict[str, list[float]]:
     """Generate structural analysis of RBFE simulation
 
     Parameters
@@ -39,15 +54,11 @@ def gather_rms_data(pdb_topology, dataset):
     dataset : pathlib.Path
       path to nc trajectory
 
-    Produces:
-    - protein RMSD
-    - ligand RMSD
-    - ligand COM motion
-
-    For ligand metrics, each frame is first aligned to minimise the protein
-    RMSD.
-
-    For each constant state/lambda window
+    Produces, for each lambda state:
+    - 1D protein RMSD timeseries 'protein_RMSD'
+    - ligand RMSD timeseries
+    - ligand COM motion 'ligand_wander'
+    - 2D protein RMSD plot
     """
     output = {
         'protein_RMSD': [],
@@ -91,7 +102,10 @@ def gather_rms_data(pdb_topology, dataset):
                              center=False, superposition=False)
                 )
                 this_ligand_wander.append(
-                    mda.lib.distances.calc_bonds(ligand.center_of_mass(), ligand_initial_com)
+                    # distance between start and current ligand position
+                    # ignores PBC, but we've already centered the traj
+                    mda.lib.distances.calc_bonds(ligand.center_of_mass(),
+                                                 ligand_initial_com)
                 )
 
         if prot:
