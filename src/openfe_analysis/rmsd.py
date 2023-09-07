@@ -1,5 +1,6 @@
 import MDAnalysis as mda
 from MDAnalysis.analysis import rms
+import netCDF4 as nc
 import numpy as np
 
 from .reader import FEReader
@@ -53,9 +54,10 @@ def gather_rms_data(pdb_topology, dataset):
         'ligand_wander': [],
     }
 
-    n_lambda = dataset.dimensions['state'].size
+    ds = nc.Dataset(dataset)
+    n_lambda = ds.dimensions['state'].size
     for i in range(n_lambda):
-        u = make_Universe(pdb_topology, dataset, state=i)
+        u = make_Universe(pdb_topology, ds, state=i)
 
         prot = u.select_atoms('protein and name CA')
         ligand = u.select_atoms('resname UNK')

@@ -40,6 +40,7 @@ class FEReader(ReaderBase):
     _replica_id: Optional[int]
     _frame_index: int
     _dataset: nc.Dataset
+    _dataset_owner: bool
 
     format = 'openfe RFE'
 
@@ -47,7 +48,7 @@ class FEReader(ReaderBase):
         """
         Parameters
         ----------
-        filename : pathlike
+        filename : pathlike or nc.Dataset
           path to the .nc file
         convert_units : bool
           convert positions to A
@@ -61,11 +62,21 @@ class FEReader(ReaderBase):
 
         super().__init__(filename, convert_units, **kwargs)
 
-        self._dataset = nc.Dataset(filename)
+        if isinstance(filename, nc.Dataset):
+            self._dataset = filename
+            self._dataset_owner = False
+        else:
+            self._dataset = nc.Dataset(filename)
+            self._dataset_owner = True
         self._n_atoms = self._dataset.dimensions['atom'].size
         self.ts = Timestep(self._n_atoms)
         self._dt = _determine_dt(self._dataset)
         self._read_frame(0)
+
+    @staticmethod
+    def _format_hint(thing) -> bool:
+        # can pass raw nc datasets through to reduce open/close operations
+        return isinstance(thing, nc.Dataset)
 
     @property
     def n_atoms(self) -> int:
@@ -123,4 +134,5 @@ class FEReader(ReaderBase):
         self._frame_index = -1
 
     def close(self):
-        self._dataset.close()
+        if self._dataset_owner:
+            self._dataset.close()
