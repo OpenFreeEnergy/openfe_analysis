@@ -80,7 +80,7 @@ def gather_rms_data(pdb_topology: pathlib.Path,
         prot2d = np.empty((len(u.trajectory), len(prot), 3), dtype=np.float32)
 
         prot_start = prot.positions
-        prot_weights = prot.masses / np.mean(prot.masses)
+        # prot_weights = prot.masses / np.mean(prot.masses)
         ligand_start = ligand.positions
         ligand_initial_com = ligand.center_of_mass()
         ligand_weights = ligand.masses / np.mean(ligand.masses)
@@ -93,7 +93,7 @@ def gather_rms_data(pdb_topology: pathlib.Path,
             if prot:
                 prot2d[ts.frame, :, :] = prot.positions
                 this_protein_rmsd.append(
-                    rms.rmsd(prot.positions, prot_start, prot_weights,
+                    rms.rmsd(prot.positions, prot_start, None,  # prot_weights,
                              center=False, superposition=False)
                 )
             if ligand:
@@ -109,7 +109,7 @@ def gather_rms_data(pdb_topology: pathlib.Path,
                 )
 
         if prot:
-            rmsd2d = twoD_RMSD(prot2d, prot_weights)
+            rmsd2d = twoD_RMSD(prot2d, None)  # prot_weights)
             output['protein_RMSD'].append(this_protein_rmsd)
             output['protein_2D_RMSD'].append(rmsd2d)
         if ligand:
