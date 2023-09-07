@@ -30,8 +30,12 @@ def make_Universe(top, trj, state):
 def gather_rms_data(pdb_topology, dataset):
     """
     Produces:
-    - ligand RMSD
     - protein RMSD
+    - ligand RMSD
+    - ligand COM motion
+
+    For ligand metrics, each frame is first aligned to minimise the protein
+    RMSD.
 
     For each constant state/lambda window
     """
