@@ -41,7 +41,7 @@ def gather_rms_data(pdb_topology, dataset):
         'ligand_wander': [],
     }
 
-    n_lambda = 11  # todo: detect number of lambda windows
+    n_lambda = dataset.dimensions['state'].size
     for i in range(n_lambda):
         u = make_Universe(pdb_topology, dataset, state=i)
 
