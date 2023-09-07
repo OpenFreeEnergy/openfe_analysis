@@ -22,7 +22,7 @@ class NoJump(TransformationBase):
     prev: npt.NDArray
 
 
-    def __init__(self, ag):
+    def __init__(self, ag: mda.AtomGroup):
         super().__init__()
         self.ag = ag
         self.prev = ag.center_of_mass()
@@ -53,7 +53,7 @@ class Minimiser(TransformationBase):
     central_ag: mda.AtomGroup
     other_ags: list[mda.AtomGroup]
 
-    def __init__(self, central_ag, *ags):
+    def __init__(self, central_ag: mda.AtomGroup, *ags):
         super().__init__()
         self.central_ag = central_ag
         self.other_ags = ags
@@ -81,7 +81,7 @@ class Aligner(TransformationBase):
     ref_idx: npt.NDArray
     weights: npt.NDArray
 
-    def __init__(self, ref_ag):
+    def __init__(self, ref_ag: mda.AtomGroup):
         super().__init__()
         self.ref_idx = ref_ag.ix
         self.ref_pos = ref_ag.positions
