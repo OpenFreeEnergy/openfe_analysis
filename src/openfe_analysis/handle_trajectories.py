@@ -2,8 +2,9 @@ import netCDF4 as nc
 import numpy as np
 from pathlib import Path
 from openff.units import unit
-from openfe import __version__
 from typing import Optional
+
+from . import __version__
 
 
 def _state_to_replica(dataset: nc.Dataset, state_num: int,
@@ -79,8 +80,8 @@ def _create_new_dataset(filename: Path, n_atoms: int,
     ncfile = nc.Dataset(filename, 'w', format='NETCDF3_64BIT')
     ncfile.Conventions = 'AMBER'
     ncfile.ConventionVersion = "1.0"
-    ncfile.application = "openfe"
-    ncfile.program = f"openfe {__version__}"
+    ncfile.application = "openfe_analysis"
+    ncfile.program = f"openfe_analysis {__version__}"
     ncfile.programVersion = f"{__version__}"
     ncfile.title = title
     
