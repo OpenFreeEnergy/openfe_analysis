@@ -53,7 +53,7 @@ jobs:
           python -Ic "import openfe_analysis; print(openfe_analysis.__version__)"
       - name: "Run tests"
         run: |
-          pytest -n auto -v --cov=openfe_analysis --cov-report=xml --durations=10
+          pytest -n 1 -v --cov=openfe_analysis --cov-report=xml --durations=10
       - name: "Save pooch test data cache"
         id: cache-testdata-save
         uses: actions/cache/save@v3
