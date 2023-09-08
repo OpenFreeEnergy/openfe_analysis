@@ -3,6 +3,7 @@ import MDAnalysis as mda
 from MDAnalysis.analysis import rms
 import netCDF4 as nc
 import numpy as np
+import pathlib
 
 from .reader import FEReader
 from .transformations import (
