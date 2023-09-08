@@ -26,6 +26,12 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pooch",
+]
+
 [project.urls]
 "Homepage" = "https://github.com/OpenFreeEnergy/openfe_analysis"
 
