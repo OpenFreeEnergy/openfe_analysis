@@ -13,9 +13,11 @@ authors=[
     {name="Richard J Gowers", email="richardjgowers@gmail.com"},
 ]
 dependencies = [
-  'MDAnalysis',
-  'numpy',
-  'netCDF4',
+    'click',
+    'MDAnalysis',
+    'numpy',
+    'netCDF4',
+    'openff-units',
 ]
 description="Analysis of free energy calculations."
 readme="README.md"

@@ -2,6 +2,7 @@ name: openfe_analysis_env
 channels:
   - conda-forge
 dependencies:
+  - click
   - MDAnalysis
   - netCDF4
   - openff-units
