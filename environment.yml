@@ -12,3 +12,4 @@ dependencies:
   - pooch
   - pytest
   - pytest-cov
+  - pytest-xdist

@@ -38,7 +38,10 @@ include = ["openfe_analysis"]
 
 [project.optional-dependencies]
 test = [
+    "coverage",
     "pytest",
+    "pytest-xdist",
+    "pytest-cov",
     "pooch",
 ]
 
