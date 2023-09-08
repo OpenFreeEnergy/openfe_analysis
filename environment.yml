@@ -4,6 +4,7 @@ channels:
 dependencies:
   - MDAnalysis
   - netCDF4
+  - openff-units
   - pip
   # for testing
   - coverage
