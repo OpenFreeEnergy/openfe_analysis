@@ -22,7 +22,7 @@
       steps:
         - uses: actions/checkout@v4
         - name: "Setup Micromamba"
-          uses: mamba-org/setup-micromamber@v1
+          uses: mamba-org/setup-micromamba@v1
           with:
             environment-file: environment.yml
             environment-name: openfe_analysis_env
