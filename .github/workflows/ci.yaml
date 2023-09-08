@@ -45,7 +45,7 @@
             pytest -n auto -v --cov=openfe_analysis --cov-report=xml --durations=10
         - name: codecov
           if: ${{ github.repository == 'OpenFreeEnergy/openfe_analysis'
-                 && github.event_name == "pull_request" }}
+                 && github.event_name == 'pull_request' }}
           uses: codecov/codecov-action@v3
           with:
             token: ${{ secrets.CODECOV_TOKEN }}
