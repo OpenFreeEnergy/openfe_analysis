@@ -1,0 +1,12 @@
+name: openfe_analysis_env
+channels:
+  - conda-forge
+dependencies:
+  - MDAnalysis
+  - netCDF4
+  - pip
+  # for testing
+  - coverage
+  - pooch
+  - pytest
+  - pytest-cov
