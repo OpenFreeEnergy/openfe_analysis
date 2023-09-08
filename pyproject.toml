@@ -26,6 +26,10 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 
+[tool.setuptools]
+zip-safe = false
+license-files = ["LICENSE"]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["openfe_analysis"]
