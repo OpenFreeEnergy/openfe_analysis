@@ -21,10 +21,15 @@ def make_Universe(top: pathlib.Path,
       down to CA
     - ligand, defined as resname UNK
 
-    Then applies some transformations
+    Then applies some transformations.
+
+    If a protein is present:
     - prevents the protein from jumping between periodic images
     - moves the ligand to the image closest to the protein
     - aligns the entire system to minimise the protein RMSD
+
+    If only a ligand:
+    - prevents the ligand from jumping between periodic images
     """
     u = mda.Universe(
         top, trj, state_id=state,
@@ -33,13 +38,19 @@ def make_Universe(top: pathlib.Path,
     prot = u.select_atoms('protein and name CA')
     ligand = u.select_atoms('resname UNK')
 
-    nope = NoJump(prot)
-    minnie = Minimiser(prot, ligand)
-    align = Aligner(prot)
+    if prot:
+        nope = NoJump(prot)
+        minnie = Minimiser(prot, ligand)
+        align = Aligner(prot)
+        u.trajectory.add_transformations(
+            nope, minnie, align,
+        )
+    else:
+        nope = NoJump(ligand)
 
-    u.trajectory.add_transformations(
-        nope, minnie, align,
-    )
+        u.trajectory.add_transformation(
+            nope
+        )
 
     return u
 
