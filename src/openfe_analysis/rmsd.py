@@ -39,17 +39,26 @@ def make_Universe(top: pathlib.Path,
     ligand = u.select_atoms('resname UNK')
 
     if prot:
+        # if there's a protein in the system:
+        # - make the protein not jump periodic images between frames
+        # - put the ligand in the closest periodic image as the protein
+        # - align everything to minimise protein RMSD
         nope = NoJump(prot)
         minnie = Minimiser(prot, ligand)
         align = Aligner(prot)
+
         u.trajectory.add_transformations(
             nope, minnie, align,
         )
     else:
+        # if there's no protein
+        # - make the ligand not jump periodic images between frames
+        # - align the ligand to minimise its RMSD
         nope = NoJump(ligand)
+        align = Aligner(ligand)
 
-        u.trajectory.add_transformation(
-            nope
+        u.trajectory.add_transformations(
+            nope, align,
         )
 
     return u
