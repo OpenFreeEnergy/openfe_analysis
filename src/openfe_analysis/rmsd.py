@@ -3,7 +3,9 @@ import MDAnalysis as mda
 from MDAnalysis.analysis import rms
 import netCDF4 as nc
 import numpy as np
+from numpy import typing as npt
 import pathlib
+from typing import Optional
 
 from .reader import FEReader
 from .transformations import (
@@ -33,7 +35,7 @@ def make_Universe(top: pathlib.Path,
     """
     u = mda.Universe(
         top, trj, state_id=state,
-        format='openfe RFE',
+        format=FEReader,
     )
     prot = u.select_atoms('protein and name CA')
     ligand = u.select_atoms('resname UNK')
@@ -137,12 +139,12 @@ def gather_rms_data(pdb_topology: pathlib.Path,
             output['ligand_RMSD'].append(this_ligand_rmsd)
             output['ligand_wander'].append(this_ligand_wander)
 
-    output['time(ps)'] = list(np.arange(len(u.trajectory)) * u.trajectory.dt)
+        output['time(ps)'] = list(np.arange(len(u.trajectory)) * u.trajectory.dt)
 
     return output
 
 
-def twoD_RMSD(positions, w) -> list[float]:
+def twoD_RMSD(positions, w: Optional[npt.NDArray]) -> list[float]:
     """2 dimensions RMSD
 
     Parameters
