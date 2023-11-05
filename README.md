@@ -15,7 +15,7 @@ from openfe_analysis import FEReader
 
 # a "simulation.nc" file contains multiple replicas, so we must choose which of these we load
 # provide either a state (following a single lambda state) or replica (following a particular replica) id (typically 0-10)
-u = mda.Universe('hybrid_system.pdb', 'simulation.nc', format=FEReader, state=0)
+u = mda.Universe('hybrid_system.pdb', 'simulation.nc', format=FEReader, state=0, replica_id=0)
 ```
 
 For example to convert your trajectory to a different format for visualisation:
