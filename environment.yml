@@ -7,6 +7,7 @@ dependencies:
   - netCDF4
   - openff-units
   - pip
+  - tqdm
   # for testing
   - coverage
   - pooch
