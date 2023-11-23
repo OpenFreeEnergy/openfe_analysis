@@ -20,6 +20,7 @@ def cli():
                                           dir_okay=False,
                                           path_type=pathlib.Path))
 def rfe_analysis(loc, output):
+    """Perform structural analysis on OpenMM RFE simulation"""
     pdb = loc / "hybrid_system.pdb"
     trj = loc / "simulation.nc"
 
