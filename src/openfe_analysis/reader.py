@@ -55,12 +55,12 @@ class FEReader(ReaderBase):
         convert_units : bool
           convert positions to A
         """
-        self._state_id = kwargs.pop('state_id', None)
-        self._replica_id = kwargs.pop('replica_id', None)
-        if not ((self._state_id is None) ^ (self._replica_id is None)):
+        s_id = kwargs.pop('state_id', None)
+        r_id = kwargs.pop('replica_id', None)
+        if not ((s_id is None) ^ (r_id is None)):
             raise ValueError("Specify one and only one of state or replica, "
-                             f"got state id={self._state_id} "
-                             f"replica_id={self._replica_id}")
+                             f"got state id={s_id} "
+                             f"replica_id={r_id}")
 
         super().__init__(filename, convert_units, **kwargs)
 
@@ -70,6 +70,15 @@ class FEReader(ReaderBase):
         else:
             self._dataset = nc.Dataset(filename)
             self._dataset_owner = True
+
+        # if we have a negative indexed state_id or replica_id, convert this
+        if s_id is not None and s_id < 0:
+            s_id = range(self._dataset.dimensions['state'].size)[s_id]
+        elif r_id is not None and r_id < 0:
+            r_id = range(self._dataset.dimensions['replica'].size)[r_id]
+        self._state_id = s_id
+        self._replica_id = r_id
+
         self._n_atoms = self._dataset.dimensions['atom'].size
         self.ts = Timestep(self._n_atoms)
         self._dt = _determine_dt(self._dataset)

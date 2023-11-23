@@ -24,3 +24,17 @@ def test_universe_from_nc_file(simulation_nc, hybrid_system_pdb):
     assert len(u.atoms) == 4782
 
 
+def test_universe_creation_negative_state(simulation_nc, hybrid_system_pdb):
+    u = mda.Universe(hybrid_system_pdb, simulation_nc,
+                     format='openfe rfe', state_id=-1)
+
+    assert u.trajectory._state_id == 10
+    assert u.trajectory._replica_id is None
+
+
+def test_universe_creation_negative_replica(simulation_nc, hybrid_system_pdb):
+    u = mda.Universe(hybrid_system_pdb, simulation_nc,
+                     format='openfe rfe', replica_id=-1)
+
+    assert u.trajectory._state_id is None
+    assert u.trajectory._replica_id == 10
