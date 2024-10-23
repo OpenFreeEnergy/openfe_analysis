@@ -6,28 +6,33 @@ on:
   push:
     branches:
       - main
-  release:
-    types:
-      - published
+  schedule:
+    # At 07:00 UTC on Monday and Thursday.
+    - cron: "0 7 * * *"
+  workflow_dispatch:
 
 defaults:
   run:
-    shell: bash -l {0}
+    shell: bash -leo pipefail {0}
 
 jobs:
   tests:
-    runs-on: ${{ matrix.os}}-latest
+    runs-on: ${{ matrix.os}}
     name: "💻-${{matrix.os }} 🐍-${{ matrix.python-version }}"
     strategy:
       fail-fast: false
       matrix:
-        os: ["ubuntu", "macos"]
+        os: ["ubuntu-latest", "macos-latest", "macos-13"]
         python-version:
           - "3.9"
+          - "3.10"
+          - "3.11"
+          - "3.12"
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - name: "Setup Micromamba"
         uses: mamba-org/setup-micromamba@v1
         with:
@@ -38,9 +43,11 @@ jobs:
           create-args: >-
             python=${{ matrix.python-version }}
           init-shell: bash
+
       - name: "Install"
         run: |
           python -m pip install --no-deps .
+
       - name: "Restore pooch test data cache"
         id: cache-testdata-restore
         uses: actions/cache/restore@v3
@@ -48,12 +55,15 @@ jobs:
           path: |
             ~/.cache/openfe_analysis/
           key: ${{ runner.os }}
+
       - name: "Test imports"
         run: |
           python -Ic "import openfe_analysis; print(openfe_analysis.__version__)"
+
       - name: "Run tests"
         run: |
-          pytest -n 1 -v --cov=openfe_analysis --cov-report=xml --durations=10
+          pytest -n auto -v --cov=openfe_analysis --cov-report=xml --durations=10
+
       - name: "Save pooch test data cache"
         id: cache-testdata-save
         uses: actions/cache/save@v3
@@ -61,10 +71,11 @@ jobs:
           path: |
             ~/.cache/openfe_analysis/
           key: ${{ runner.os }}
+
       - name: codecov
         if: ${{ github.repository == 'OpenFreeEnergy/openfe_analysis'
                && github.event_name == 'pull_request' }}
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: coverage.xml

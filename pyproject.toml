@@ -49,7 +49,7 @@ test = [
 "Homepage" = "https://github.com/OpenFreeEnergy/openfe_analysis"
 
 [project.scripts]
-openfe_analysis = "openfe_analysis.cli:main"
+openfe_analysis = "openfe_analysis.cli:cli"
 
 [tool.versioningit]
 default-version = "1+unknown"
