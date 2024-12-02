@@ -9,22 +9,21 @@ build-backend = "setuptools.build_meta"
 name = "openfe_analysis"
 dynamic = ["version"]
 authors=[
-    {name="Irfan Alibay", email="irfan.alibay@gmail.com"},
-    {name="Richard J Gowers", email="richardjgowers@gmail.com"},
+    {name="The OpenFE developers", email="openfe@omsf.io"}
 ]
 dependencies = [
     'click',
-    'MDAnalysis',
+    'MDAnalysis>=2.8.0',
     'numpy',
     'netCDF4',
     'openff-units',
 ]
 description="Analysis of free energy calculations."
 readme="README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
 
