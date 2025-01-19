@@ -15,17 +15,17 @@ RFE_OUTPUT = pooch.create(
 )
 
 
-@pytest.fixture
+@pytest.fixture(scope='session')
 def simulation_nc():
     return RFE_OUTPUT.fetch("simulation.nc")
 
 
-@pytest.fixture
+@pytest.fixture(scope='session')
 def hybrid_system_pdb():
     return RFE_OUTPUT.fetch("hybrid_system.pdb")
 
 
-@pytest.fixture
+@pytest.fixture(scope='session')
 def mcmc_serialized():
     return (
         '_serialized__class_name: LangevinDynamicsMove\n'

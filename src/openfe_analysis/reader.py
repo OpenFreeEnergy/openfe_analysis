@@ -50,11 +50,12 @@ def _determine_dt(dataset) -> float:
 
 
 class FEReader(ReaderBase):
-    """A MDAnalysis Reader for nc files created by openfe RFE Protocol
+    """A MDAnalysis Reader for NetCDF files created by
+    `openmmtools.multistate.MultistateReporter`
 
-    Looks along a multistate .nc file along one of two axes:
-    - constant state/lambda (varying replica)
-    - constant replica (varying lambda)
+    Looks along a multistate NetCDF file along one of two axes:
+      - constant state/lambda (varying replica)
+      - constant replica (varying lambda)
     """
     _state_id: Optional[int]
     _replica_id: Optional[int]
@@ -62,7 +63,12 @@ class FEReader(ReaderBase):
     _dataset: nc.Dataset
     _dataset_owner: bool
 
-    format = 'openfe RFE'
+    format = 'MultistateReporter'
+
+    units = {
+        'time': 'ps',
+        'length': 'nanometer'
+    }
 
     def __init__(self, filename, convert_units=True, **kwargs):
         """
@@ -110,7 +116,6 @@ class FEReader(ReaderBase):
     def parse_n_atoms(filename, **kwargs) -> int:
         with nc.Dataset(filename) as ds:
             n_atoms = ds.dimensions['atom'].size
-
         return n_atoms
 
     def _read_next_timestep(self, ts=None) -> Timestep:
@@ -139,7 +144,11 @@ class FEReader(ReaderBase):
             rep,
             self._frame_index)
 
-        self.ts.positions = (pos.to(unit.angstrom)).m
+        # Convert to base MDAnalysis distance units (Angstrom) if requested
+        if self.convert_units:
+            self.ts.positions = (pos.to(unit.angstrom)).m
+        else:
+            self.ts.positions = pos.m
         self.ts.dimensions = dim
         self.ts.frame = self._frame_index
         self.ts.time = self._frame_index * self._dt

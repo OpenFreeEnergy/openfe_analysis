@@ -15,7 +15,7 @@ from openfe_analysis.transformations import (
 def universe(hybrid_system_pdb, simulation_nc):
     return mda.Universe(
         hybrid_system_pdb, simulation_nc,
-        format='openfe rfe',
+        format='MultiStateReporter',
         state_id=0,
     )
 
