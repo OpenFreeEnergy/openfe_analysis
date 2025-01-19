@@ -70,21 +70,28 @@ class FEReader(ReaderBase):
         'length': 'nanometer'
     }
 
-    def __init__(self, filename, convert_units=True, **kwargs):
+    def __init__(
+        self, filename, convert_units=True,
+        state_id=None, replica_id=None, **kwargs
+    ):
         """
         Parameters
         ----------
         filename : pathlike or nc.Dataset
           path to the .nc file
         convert_units : bool
-          convert positions to A
+          convert positions to Angstrom
+        state_id : Optional[int]
+          The hamiltonian state index to extract. Must be defined if
+          ``replica_id`` is not defined.
+        replica_id : Optional[int]
+          The replica index to extract. Must be defined if ``state_id``
+          is not defined.
         """
-        self._state_id = kwargs.pop('state_id', None)
-        self._replica_id = kwargs.pop('replica_id', None)
-        if not ((self._state_id is None) ^ (self._replica_id is None)):
+        if not ((state_id is None) ^ (replica_id is None)):
             raise ValueError("Specify one and only one of state or replica, "
-                             f"got state id={self._state_id} "
-                             f"replica_id={self._replica_id}")
+                             f"got state id={state_id} "
+                             f"replica_id={replica_id}")
 
         super().__init__(filename, convert_units, **kwargs)
 
@@ -94,6 +101,17 @@ class FEReader(ReaderBase):
         else:
             self._dataset = nc.Dataset(filename)
             self._dataset_owner = True
+
+        # Handle the negative ID case
+        if state_id is not None and state_id < 0:
+            state_id = range(self._dataset.dimensions['state'].size)[state_id]
+
+        if replica_id is not None and replica_id < 0:
+            replica_id = range(self._dataset.dimensions['replica'].size)[replica_id]
+
+        self._state_id = state_id
+        self._replica_id = replica_id
+
         self._n_atoms = self._dataset.dimensions['atom'].size
         self.ts = Timestep(self._n_atoms)
         self._dt = _determine_dt(self._dataset)
