@@ -28,9 +28,6 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 
-[project.urls]
-"Homepage" = "https://github.com/OpenFreeEnergy/openfe_analysis"
-
 [tool.setuptools]
 zip-safe = false
 include-package-data = true
