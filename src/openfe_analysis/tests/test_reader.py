@@ -113,3 +113,14 @@ def test_universe_from_nc_file(simulation_nc, hybrid_system_pdb):
     assert u.trajectory.dt == pytest.approx(1.0)
 
 
+def test_universe_creation_noconversion(simulation_nc, hybrid_system_pdb):
+    u = mda.Universe(hybrid_system_pdb, simulation_nc,
+                     format=FEReader, state_id=0, convert_units=False)
+
+    assert_allclose(
+        u.atoms[:3].positions,
+        np.array([[6.51474, -1.7640617, 8.406607],
+                  [6.641961, -1.8410535, 8.433087],
+                  [6.71369, -1.8112476, 8.533738]]),
+    )
+
