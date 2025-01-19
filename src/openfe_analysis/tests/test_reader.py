@@ -1,7 +1,30 @@
 import MDAnalysis as mda
-from openfe_analysis import FEReader
+from openfe_analysis.reader import FEReader, _determine_dt
 import netCDF4 as nc
 import pytest
+
+
+def test_determine_dt(tmpdir, mcmc_serialized):
+    with tmpdir.as_cwd():
+        # create a fake dataset with a fake mcmc move group
+        ds = nc.Dataset('foo', 'w', format='NETCDF3_64BIT_OFFSET')
+        ds.groups['mcmc_moves'] = {
+            'move0': [mcmc_serialized]
+        }
+
+        assert _determine_dt(ds) == 2.5
+
+
+def test_determine_dt_keyerror(tmpdir, mcmc_serialized):
+    with tmpdir.as_cwd():
+        # create a fake dataset with fake mcmc move without timestep
+        ds = nc.Dataset('foo', 'w', format='NETCDF3_64BIT_OFFSET')
+        ds.groups['mcmc_moves'] = {
+            'move0': [mcmc_serialized[:-51]]
+        }
+
+        with pytest.raises(KeyError, match="`n_steps` or `timestep` are"):
+            _ = _determine_dt(ds)
 
 
 def test_universe_creation(simulation_nc, hybrid_system_pdb):

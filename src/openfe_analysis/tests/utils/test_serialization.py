@@ -18,18 +18,8 @@ def test_quantity_string_to_offunit(expression, expected):
     assert retval == expected
 
 
-MCMC_SERIALIZED = (
-    '_serialized__class_name: LangevinDynamicsMove\n'
-    '_serialized__module_name: openmmtools.mcmc\n'
-    'collision_rate: !Quantity\n  unit: /picosecond\n  value: 1\n'
-    'constraint_tolerance: 1.0e-06\nn_restart_attempts: 20\n'
-    'n_steps: 625\nreassign_velocities: false\n'
-    'timestep: !Quantity\n  unit: femtosecond\n  value: 4\n'
-)
-
-
-def test_unitedyamlloader():
-    data = yaml.load(MCMC_SERIALIZED, Loader=UnitedYamlLoader)
+def test_unitedyamlloader(mcmc_serialized):
+    data = yaml.load(mcmc_serialized, Loader=UnitedYamlLoader)
 
     expected = {
         '_serialized__class_name': 'LangevinDynamicsMove',
