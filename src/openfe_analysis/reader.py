@@ -1,34 +1,52 @@
 from MDAnalysis.coordinates.base import ReaderBase, Timestep
 import netCDF4 as nc
 from openff.units import unit
+import yaml
 from typing import Optional
 
 
-from . import handle_trajectories
+from openfe_analysis.utils import multistate, serialization
 
 
-def _determine_dt(ds) -> float:
-    # first grab integrator timestep
-    mcmc_move_data = ds.groups['mcmc_moves']['move0'][0].split('\n')
-    in_timestep = False
-    for line in mcmc_move_data:
-        if line.startswith('timestep'):
-            in_timestep = True
-        if in_timestep and line.strip().startswith('value'):
-            timestep = float(line.split()[-1]) / 1000.  # convert to ps
-            break
-    else:
-        raise ValueError("Didn't find timestep")
-    # next get the save interval
-    option_data = ds.variables['options'][0].split('\n')
-    for line in option_data:
-        if line.startswith('online_analysis_interval'):
-            nsteps = float(line.split()[-1])
-            break
-    else:
-        raise ValueError("Didn't find online_analysis_interval")
+def _determine_dt(dataset) -> float:
+    """
+    Find out the timestep between each frame in the trajectory.
 
-    return timestep * nsteps
+    Parameters
+    ----------
+    dataset : nc.Dataset
+      Dataset holding the multistatereporter generated NetCDF file.
+
+    Returns
+    -------
+    float
+      The timestep in units of picoseconds.
+
+    Raises
+    ------
+    KeyError
+      If either `timestep` or `n_steps` cannot be found in the
+      zeroth MCMC move.
+
+    Notes
+    -----
+    This assumes an MCMC move which serializes in a manner similar
+    to `openmmtools.mcmc.LangevinDynamicsMove`, i.e. it must have
+    both a `timestep` and `n_steps` defined.
+    """
+    # Deserialize the MCMC move information for the 0th entry.
+    mcmc_move_data = yaml.load(
+        dataset.groups['mcmc_moves']['move0'][0],
+        Loader=serialization.UnitedYamlLoader,
+    )
+
+    try:
+        dt = mcmc_move_data['n_steps'] * mcmc_move_data['timestep']
+    except KeyError:
+        msg = "Either `n_steps` or `timestep` are missing from the MCMC move"
+        raise KeyError(msg)
+
+    return dt.to('picosecond').m
 
 
 class FEReader(ReaderBase):
@@ -104,7 +122,7 @@ class FEReader(ReaderBase):
         self._frame_index = frame
 
         if self._state_id is not None:
-            rep = handle_trajectories._state_to_replica(
+            rep = multistate._state_to_replica(
                 self._dataset,
                 self._state_id,
                 self._frame_index
@@ -112,11 +130,11 @@ class FEReader(ReaderBase):
         else:
             rep = self._replica_id
 
-        pos = handle_trajectories._replica_positions_at_frame(
+        pos = multistate._replica_positions_at_frame(
             self._dataset,
             rep,
             self._frame_index)
-        dim = handle_trajectories._get_unitcell(
+        dim = multistate._get_unitcell(
             self._dataset,
             rep,
             self._frame_index)

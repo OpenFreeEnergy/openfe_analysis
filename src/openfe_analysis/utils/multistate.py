@@ -4,7 +4,7 @@ from pathlib import Path
 from openff.units import unit
 from typing import Optional
 
-from . import __version__
+from openfe_analysis import __version__
 
 
 def _state_to_replica(dataset: nc.Dataset, state_num: int,
