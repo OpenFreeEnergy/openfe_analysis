@@ -35,12 +35,11 @@ class UnitedYamlLoader(yaml.CLoader):
 
     Notes
     -----
-    Modified from `openmmtools.multistate.multistatereporter._DictYamlLoader`.
+    Modified from `openmmtools.storage.iodrivers._DictYamlLoader`.
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.add_constructor(u'!Quantity', self.quantity_constructor)
-        self.add_constructor(u'!ndarray', self.ndarray_constructor)
 
     @staticmethod
     def quantity_constructor(loader, node):
@@ -48,14 +47,3 @@ class UnitedYamlLoader(yaml.CLoader):
         data_unit = omm_quantity_string_to_offunit(loaded_mapping['unit'])
         data_value = loaded_mapping['value']
         return data_value * data_unit
-
-    @staticmethod
-    def ndarray_constructor(loader, node):
-        loaded_mapping = loader.construct_mapping(node, deep=True)
-        data_type = np.dtype(loaded_mapping['type'])
-        data_shape = loaded_mapping['shape']
-        data_values = loaded_mapping['values']
-        data = np.ndarray(shape=data_shape, dtype=data_type)
-        if 0 not in data_shape:
-            data[:] = data_values
-        return data
