@@ -1,3 +1,4 @@
+from importlib import resources
 import pooch
 import pytest
 
@@ -23,6 +24,16 @@ def simulation_nc():
 @pytest.fixture(scope='session')
 def hybrid_system_pdb():
     return RFE_OUTPUT.fetch("hybrid_system.pdb")
+
+
+@pytest.fixture(scope='session')
+def simulation_skipped_nc():
+    return resources.files('openfe_analysis.tests.data') / 'simulation.nc'
+
+
+@pytest.fixture(scope='session')
+def hybrid_system_skipped_pdb():
+    return resources.files('openfe_analysis.tests.data') / 'hybrid_system.pdb'
 
 
 @pytest.fixture(scope='session')

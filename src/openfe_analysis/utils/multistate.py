@@ -1,15 +1,52 @@
 import netCDF4 as nc
 import numpy as np
+from numpy.typing import NDArray
 from pathlib import Path
 from openff.units import unit
-from typing import Optional
+from typing import Optional, Tuple
 
 from openfe_analysis import __version__
 
 
+def _determine_position_indices(dataset: nc.Dataset) -> NDArray:
+    """
+    Determine which iteration indices hold positions.
+
+    Parameters
+    ----------
+    dataset : nc.Dataset
+      Dataset holding the multistatereporter generated NetCDF file.
+
+    Returns
+    -------
+    indices : NDArray[int]
+      An ordered array of iteration indices which hold positions.
+
+    Note
+    ----
+    This assumes that the indices are equally spaced by a given
+    value.
+    """
+    indices = []
+    for i in range(dataset.dimensions['iteration'].size):
+        if not dataset.variables['positions'][i][0].mask.all():
+            indices.append(i)
+
+    indices = np.array(indices)
+
+    if not all(np.diff(indices) == np.diff(indices)[0]):
+        errmsg = (
+            "Positions are not written at a consistent frame rate, "
+            "this is not currently supported"
+        )
+        raise ValueError(errmsg)
+
+    return indices
+
+
 def _state_to_replica(dataset: nc.Dataset, state_num: int,
                       frame_num: int) -> int:
-    """Convert a state index to replica index at a given frame
+    """Convert a state index to replica index at a given Dataset frame
 
     Parameters
     ----------
@@ -31,11 +68,14 @@ def _state_to_replica(dataset: nc.Dataset, state_num: int,
     return np.where(state_distribution == state_num)[0][0]
 
 
-def _replica_positions_at_frame(dataset: nc.Dataset,
-                                replica_index: int,
-                                frame_num: int) -> unit.Quantity:
+def _replica_positions_at_frame(
+    dataset: nc.Dataset,
+    replica_index: int,
+    frame_num: int
+) -> Optional[unit.Quantity]:
     """
-    Helper method to extract atom positions of a state at a given frame.
+    Helper method to extract atom positions of a state at a given
+    Dataset frame.
 
     Parameters
     ----------
@@ -48,16 +88,24 @@ def _replica_positions_at_frame(dataset: nc.Dataset,
 
     Returns
     -------
-    unit.Quantity
-        n_atoms * 3 position Quantity array
+    Optional[unit.Quantity]
+        A n_atoms * 3 position Quantity array. Returns ``None``
+        if all the values are masked (i.e. no positions were stored
+        for that frame).
     """
+    # If all the positions are masked (i.e. not present)
+    if dataset.variables['positions'][frame_num][replica_index].mask.all():
+        return None
+
     pos = dataset.variables['positions'][frame_num][replica_index].data
     pos_units = dataset.variables['positions'].units
     return pos * unit(pos_units)
 
 
-def _create_new_dataset(filename: Path, n_atoms: int,
-                        title: str) -> nc.Dataset:
+def _create_new_dataset(
+    filename: Path, n_atoms: int,
+    title: str
+) -> nc.Dataset:
     """
     Helper method to create a new NetCDF dataset which follows the
     AMBER convention (see: https://ambermd.org/netcdf/nctraj.xhtml)
@@ -118,11 +166,13 @@ def _create_new_dataset(filename: Path, n_atoms: int,
     return ncfile
 
 
-def _get_unitcell(dataset: nc.Dataset, replica_index: int, frame_num: int):
+def _get_unitcell(
+    dataset: nc.Dataset, replica_index: int, frame_num: int
+) -> Optional[Tuple[unit.Quantity]]:
     """
     Helper method to extract a unit cell from the stored
     box vectors in a MultiState reporter generated NetCDF file
-    at a given state and frame.
+    at a given state and Dataset frame.
 
     Parameters
     ----------
@@ -135,9 +185,15 @@ def _get_unitcell(dataset: nc.Dataset, replica_index: int, frame_num: int):
 
     Returns
     -------
-    Tuple[lx, ly, lz, alpha, beta, gamma]
+    Optional[Tuple[lx, ly, lz, alpha, beta, gamma]]
         Unit cell lengths and angles in angstroms and degrees.
+        If box_vectors are masked (i.e. they were not stored at this frame),
+        will return ``None``.
     """
+    # Case: no box_vectors were stored at this frame
+    if dataset.variables['box_vectors'][frame_num][replica_index].mask.all():
+        return None
+
     vecs = dataset.variables['box_vectors'][frame_num][replica_index].data
     vecs_units = dataset.variables['box_vectors'].units
     x, y, z = (vecs * unit(vecs_units)).to('angstrom').m
@@ -183,7 +239,8 @@ def trajectory_from_multistate(input_file: Path, output_file: Path,
     multistate = nc.Dataset(input_file, 'r')
     n_atoms = len(multistate.variables['positions'][0][0])
     n_replicas = len(multistate.variables['positions'][0])
-    n_frames = len(multistate.variables['positions'])
+    frame_list = _determine_position_indices(multistate)
+    n_frames = len(frame_list)
 
     # Sanity check
     if state_number is not None and (state_number + 1 > n_replicas):
@@ -202,15 +259,18 @@ def trajectory_from_multistate(input_file: Path, output_file: Path,
     if replica_number is not None:
         replica_id = replica_number
 
-    # Loopy de loop
+    # Loopy de loop over n_frames so that the new Dataset
+    # is just 0 -> n_frames
     for frame in range(n_frames):
         if state_number is not None:
-            replica_id = _state_to_replica(multistate, state_number, frame)
+            replica_id = _state_to_replica(
+                multistate, state_number, frame_list[frame]
+            )
 
         traj.variables['coordinates'][frame] = _replica_positions_at_frame(
-            multistate, replica_id, frame
+            multistate, replica_id, frame_list[frame]
         ).to('angstrom').m
-        unitcell = _get_unitcell(multistate, replica_id, frame)
+        unitcell = _get_unitcell(multistate, replica_id, frame_list[frame])
         traj.variables['cell_lengths'][frame] = unitcell[:3]
         traj.variables['cell_angles'][frame] = unitcell[3:]
 

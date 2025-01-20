@@ -1,5 +1,5 @@
 import MDAnalysis as mda
-from openfe_analysis.reader import FEReader, _determine_dt
+from openfe_analysis.reader import FEReader, _determine_iteration_dt
 import netCDF4 as nc
 from numpy.testing import assert_allclose
 import numpy as np
@@ -14,7 +14,7 @@ def test_determine_dt(tmpdir, mcmc_serialized):
             'move0': [mcmc_serialized]
         }
 
-        assert _determine_dt(ds) == 2.5
+        assert _determine_iteration_dt(ds) == 2.5
 
 
 def test_determine_dt_keyerror(tmpdir, mcmc_serialized):
@@ -26,7 +26,7 @@ def test_determine_dt_keyerror(tmpdir, mcmc_serialized):
         }
 
         with pytest.raises(KeyError, match="`n_steps` or `timestep` are"):
-            _ = _determine_dt(ds)
+            _ = _determine_iteration_dt(ds)
 
 
 def test_universe_creation(simulation_nc, hybrid_system_pdb):
@@ -157,3 +157,17 @@ def test_fereader_replica_state_id_error(
             hybrid_system_pdb, simulation_nc, format=FEReader,
             state_id=state_id, replica_id=rep_id
         )
+
+
+def test_simulation_skipped_nc(
+    simulation_skipped_nc, hybrid_system_skipped_pdb
+):
+    u = mda.Universe(
+        hybrid_system_skipped_pdb, simulation_skipped_nc,
+        format=FEReader, replica_id=0,
+    )
+
+    assert len(u.trajectory) == 3
+    assert u.trajectory.n_frames == 3
+    for ts in u.trajectory:
+        assert np.all(u.atoms.positions > 0)
