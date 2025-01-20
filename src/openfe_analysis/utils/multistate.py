@@ -29,7 +29,7 @@ def _determine_position_indices(dataset: nc.Dataset) -> NDArray:
     """
     indices = [
         i for i in
-        range(0, multistate.dimensions['iteration'].size, multistate.PositionInterval)
+        range(0, dataset.dimensions['iteration'].size, dataset.PositionInterval)
     ]
 
     indices = np.array(indices)
