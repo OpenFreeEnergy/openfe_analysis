@@ -27,10 +27,10 @@ def _determine_position_indices(dataset: nc.Dataset) -> NDArray:
     This assumes that the indices are equally spaced by a given
     value.
     """
-    indices = []
-    for i in range(dataset.dimensions['iteration'].size):
-        if not dataset.variables['positions'][i][0].mask.all():
-            indices.append(i)
+    indices = [
+        i for i in
+        range(0, multistate.dimensions['iteration'].size, multistate.PositionInterval)
+    ]
 
     indices = np.array(indices)
 
