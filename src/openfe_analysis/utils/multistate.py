@@ -15,7 +15,7 @@ def _determine_position_indices(dataset: nc.Dataset) -> NDArray:
     Parameters
     ----------
     dataset : nc.Dataset
-      Dataset holding the multistatereporter generated NetCDF file.
+      Dataset holding the MultiStateReporter generated NetCDF file.
 
     Returns
     -------
