@@ -82,7 +82,7 @@ class FEReader(ReaderBase):
         convert_units : bool
           convert positions to Angstrom
         state_id : Optional[int]
-          The hamiltonian state index to extract. Must be defined if
+          The Hamiltonian state index to extract. Must be defined if
           ``replica_id`` is not defined.
         replica_id : Optional[int]
           The replica index to extract. Must be defined if ``state_id``
