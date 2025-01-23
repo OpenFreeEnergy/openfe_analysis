@@ -1,42 +1,61 @@
 from MDAnalysis.coordinates.base import ReaderBase, Timestep
 import netCDF4 as nc
 from openff.units import unit
+import yaml
 from typing import Optional
 
 
-from . import handle_trajectories
+from openfe_analysis.utils import multistate, serialization
 
 
-def _determine_dt(ds) -> float:
-    # first grab integrator timestep
-    mcmc_move_data = ds.groups['mcmc_moves']['move0'][0].split('\n')
-    in_timestep = False
-    for line in mcmc_move_data:
-        if line.startswith('timestep'):
-            in_timestep = True
-        if in_timestep and line.strip().startswith('value'):
-            timestep = float(line.split()[-1]) / 1000.  # convert to ps
-            break
-    else:
-        raise ValueError("Didn't find timestep")
-    # next get the save interval
-    option_data = ds.variables['options'][0].split('\n')
-    for line in option_data:
-        if line.startswith('online_analysis_interval'):
-            nsteps = float(line.split()[-1])
-            break
-    else:
-        raise ValueError("Didn't find online_analysis_interval")
+def _determine_dt(dataset) -> float:
+    """
+    Find out the timestep between each frame in the trajectory.
 
-    return timestep * nsteps
+    Parameters
+    ----------
+    dataset : nc.Dataset
+      Dataset holding the multistatereporter generated NetCDF file.
+
+    Returns
+    -------
+    float
+      The timestep in units of picoseconds.
+
+    Raises
+    ------
+    KeyError
+      If either `timestep` or `n_steps` cannot be found in the
+      zeroth MCMC move.
+
+    Notes
+    -----
+    This assumes an MCMC move which serializes in a manner similar
+    to `openmmtools.mcmc.LangevinDynamicsMove`, i.e. it must have
+    both a `timestep` and `n_steps` defined.
+    """
+    # Deserialize the MCMC move information for the 0th entry.
+    mcmc_move_data = yaml.load(
+        dataset.groups['mcmc_moves']['move0'][0],
+        Loader=serialization.UnitedYamlLoader,
+    )
+
+    try:
+        dt = mcmc_move_data['n_steps'] * mcmc_move_data['timestep']
+    except KeyError:
+        msg = "Either `n_steps` or `timestep` are missing from the MCMC move"
+        raise KeyError(msg)
+
+    return dt.to('picosecond').m
 
 
 class FEReader(ReaderBase):
-    """A MDAnalysis Reader for nc files created by openfe RFE Protocol
+    """A MDAnalysis Reader for NetCDF files created by
+    `openmmtools.multistate.MultistateReporter`
 
-    Looks along a multistate .nc file along one of two axes:
-    - constant state/lambda (varying replica)
-    - constant replica (varying lambda)
+    Looks along a multistate NetCDF file along one of two axes:
+      - constant state/lambda (varying replica)
+      - constant replica (varying lambda)
     """
     _state_id: Optional[int]
     _replica_id: Optional[int]
@@ -44,23 +63,42 @@ class FEReader(ReaderBase):
     _dataset: nc.Dataset
     _dataset_owner: bool
 
-    format = 'openfe RFE'
+    format = 'MultistateReporter'
 
-    def __init__(self, filename, convert_units=True, **kwargs):
+    units = {
+        'time': 'ps',
+        'length': 'nanometer'
+    }
+
+    def __init__(
+        self, filename, convert_units=True,
+        state_id=None, replica_id=None, **kwargs
+    ):
         """
         Parameters
         ----------
         filename : pathlike or nc.Dataset
           path to the .nc file
         convert_units : bool
-          convert positions to A
+          convert positions to Angstrom
+        state_id : Optional[int]
+          The Hamiltonian state index to extract. Must be defined if
+          ``replica_id`` is not defined. May be negative (see notes below).
+        replica_id : Optional[int]
+          The replica index to extract. Must be defined if ``state_id``
+          is not defined. May be negative (see notes below).
+
+        Notes
+        -----
+        A negative index may be passed to either ``state_id`` or
+        ``replica_id``. This will be interpreted as indexing in reverse
+        starting from the last state/replica. For example, passing a
+        value of -2 for ``replica_id`` will select the before last replica.
         """
-        self._state_id = kwargs.pop('state_id', None)
-        self._replica_id = kwargs.pop('replica_id', None)
-        if not ((self._state_id is None) ^ (self._replica_id is None)):
+        if not ((state_id is None) ^ (replica_id is None)):
             raise ValueError("Specify one and only one of state or replica, "
-                             f"got state id={self._state_id} "
-                             f"replica_id={self._replica_id}")
+                             f"got state id={state_id} "
+                             f"replica_id={replica_id}")
 
         super().__init__(filename, convert_units, **kwargs)
 
@@ -70,6 +108,17 @@ class FEReader(ReaderBase):
         else:
             self._dataset = nc.Dataset(filename)
             self._dataset_owner = True
+
+        # Handle the negative ID case
+        if state_id is not None and state_id < 0:
+            state_id = range(self._dataset.dimensions['state'].size)[state_id]
+
+        if replica_id is not None and replica_id < 0:
+            replica_id = range(self._dataset.dimensions['replica'].size)[replica_id]
+
+        self._state_id = state_id
+        self._replica_id = replica_id
+
         self._n_atoms = self._dataset.dimensions['atom'].size
         self.ts = Timestep(self._n_atoms)
         self._dt = _determine_dt(self._dataset)
@@ -92,7 +141,6 @@ class FEReader(ReaderBase):
     def parse_n_atoms(filename, **kwargs) -> int:
         with nc.Dataset(filename) as ds:
             n_atoms = ds.dimensions['atom'].size
-
         return n_atoms
 
     def _read_next_timestep(self, ts=None) -> Timestep:
@@ -104,7 +152,7 @@ class FEReader(ReaderBase):
         self._frame_index = frame
 
         if self._state_id is not None:
-            rep = handle_trajectories._state_to_replica(
+            rep = multistate._state_to_replica(
                 self._dataset,
                 self._state_id,
                 self._frame_index
@@ -112,16 +160,20 @@ class FEReader(ReaderBase):
         else:
             rep = self._replica_id
 
-        pos = handle_trajectories._replica_positions_at_frame(
+        pos = multistate._replica_positions_at_frame(
             self._dataset,
             rep,
             self._frame_index)
-        dim = handle_trajectories._get_unitcell(
+        dim = multistate._get_unitcell(
             self._dataset,
             rep,
             self._frame_index)
 
-        self.ts.positions = (pos.to(unit.angstrom)).m
+        # Convert to base MDAnalysis distance units (Angstrom) if requested
+        if self.convert_units:
+            self.ts.positions = (pos.to(unit.angstrom)).m
+        else:
+            self.ts.positions = pos.m
         self.ts.dimensions = dim
         self.ts.frame = self._frame_index
         self.ts.time = self._frame_index * self._dt

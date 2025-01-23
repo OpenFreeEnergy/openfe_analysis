@@ -15,11 +15,23 @@ RFE_OUTPUT = pooch.create(
 )
 
 
-@pytest.fixture
+@pytest.fixture(scope='session')
 def simulation_nc():
     return RFE_OUTPUT.fetch("simulation.nc")
 
 
-@pytest.fixture
+@pytest.fixture(scope='session')
 def hybrid_system_pdb():
     return RFE_OUTPUT.fetch("hybrid_system.pdb")
+
+
+@pytest.fixture(scope='session')
+def mcmc_serialized():
+    return (
+        '_serialized__class_name: LangevinDynamicsMove\n'
+        '_serialized__module_name: openmmtools.mcmc\n'
+        'collision_rate: !Quantity\n  unit: /picosecond\n  value: 1\n'
+        'constraint_tolerance: 1.0e-06\nn_restart_attempts: 20\n'
+        'n_steps: 625\nreassign_velocities: false\n'
+        'timestep: !Quantity\n  unit: femtosecond\n  value: 4\n'
+    )

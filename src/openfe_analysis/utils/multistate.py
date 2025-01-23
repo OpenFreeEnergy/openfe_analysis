@@ -4,7 +4,7 @@ from pathlib import Path
 from openff.units import unit
 from typing import Optional
 
-from . import __version__
+from openfe_analysis import __version__
 
 
 def _state_to_replica(dataset: nc.Dataset, state_num: int,
@@ -77,14 +77,14 @@ def _create_new_dataset(filename: Path, n_atoms: int,
         AMBER Conventions compliant NetCDF dataset to store information
         contained in MultiState reporter generated NetCDF file.
     """
-    ncfile = nc.Dataset(filename, 'w', format='NETCDF3_64BIT')
+    ncfile = nc.Dataset(filename, 'w', format='NETCDF3_64BIT_OFFSET')
     ncfile.Conventions = 'AMBER'
     ncfile.ConventionVersion = "1.0"
     ncfile.application = "openfe_analysis"
     ncfile.program = f"openfe_analysis {__version__}"
     ncfile.programVersion = f"{__version__}"
     ncfile.title = title
-    
+
     # Set the dimensions
     ncfile.createDimension('frame', None)
     ncfile.createDimension('spatial', 3)
@@ -92,7 +92,7 @@ def _create_new_dataset(filename: Path, n_atoms: int,
     ncfile.createDimension('cell_spatial', 3)
     ncfile.createDimension('cell_angular', 3)
     ncfile.createDimension('label', 5)
-    
+
     # Set the variables
     # positions
     pos = ncfile.createVariable('coordinates', 'f4', ('frame', 'atom', 'spatial'))
@@ -111,10 +111,10 @@ def _create_new_dataset(filename: Path, n_atoms: int,
     )
     cell_lengths.units = 'angstrom'
     cell_angles = ncfile.createVariable(
-        'cell_angles', 'f8', ('frame', 'cell_spatial')
+        'cell_angles', 'f8', ('frame', 'cell_angular')
     )
     cell_angles.units = 'degree'
-    
+
     return ncfile
 
 
@@ -184,14 +184,14 @@ def trajectory_from_multistate(input_file: Path, output_file: Path,
     n_atoms = len(multistate.variables['positions'][0][0])
     n_replicas = len(multistate.variables['positions'][0])
     n_frames = len(multistate.variables['positions'])
-    
+
     # Sanity check
     if state_number is not None and (state_number + 1 > n_replicas):
         # Note this works for now, but when we have more states
         # than replicas (e.g. SAMS) this won't really work
         errmsg = "State does not exist"
         raise ValueError(errmsg)
-    
+
     # Create output AMBER NetCDF convention file
     traj = _create_new_dataset(
         output_file, n_atoms,
