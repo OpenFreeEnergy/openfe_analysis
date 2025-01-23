@@ -2,6 +2,7 @@ import netCDF4 as nc
 import numpy as np
 from numpy.typing import NDArray
 from pathlib import Path
+import warnings
 from openff.units import unit
 from typing import Optional, Tuple
 
@@ -27,10 +28,18 @@ def _determine_position_indices(dataset: nc.Dataset) -> NDArray:
     This assumes that the indices are equally spaced by a given
     value.
     """
-    indices = [
-        i for i in
-        range(0, dataset.dimensions['iteration'].size, dataset.PositionInterval)
-    ]
+    if hasattr(dataset, 'PositionInterval'):
+        indices = [
+            i for i in
+            range(0, dataset.dimensions['iteration'].size, dataset.PositionInterval)
+        ]
+    else:
+        wmsg = ('This is an older NetCDF file that does not yet contain '
+                   'information about the write frequency of positions and '
+                   'velocities. We will assume that positions and velocities '
+                   'were written out at every iteration. ')
+        warnings.warn(wmsg)
+        indices = [i for i in range(0, dataset.dimensions['iteration'].size)]
 
     indices = np.array(indices)
 
