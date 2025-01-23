@@ -167,7 +167,9 @@ def test_simulation_skipped_nc(
         format=FEReader, replica_id=0,
     )
 
-    assert len(u.trajectory) == 3
-    assert u.trajectory.n_frames == 3
+    assert len(u.trajectory) == 6
+    assert u.trajectory.n_frames == 6
     for ts in u.trajectory:
         assert np.all(u.atoms.positions > 0)
+        with pytest.raises(mda.exceptions.NoDataError, match='This Timestep has no velocities'):
+            u.atoms.velocities
