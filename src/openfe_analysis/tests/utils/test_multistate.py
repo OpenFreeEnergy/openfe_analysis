@@ -17,13 +17,13 @@ def dataset(simulation_nc):
     return nc.Dataset(simulation_nc)
 
 
+@pytest.mark.flaky(reruns=3)
 @pytest.mark.parametrize('state, frame, replica', [
     [0, 0, 0],
     [0, 1, 3],
     [0, -1, 7],
     [3, 100, 6]
 ])
-@pytest.mark.flaky(reruns=3)
 def test_state_to_replica(dataset, state, frame, replica):
     assert _state_to_replica(dataset, state, frame) == replica
 
