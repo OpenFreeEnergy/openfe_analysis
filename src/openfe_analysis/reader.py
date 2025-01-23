@@ -176,6 +176,15 @@ class FEReader(ReaderBase):
             self._frames[self._frame_index]
         )
 
+        if pos is None:
+            errmsg = (
+                "NetCDF dataset frame without positions was accessed "
+                "this likely indicates that the reader failed to work out "
+                "the write frequency and there is a deeper issue with how "
+                "this file was written."
+            )
+            raise RuntimeError(errmsg)
+
         # Convert to base MDAnalysis distance units (Angstrom) if requested
         if self.convert_units:
             self.ts.positions = (pos.to(unit.angstrom)).m
