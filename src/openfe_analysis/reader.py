@@ -17,7 +17,7 @@ def _determine_iteration_dt(dataset) -> float:
     Parameters
     ----------
     dataset : nc.Dataset
-      Dataset holding the multistatereporter generated NetCDF file.
+      Dataset holding the MultiStateReporter generated NetCDF file.
 
     Returns
     -------
@@ -53,7 +53,7 @@ def _determine_iteration_dt(dataset) -> float:
 
 class FEReader(ReaderBase):
     """A MDAnalysis Reader for NetCDF files created by
-    `openmmtools.multistate.MultistateReporter`
+    `openmmtools.multistate.MultiStateReporter`
 
     Looks along a multistate NetCDF file along one of two axes:
       - constant state/lambda (varying replica)
@@ -65,7 +65,7 @@ class FEReader(ReaderBase):
     _dataset: nc.Dataset
     _dataset_owner: bool
 
-    format = 'MultistateReporter'
+    format = 'MultiStateReporter'
 
     units = {
         'time': 'ps',
