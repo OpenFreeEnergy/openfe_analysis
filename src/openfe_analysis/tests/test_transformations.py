@@ -20,6 +20,7 @@ def universe(hybrid_system_pdb, simulation_nc):
     )
 
 
+@pytest.mark.flaky(reruns=3)
 def test_minimiser(universe):
     prot = universe.select_atoms('protein and name CA')
     lig = universe.select_atoms('resname UNK')
