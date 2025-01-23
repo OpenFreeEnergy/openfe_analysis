@@ -83,10 +83,17 @@ class FEReader(ReaderBase):
           convert positions to Angstrom
         state_id : Optional[int]
           The Hamiltonian state index to extract. Must be defined if
-          ``replica_id`` is not defined.
+          ``replica_id`` is not defined. May be negative (see notes below).
         replica_id : Optional[int]
           The replica index to extract. Must be defined if ``state_id``
-          is not defined.
+          is not defined. May be negative (see notes below).
+
+        Notes
+        -----
+        A negative index may be passed to either ``state_id`` or
+        ``replica_id``. This will be interpreted as indexing in reverse
+        starting from the last state/replica. For example, passing a
+        value of -2 for ``replica_id`` will select the before last replica.
         """
         if not ((state_id is None) ^ (replica_id is None)):
             raise ValueError("Specify one and only one of state or replica, "
