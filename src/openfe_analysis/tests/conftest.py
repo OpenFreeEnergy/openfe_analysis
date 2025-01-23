@@ -17,7 +17,7 @@ RFE_OUTPUT = pooch.create(
 
 
 RFE_OUTPUT_skipped_frames = pooch.create(
-    path=pooch.os_cache("openfe_analysis"),
+    path=pooch.os_cache("openfe_analysis_skipped"),
     base_url="doi:10.6084/m9.figshare.28263203",
     registry={
         "hybrid_system.pdb": "77c7914b78724e568f38d5a308d36923f5837c03a1d094e26320b20aeec65fee",
