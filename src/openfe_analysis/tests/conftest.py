@@ -41,11 +41,6 @@ def hybrid_system_pdb():
     return RFE_OUTPUT.fetch("hybrid_system.pdb")
 
 
-# @pytest.fixture(scope='session')
-# def simulation_skipped_nc():
-#     return resources.files('openfe_analysis.tests.data') / 'simulation.nc'
-
-
 @pytest.fixture(scope='session')
 def hybrid_system_skipped_pdb():
     return RFE_OUTPUT_skipped_frames.fetch("hybrid_system.pdb")
