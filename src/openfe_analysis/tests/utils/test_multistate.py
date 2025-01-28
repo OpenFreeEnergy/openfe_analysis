@@ -87,3 +87,12 @@ def test_get_unitcell(dataset):
         dims,
         [82.191055, 82.191055, 82.191055, 90., 90., 90.]
     )
+
+
+def test_simulation_skipped_nc_no_positions_box_vectors_frame1(
+    simulation_skipped_nc,
+):
+    dataset = nc.Dataset(simulation_skipped_nc)
+
+    assert dataset.variables['box_vectors'][1][0].mask.all()
+    assert dataset.variables['positions'][1][0].mask.all()
