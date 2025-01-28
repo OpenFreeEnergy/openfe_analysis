@@ -94,5 +94,5 @@ def test_simulation_skipped_nc_no_positions_box_vectors_frame1(
 ):
     dataset = nc.Dataset(simulation_skipped_nc)
 
-    assert dataset.variables['box_vectors'][1][0].mask.all()
+    assert _get_unitcell(dataset, 1, 1) is None
     assert dataset.variables['positions'][1][0].mask.all()
