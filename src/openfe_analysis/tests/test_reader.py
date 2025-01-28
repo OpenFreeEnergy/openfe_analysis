@@ -30,8 +30,9 @@ def test_determine_dt_keyerror(tmpdir, mcmc_serialized):
 
 
 def test_universe_creation(simulation_nc, hybrid_system_pdb):
-    u = mda.Universe(hybrid_system_pdb, simulation_nc,
-                     format=FEReader, state_id=0)
+    with pytest.warns(UserWarning, match='This is an older NetCDF file that'):
+        u = mda.Universe(hybrid_system_pdb, simulation_nc,
+                         format=FEReader, state_id=0)
 
     # Check that a Universe exists
     assert u
@@ -104,8 +105,9 @@ def test_universe_creation(simulation_nc, hybrid_system_pdb):
 def test_universe_from_nc_file(simulation_nc, hybrid_system_pdb):
     ds = nc.Dataset(simulation_nc)
 
-    u = mda.Universe(hybrid_system_pdb, ds,
-                     format='MultiStateReporter', state_id=0)
+    with pytest.warns(UserWarning, match='This is an older NetCDF file that'):
+        u = mda.Universe(hybrid_system_pdb, ds,
+                         format='MultiStateReporter', state_id=0)
 
     assert u
     assert len(u.atoms) == 4782
@@ -114,8 +116,9 @@ def test_universe_from_nc_file(simulation_nc, hybrid_system_pdb):
 
 
 def test_universe_creation_noconversion(simulation_nc, hybrid_system_pdb):
-    u = mda.Universe(hybrid_system_pdb, simulation_nc,
-                     format=FEReader, state_id=0, convert_units=False)
+    with pytest.warns(UserWarning, match='This is an older NetCDF file that'):
+        u = mda.Universe(hybrid_system_pdb, simulation_nc,
+                         format=FEReader, state_id=0, convert_units=False)
 
     assert_allclose(
         u.atoms[:3].positions,
@@ -126,20 +129,22 @@ def test_universe_creation_noconversion(simulation_nc, hybrid_system_pdb):
 
 
 def test_fereader_negative_state(simulation_nc, hybrid_system_pdb):
-    u = mda.Universe(
-        hybrid_system_pdb, simulation_nc, format=FEReader,
-        state_id=-1
-    )
+    with pytest.warns(UserWarning, match='This is an older NetCDF file that'):
+        u = mda.Universe(
+            hybrid_system_pdb, simulation_nc, format=FEReader,
+            state_id=-1
+        )
 
     assert u.trajectory._state_id == 10
     assert u.trajectory._replica_id is None
 
 
 def test_fereader_negative_replica(simulation_nc, hybrid_system_pdb):
-    u = mda.Universe(
-        hybrid_system_pdb, simulation_nc, format=FEReader,
-        replica_id=-2
-    )
+    with pytest.warns(UserWarning, match='This is an older NetCDF file that'):
+        u = mda.Universe(
+            hybrid_system_pdb, simulation_nc, format=FEReader,
+            replica_id=-2
+        )
 
     assert u.trajectory._state_id is None
     assert u.trajectory._replica_id == 9
@@ -167,10 +172,15 @@ def test_simulation_skipped_nc(
         hybrid_system_skipped_pdb, simulation_skipped_nc,
         format=FEReader, replica_id=0,
     )
+    dataset = nc.Dataset(simulation_skipped_nc)
+    print(dataset)
+    print(dataset.PositionInterval)
+    print(dataset.variables['options'])
 
     assert len(u.trajectory) == 6
     assert u.trajectory.n_frames == 6
     for ts in u.trajectory:
+        print(ts)
         assert np.all(u.atoms.positions > 0)
-        with pytest.raises(mda.exceptions.NoDataError, match='This Timestep has no velocities'):
-            u.atoms.velocities
+    with pytest.raises(mda.exceptions.NoDataError, match='This Timestep has no velocities'):
+        u.atoms.velocities
