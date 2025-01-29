@@ -172,15 +172,12 @@ def test_simulation_skipped_nc(
         hybrid_system_skipped_pdb, simulation_skipped_nc,
         format=FEReader, replica_id=0,
     )
-    dataset = nc.Dataset(simulation_skipped_nc)
-    print(dataset)
-    print(dataset.PositionInterval)
-    print(dataset.variables['options'])
 
     assert len(u.trajectory) == 6
     assert u.trajectory.n_frames == 6
-    for ts in u.trajectory:
-        print(ts)
+    times = [0, 100, 200, 300, 400, 500]
+    for inx, ts in enumerate(u.trajectory):
+        assert ts.time == times[inx]
         assert np.all(u.atoms.positions > 0)
     with pytest.raises(mda.exceptions.NoDataError, match='This Timestep has no velocities'):
         u.atoms.velocities
