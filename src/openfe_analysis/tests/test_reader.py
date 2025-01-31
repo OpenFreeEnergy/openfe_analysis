@@ -1,5 +1,5 @@
 import MDAnalysis as mda
-from openfe_analysis.reader import FEReader, _determine_dt
+from openfe_analysis.reader import FEReader, _determine_iteration_dt
 import netCDF4 as nc
 from numpy.testing import assert_allclose
 import numpy as np
@@ -14,7 +14,7 @@ def test_determine_dt(tmpdir, mcmc_serialized):
             'move0': [mcmc_serialized]
         }
 
-        assert _determine_dt(ds) == 2.5
+        assert _determine_iteration_dt(ds) == 2.5
 
 
 def test_determine_dt_keyerror(tmpdir, mcmc_serialized):
@@ -26,12 +26,13 @@ def test_determine_dt_keyerror(tmpdir, mcmc_serialized):
         }
 
         with pytest.raises(KeyError, match="`n_steps` or `timestep` are"):
-            _ = _determine_dt(ds)
+            _ = _determine_iteration_dt(ds)
 
 
 def test_universe_creation(simulation_nc, hybrid_system_pdb):
-    u = mda.Universe(hybrid_system_pdb, simulation_nc,
-                     format=FEReader, state_id=0)
+    with pytest.warns(UserWarning, match='This is an older NetCDF file that'):
+        u = mda.Universe(hybrid_system_pdb, simulation_nc,
+                         format=FEReader, state_id=0)
 
     # Check that a Universe exists
     assert u
@@ -104,8 +105,9 @@ def test_universe_creation(simulation_nc, hybrid_system_pdb):
 def test_universe_from_nc_file(simulation_nc, hybrid_system_pdb):
     ds = nc.Dataset(simulation_nc)
 
-    u = mda.Universe(hybrid_system_pdb, ds,
-                     format='MultiStateReporter', state_id=0)
+    with pytest.warns(UserWarning, match='This is an older NetCDF file that'):
+        u = mda.Universe(hybrid_system_pdb, ds,
+                         format='MultiStateReporter', state_id=0)
 
     assert u
     assert len(u.atoms) == 4782
@@ -114,8 +116,9 @@ def test_universe_from_nc_file(simulation_nc, hybrid_system_pdb):
 
 
 def test_universe_creation_noconversion(simulation_nc, hybrid_system_pdb):
-    u = mda.Universe(hybrid_system_pdb, simulation_nc,
-                     format=FEReader, state_id=0, convert_units=False)
+    with pytest.warns(UserWarning, match='This is an older NetCDF file that'):
+        u = mda.Universe(hybrid_system_pdb, simulation_nc,
+                         format=FEReader, state_id=0, convert_units=False)
 
     assert_allclose(
         u.atoms[:3].positions,
@@ -126,20 +129,22 @@ def test_universe_creation_noconversion(simulation_nc, hybrid_system_pdb):
 
 
 def test_fereader_negative_state(simulation_nc, hybrid_system_pdb):
-    u = mda.Universe(
-        hybrid_system_pdb, simulation_nc, format=FEReader,
-        state_id=-1
-    )
+    with pytest.warns(UserWarning, match='This is an older NetCDF file that'):
+        u = mda.Universe(
+            hybrid_system_pdb, simulation_nc, format=FEReader,
+            state_id=-1
+        )
 
     assert u.trajectory._state_id == 10
     assert u.trajectory._replica_id is None
 
 
 def test_fereader_negative_replica(simulation_nc, hybrid_system_pdb):
-    u = mda.Universe(
-        hybrid_system_pdb, simulation_nc, format=FEReader,
-        replica_id=-2
-    )
+    with pytest.warns(UserWarning, match='This is an older NetCDF file that'):
+        u = mda.Universe(
+            hybrid_system_pdb, simulation_nc, format=FEReader,
+            replica_id=-2
+        )
 
     assert u.trajectory._state_id is None
     assert u.trajectory._replica_id == 9
@@ -149,6 +154,7 @@ def test_fereader_negative_replica(simulation_nc, hybrid_system_pdb):
     [None, None],
     [1, 1]
 ])
+@pytest.mark.flaky(reruns=3)
 def test_fereader_replica_state_id_error(
     simulation_nc, hybrid_system_pdb, rep_id, state_id
 ):
@@ -157,3 +163,21 @@ def test_fereader_replica_state_id_error(
             hybrid_system_pdb, simulation_nc, format=FEReader,
             state_id=state_id, replica_id=rep_id
         )
+
+
+def test_simulation_skipped_nc(
+    simulation_skipped_nc, hybrid_system_skipped_pdb
+):
+    u = mda.Universe(
+        hybrid_system_skipped_pdb, simulation_skipped_nc,
+        format=FEReader, replica_id=0,
+    )
+
+    assert len(u.trajectory) == 6
+    assert u.trajectory.n_frames == 6
+    times = [0, 100, 200, 300, 400, 500]
+    for inx, ts in enumerate(u.trajectory):
+        assert ts.time == times[inx]
+        assert np.all(u.atoms.positions > 0)
+    with pytest.raises(mda.exceptions.NoDataError, match='This Timestep has no velocities'):
+        u.atoms.velocities

@@ -1,21 +1,23 @@
 from MDAnalysis.coordinates.base import ReaderBase, Timestep
 import netCDF4 as nc
 from openff.units import unit
+import numpy as np
 import yaml
 from typing import Optional
 
 
 from openfe_analysis.utils import multistate, serialization
+from openfe_analysis.utils.multistate import _determine_position_indices
 
 
-def _determine_dt(dataset) -> float:
+def _determine_iteration_dt(dataset) -> float:
     """
     Find out the timestep between each frame in the trajectory.
 
     Parameters
     ----------
     dataset : nc.Dataset
-      Dataset holding the multistatereporter generated NetCDF file.
+      Dataset holding the MultiStateReporter generated NetCDF file.
 
     Returns
     -------
@@ -51,7 +53,7 @@ def _determine_dt(dataset) -> float:
 
 class FEReader(ReaderBase):
     """A MDAnalysis Reader for NetCDF files created by
-    `openmmtools.multistate.MultistateReporter`
+    `openmmtools.multistate.MultiStateReporter`
 
     Looks along a multistate NetCDF file along one of two axes:
       - constant state/lambda (varying replica)
@@ -63,7 +65,7 @@ class FEReader(ReaderBase):
     _dataset: nc.Dataset
     _dataset_owner: bool
 
-    format = 'MultistateReporter'
+    format = 'MultiStateReporter'
 
     units = {
         'time': 'ps',
@@ -121,7 +123,10 @@ class FEReader(ReaderBase):
 
         self._n_atoms = self._dataset.dimensions['atom'].size
         self.ts = Timestep(self._n_atoms)
-        self._dt = _determine_dt(self._dataset)
+        self._frames = _determine_position_indices(self._dataset)
+        # The MDAnalysis trajectory "dt" is the iteration dt
+        # multiplied by the number of iterations between frames.
+        self._dt = _determine_iteration_dt(self._dataset) * np.diff(self._frames)[0]
         self._read_frame(0)
 
     @staticmethod
@@ -135,7 +140,7 @@ class FEReader(ReaderBase):
 
     @property
     def n_frames(self) -> int:
-        return self._dataset.dimensions['iteration'].size
+        return len(self._frames)
 
     @staticmethod
     def parse_n_atoms(filename, **kwargs) -> int:
@@ -155,7 +160,7 @@ class FEReader(ReaderBase):
             rep = multistate._state_to_replica(
                 self._dataset,
                 self._state_id,
-                self._frame_index
+                self._frames[self._frame_index]
             )
         else:
             rep = self._replica_id
@@ -163,11 +168,22 @@ class FEReader(ReaderBase):
         pos = multistate._replica_positions_at_frame(
             self._dataset,
             rep,
-            self._frame_index)
+            self._frames[self._frame_index]
+        )
         dim = multistate._get_unitcell(
             self._dataset,
             rep,
-            self._frame_index)
+            self._frames[self._frame_index]
+        )
+
+        if pos is None:
+            errmsg = (
+                "NetCDF dataset frame without positions was accessed "
+                "this likely indicates that the reader failed to work out "
+                "the write frequency and there is a deeper issue with how "
+                "this file was written."
+            )
+            raise RuntimeError(errmsg)
 
         # Convert to base MDAnalysis distance units (Angstrom) if requested
         if self.convert_units:

@@ -35,7 +35,6 @@ license-files = ["LICENSE"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
-# include = ["openfe_analysis"]
 
 [project.optional-dependencies]
 test = [

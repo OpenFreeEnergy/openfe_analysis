@@ -1,3 +1,4 @@
+from importlib import resources
 import pooch
 import pytest
 
@@ -15,14 +16,34 @@ RFE_OUTPUT = pooch.create(
 )
 
 
+RFE_OUTPUT_skipped_frames = pooch.create(
+    path=pooch.os_cache("openfe_analysis_skipped"),
+    base_url="doi:10.6084/m9.figshare.28263203",
+    registry={
+        "hybrid_system.pdb": "77c7914b78724e568f38d5a308d36923f5837c03a1d094e26320b20aeec65fee",
+        "simulation.nc": "6749e2c895f16b7e4eba196261c34756a0a062741d36cc74925676b91a36d0cd",
+    }
+)
+
+
 @pytest.fixture(scope='session')
 def simulation_nc():
     return RFE_OUTPUT.fetch("simulation.nc")
 
 
 @pytest.fixture(scope='session')
+def simulation_skipped_nc():
+    return RFE_OUTPUT_skipped_frames.fetch("simulation.nc")
+
+
+@pytest.fixture(scope='session')
 def hybrid_system_pdb():
     return RFE_OUTPUT.fetch("hybrid_system.pdb")
+
+
+@pytest.fixture(scope='session')
+def hybrid_system_skipped_pdb():
+    return RFE_OUTPUT_skipped_frames.fetch("hybrid_system.pdb")
 
 
 @pytest.fixture(scope='session')
