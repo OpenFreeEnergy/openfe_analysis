@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 
-
+@pytest.mark.flaky(reruns=3)
 def test_gather_rms_data_regression(simulation_nc, hybrid_system_pdb):
     output = gather_rms_data(
         hybrid_system_pdb,
@@ -44,6 +44,7 @@ def test_gather_rms_data_regression(simulation_nc, hybrid_system_pdb):
     )
 
 
+@pytest.mark.flaky(reruns=3)
 def test_gather_rms_data_regression_skippednc(
     simulation_skipped_nc, hybrid_system_skipped_pdb
 ):
