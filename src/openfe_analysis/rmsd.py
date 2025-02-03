@@ -97,7 +97,14 @@ def gather_rms_data(pdb_topology: pathlib.Path,
 
     ds = nc.Dataset(dataset)
     n_lambda = ds.dimensions['state'].size
-    n_frames = ds.dimensions['iteration'].size
+
+    # If you're using a new multistate nc file, you need to account for
+    # the position skip rate.
+    if hasattr(ds, 'PositionInterval'):
+        n_frames = len(range(0, ds.dimensions['iteration'].size, ds.PositionInterval))
+    else:
+        n_frames = ds.dimensions['iteration'].size
+
     if skip is None:
         # find skip that would give ~500 frames of output
         # max against 1 to avoid skip=0 case

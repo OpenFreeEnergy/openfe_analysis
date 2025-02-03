@@ -41,7 +41,9 @@ def test_universe_creation(simulation_nc, hybrid_system_pdb):
     assert len(u.atoms) == 4782
     assert len(u.trajectory) == 501
     assert u.trajectory.dt == pytest.approx(1.0)
-    assert u.trajectory.time == pytest.approx(0.0)
+    assert len(u.trajectory) == 501
+    for inx, ts in enumerate(u.trajectory):
+        assert ts.time == inx
     assert u.trajectory.totaltime == pytest.approx(500)
 
     # Check the dimensions & positions of the first frame
@@ -175,6 +177,7 @@ def test_simulation_skipped_nc(
 
     assert len(u.trajectory) == 6
     assert u.trajectory.n_frames == 6
+    assert u.trajectory.dt == 100
     times = [0, 100, 200, 300, 400, 500]
     for inx, ts in enumerate(u.trajectory):
         assert ts.time == times[inx]
