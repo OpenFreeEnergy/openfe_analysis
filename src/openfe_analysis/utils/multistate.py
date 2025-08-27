@@ -28,33 +28,32 @@ def _determine_position_indices(dataset: nc.Dataset) -> NDArray:
     This assumes that the indices are equally spaced by a given
     value.
     """
-    if hasattr(dataset, 'PositionInterval'):
+    if hasattr(dataset, "PositionInterval"):
         indices = [
-            i for i in
-            range(0, dataset.dimensions['iteration'].size, dataset.PositionInterval)
+            i for i in range(0, dataset.dimensions["iteration"].size, dataset.PositionInterval)
         ]
     else:
-        wmsg = ('This is an older NetCDF file that does not yet contain '
-                   'information about the write frequency of positions and '
-                   'velocities. We will assume that positions and velocities '
-                   'were written out at every iteration. ')
+        wmsg = (
+            "This is an older NetCDF file that does not yet contain "
+            "information about the write frequency of positions and "
+            "velocities. We will assume that positions and velocities "
+            "were written out at every iteration. "
+        )
         warnings.warn(wmsg)
-        indices = [i for i in range(0, dataset.dimensions['iteration'].size)]
+        indices = [i for i in range(0, dataset.dimensions["iteration"].size)]
 
     indices = np.array(indices)
 
     if not all(np.diff(indices) == np.diff(indices)[0]):
         errmsg = (
-            "Positions are not written at a consistent frame rate, "
-            "this is not currently supported"
+            "Positions are not written at a consistent frame rate, this is not currently supported"
         )
         raise ValueError(errmsg)
 
     return indices
 
 
-def _state_to_replica(dataset: nc.Dataset, state_num: int,
-                      frame_num: int) -> int:
+def _state_to_replica(dataset: nc.Dataset, state_num: int, frame_num: int) -> int:
     """Convert a state index to replica index at a given Dataset frame
 
     Parameters
@@ -73,14 +72,12 @@ def _state_to_replica(dataset: nc.Dataset, state_num: int,
         Index of the replica which represents that thermodynamic state
         for that frame.
     """
-    state_distribution = dataset.variables['states'][frame_num].data
+    state_distribution = dataset.variables["states"][frame_num].data
     return np.where(state_distribution == state_num)[0][0]
 
 
 def _replica_positions_at_frame(
-    dataset: nc.Dataset,
-    replica_index: int,
-    frame_num: int
+    dataset: nc.Dataset, replica_index: int, frame_num: int
 ) -> Optional[unit.Quantity]:
     """
     Helper method to extract atom positions of a state at a given
@@ -103,18 +100,15 @@ def _replica_positions_at_frame(
         for that frame).
     """
     # If all the positions are masked (i.e. not present)
-    if dataset.variables['positions'][frame_num][replica_index].mask.all():
+    if dataset.variables["positions"][frame_num][replica_index].mask.all():
         return None
 
-    pos = dataset.variables['positions'][frame_num][replica_index].data
-    pos_units = dataset.variables['positions'].units
+    pos = dataset.variables["positions"][frame_num][replica_index].data
+    pos_units = dataset.variables["positions"].units
     return pos * unit(pos_units)
 
 
-def _create_new_dataset(
-    filename: Path, n_atoms: int,
-    title: str
-) -> nc.Dataset:
+def _create_new_dataset(filename: Path, n_atoms: int, title: str) -> nc.Dataset:
     """
     Helper method to create a new NetCDF dataset which follows the
     AMBER convention (see: https://ambermd.org/netcdf/nctraj.xhtml)
@@ -134,8 +128,8 @@ def _create_new_dataset(
         AMBER Conventions compliant NetCDF dataset to store information
         contained in MultiState reporter generated NetCDF file.
     """
-    ncfile = nc.Dataset(filename, 'w', format='NETCDF3_64BIT_OFFSET')
-    ncfile.Conventions = 'AMBER'
+    ncfile = nc.Dataset(filename, "w", format="NETCDF3_64BIT_OFFSET")
+    ncfile.Conventions = "AMBER"
     ncfile.ConventionVersion = "1.0"
     ncfile.application = "openfe_analysis"
     ncfile.program = f"openfe_analysis {__version__}"
@@ -143,34 +137,30 @@ def _create_new_dataset(
     ncfile.title = title
 
     # Set the dimensions
-    ncfile.createDimension('frame', None)
-    ncfile.createDimension('spatial', 3)
-    ncfile.createDimension('atom', n_atoms)
-    ncfile.createDimension('cell_spatial', 3)
-    ncfile.createDimension('cell_angular', 3)
-    ncfile.createDimension('label', 5)
+    ncfile.createDimension("frame", None)
+    ncfile.createDimension("spatial", 3)
+    ncfile.createDimension("atom", n_atoms)
+    ncfile.createDimension("cell_spatial", 3)
+    ncfile.createDimension("cell_angular", 3)
+    ncfile.createDimension("label", 5)
 
     # Set the variables
     # positions
-    pos = ncfile.createVariable('coordinates', 'f4', ('frame', 'atom', 'spatial'))
-    pos.units = 'angstrom'
+    pos = ncfile.createVariable("coordinates", "f4", ("frame", "atom", "spatial"))
+    pos.units = "angstrom"
     # we could also set this to 0.1 and do no nm to angstrom scaling on write
-    pos.scale_factor = 1.0 
+    pos.scale_factor = 1.0
 
     # Note: OpenMMTools NetCDF files store velocities
     # but honestly it's rather useless, so we don't populate them
-    # Note 2: NetCDF file doesn't contain any time information... 
+    # Note 2: NetCDF file doesn't contain any time information...
     # so we can't populate that either, this might trip up some readers..
     # Note 3: We'll need to convert box vectors (in nm) to
     # unitcell (in angstrom & degrees)
-    cell_lengths = ncfile.createVariable(
-        'cell_lengths', 'f8', ('frame', 'cell_spatial')
-    )
-    cell_lengths.units = 'angstrom'
-    cell_angles = ncfile.createVariable(
-        'cell_angles', 'f8', ('frame', 'cell_angular')
-    )
-    cell_angles.units = 'degree'
+    cell_lengths = ncfile.createVariable("cell_lengths", "f8", ("frame", "cell_spatial"))
+    cell_lengths.units = "angstrom"
+    cell_angles = ncfile.createVariable("cell_angles", "f8", ("frame", "cell_angular"))
+    cell_angles.units = "degree"
 
     return ncfile
 
@@ -200,12 +190,12 @@ def _get_unitcell(
         will return ``None``.
     """
     # Case: no box_vectors were stored at this frame
-    if dataset.variables['box_vectors'][frame_num][replica_index].mask.all():
+    if dataset.variables["box_vectors"][frame_num][replica_index].mask.all():
         return None
 
-    vecs = dataset.variables['box_vectors'][frame_num][replica_index].data
-    vecs_units = dataset.variables['box_vectors'].units
-    x, y, z = (vecs * unit(vecs_units)).to('angstrom').m
+    vecs = dataset.variables["box_vectors"][frame_num][replica_index].data
+    vecs_units = dataset.variables["box_vectors"].units
+    x, y, z = (vecs * unit(vecs_units)).to("angstrom").m
     lx = np.linalg.norm(x)
     ly = np.linalg.norm(y)
     lz = np.linalg.norm(z)
@@ -219,9 +209,12 @@ def _get_unitcell(
     return lx, ly, lz, np.rad2deg(alpha), np.rad2deg(beta), np.rad2deg(gamma)
 
 
-def trajectory_from_multistate(input_file: Path, output_file: Path,
-                               state_number: Optional[int] = None,
-                               replica_number: Optional[int] = None) -> None:
+def trajectory_from_multistate(
+    input_file: Path,
+    output_file: Path,
+    state_number: Optional[int] = None,
+    replica_number: Optional[int] = None,
+) -> None:
     """
     Extract a state's trajectory (in an AMBER compliant format)
     from a MultiState sampler generated NetCDF file.
@@ -240,14 +233,16 @@ def trajectory_from_multistate(input_file: Path, output_file: Path,
         Index of the replica to write out
     """
     if not ((state_number is None) ^ (replica_number is None)):
-        raise ValueError("Supply either state or replica number, "
-                         f"got state_number={state_number} "
-                         f"and replica_number={replica_number}")
+        raise ValueError(
+            "Supply either state or replica number, "
+            f"got state_number={state_number} "
+            f"and replica_number={replica_number}"
+        )
 
     # Open MultiState NC file and get number of atoms and frames
-    multistate = nc.Dataset(input_file, 'r')
-    n_atoms = len(multistate.variables['positions'][0][0])
-    n_replicas = len(multistate.variables['positions'][0])
+    multistate = nc.Dataset(input_file, "r")
+    n_atoms = len(multistate.variables["positions"][0][0])
+    n_replicas = len(multistate.variables["positions"][0])
     frame_list = _determine_position_indices(multistate)
     n_frames = len(frame_list)
 
@@ -260,8 +255,7 @@ def trajectory_from_multistate(input_file: Path, output_file: Path,
 
     # Create output AMBER NetCDF convention file
     traj = _create_new_dataset(
-        output_file, n_atoms,
-        title=f"state {state_number} trajectory from {input_file}"
+        output_file, n_atoms, title=f"state {state_number} trajectory from {input_file}"
     )
 
     replica_id: int = -1
@@ -272,16 +266,14 @@ def trajectory_from_multistate(input_file: Path, output_file: Path,
     # is just 0 -> n_frames
     for frame in range(n_frames):
         if state_number is not None:
-            replica_id = _state_to_replica(
-                multistate, state_number, frame_list[frame]
-            )
+            replica_id = _state_to_replica(multistate, state_number, frame_list[frame])
 
-        traj.variables['coordinates'][frame] = _replica_positions_at_frame(
-            multistate, replica_id, frame_list[frame]
-        ).to('angstrom').m
+        traj.variables["coordinates"][frame] = (
+            _replica_positions_at_frame(multistate, replica_id, frame_list[frame]).to("angstrom").m
+        )
         unitcell = _get_unitcell(multistate, replica_id, frame_list[frame])
-        traj.variables['cell_lengths'][frame] = unitcell[:3]
-        traj.variables['cell_angles'][frame] = unitcell[3:]
+        traj.variables["cell_lengths"][frame] = unitcell[:3]
+        traj.variables["cell_angles"][frame] = unitcell[3:]
 
     # Make sure to clean up when you are done
     multistate.close()

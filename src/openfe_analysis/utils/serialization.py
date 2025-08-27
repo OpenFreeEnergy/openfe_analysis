@@ -22,7 +22,7 @@ def omm_quantity_string_to_offunit(expression):
     Inspired by `openmmtools.utils.utils.quantity_from_string`.
     """
     # Special case where a quantity can be `/ unit` to represent `1 / unit`
-    if expression[0] == '/':
+    if expression[0] == "/":
         expression = f"({expression[1:]})**(-1)"
 
     return unit(expression)
@@ -37,13 +37,14 @@ class UnitedYamlLoader(yaml.CLoader):
     -----
     Modified from `openmmtools.storage.iodrivers._DictYamlLoader`.
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.add_constructor(u'!Quantity', self.quantity_constructor)
+        self.add_constructor("!Quantity", self.quantity_constructor)
 
     @staticmethod
     def quantity_constructor(loader, node):
         loaded_mapping = loader.construct_mapping(node)
-        data_unit = omm_quantity_string_to_offunit(loaded_mapping['unit'])
-        data_value = loaded_mapping['value']
+        data_unit = omm_quantity_string_to_offunit(loaded_mapping["unit"])
+        data_value = loaded_mapping["value"]
         return data_value * data_unit

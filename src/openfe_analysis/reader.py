@@ -38,17 +38,17 @@ def _determine_iteration_dt(dataset) -> float:
     """
     # Deserialize the MCMC move information for the 0th entry.
     mcmc_move_data = yaml.load(
-        dataset.groups['mcmc_moves']['move0'][0],
+        dataset.groups["mcmc_moves"]["move0"][0],
         Loader=serialization.UnitedYamlLoader,
     )
 
     try:
-        dt = mcmc_move_data['n_steps'] * mcmc_move_data['timestep']
+        dt = mcmc_move_data["n_steps"] * mcmc_move_data["timestep"]
     except KeyError:
         msg = "Either `n_steps` or `timestep` are missing from the MCMC move"
         raise KeyError(msg)
 
-    return dt.to('picosecond').m
+    return dt.to("picosecond").m
 
 
 class FEReader(ReaderBase):
@@ -59,23 +59,18 @@ class FEReader(ReaderBase):
       - constant state/lambda (varying replica)
       - constant replica (varying lambda)
     """
+
     _state_id: Optional[int]
     _replica_id: Optional[int]
     _frame_index: int
     _dataset: nc.Dataset
     _dataset_owner: bool
 
-    format = 'MultiStateReporter'
+    format = "MultiStateReporter"
 
-    units = {
-        'time': 'ps',
-        'length': 'nanometer'
-    }
+    units = {"time": "ps", "length": "nanometer"}
 
-    def __init__(
-        self, filename, convert_units=True,
-        state_id=None, replica_id=None, **kwargs
-    ):
+    def __init__(self, filename, convert_units=True, state_id=None, replica_id=None, **kwargs):
         """
         Parameters
         ----------
@@ -98,9 +93,11 @@ class FEReader(ReaderBase):
         value of -2 for ``replica_id`` will select the before last replica.
         """
         if not ((state_id is None) ^ (replica_id is None)):
-            raise ValueError("Specify one and only one of state or replica, "
-                             f"got state id={state_id} "
-                             f"replica_id={replica_id}")
+            raise ValueError(
+                "Specify one and only one of state or replica, "
+                f"got state id={state_id} "
+                f"replica_id={replica_id}"
+            )
 
         super().__init__(filename, convert_units, **kwargs)
 
@@ -113,15 +110,15 @@ class FEReader(ReaderBase):
 
         # Handle the negative ID case
         if state_id is not None and state_id < 0:
-            state_id = range(self._dataset.dimensions['state'].size)[state_id]
+            state_id = range(self._dataset.dimensions["state"].size)[state_id]
 
         if replica_id is not None and replica_id < 0:
-            replica_id = range(self._dataset.dimensions['replica'].size)[replica_id]
+            replica_id = range(self._dataset.dimensions["replica"].size)[replica_id]
 
         self._state_id = state_id
         self._replica_id = replica_id
 
-        self._n_atoms = self._dataset.dimensions['atom'].size
+        self._n_atoms = self._dataset.dimensions["atom"].size
         self.ts = Timestep(self._n_atoms)
         self._frames = _determine_position_indices(self._dataset)
         # The MDAnalysis trajectory "dt" is the iteration dt
@@ -145,7 +142,7 @@ class FEReader(ReaderBase):
     @staticmethod
     def parse_n_atoms(filename, **kwargs) -> int:
         with nc.Dataset(filename) as ds:
-            n_atoms = ds.dimensions['atom'].size
+            n_atoms = ds.dimensions["atom"].size
         return n_atoms
 
     def _read_next_timestep(self, ts=None) -> Timestep:
@@ -158,23 +155,15 @@ class FEReader(ReaderBase):
 
         if self._state_id is not None:
             rep = multistate._state_to_replica(
-                self._dataset,
-                self._state_id,
-                self._frames[self._frame_index]
+                self._dataset, self._state_id, self._frames[self._frame_index]
             )
         else:
             rep = self._replica_id
 
         pos = multistate._replica_positions_at_frame(
-            self._dataset,
-            rep,
-            self._frames[self._frame_index]
+            self._dataset, rep, self._frames[self._frame_index]
         )
-        dim = multistate._get_unitcell(
-            self._dataset,
-            rep,
-            self._frames[self._frame_index]
-        )
+        dim = multistate._get_unitcell(self._dataset, rep, self._frames[self._frame_index])
 
         if pos is None:
             errmsg = (

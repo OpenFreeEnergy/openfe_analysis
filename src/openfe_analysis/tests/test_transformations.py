@@ -14,22 +14,21 @@ from openfe_analysis.transformations import (
 @pytest.fixture
 def universe(hybrid_system_pdb, simulation_nc):
     return mda.Universe(
-        hybrid_system_pdb, simulation_nc,
-        format='MultiStateReporter',
+        hybrid_system_pdb,
+        simulation_nc,
+        format="MultiStateReporter",
         state_id=0,
     )
 
 
 @pytest.mark.flaky(reruns=3)
 def test_minimiser(universe):
-    prot = universe.select_atoms('protein and name CA')
-    lig = universe.select_atoms('resname UNK')
+    prot = universe.select_atoms("protein and name CA")
+    lig = universe.select_atoms("resname UNK")
     m = Minimiser(prot, lig)
     universe.trajectory.add_transformations(m)
 
-    d = mda.lib.distances.calc_bonds(
-        prot.center_of_mass(), lig.center_of_mass()
-    )
+    d = mda.lib.distances.calc_bonds(prot.center_of_mass(), lig.center_of_mass())
     # in the raw trajectory this is ~71 A as they're in diff images
     # accounting for pbc should result in ~11.10
     assert d == pytest.approx(11.10, abs=0.01)
@@ -38,7 +37,7 @@ def test_minimiser(universe):
 @pytest.mark.flaky(reruns=3)
 def test_nojump(universe):
     # find frame where protein would teleport across boundary and check it
-    prot = universe.select_atoms('protein and name CA')
+    prot = universe.select_atoms("protein and name CA")
 
     nj = NoJump(prot)
     universe.trajectory.add_transformations(nj)
@@ -54,7 +53,7 @@ def test_nojump(universe):
 @pytest.mark.flaky(reruns=3)
 def test_aligner(universe):
     # checks that rmsd is identical with/without center&super
-    prot = universe.select_atoms('protein and name CA')
+    prot = universe.select_atoms("protein and name CA")
     a = Aligner(prot)
     universe.trajectory.add_transformations(a)
 
