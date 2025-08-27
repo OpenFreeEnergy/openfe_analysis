@@ -155,11 +155,11 @@ def _create_new_dataset(
     pos = ncfile.createVariable('coordinates', 'f4', ('frame', 'atom', 'spatial'))
     pos.units = 'angstrom'
     # we could also set this to 0.1 and do no nm to angstrom scaling on write
-    pos.scale_factor = 1.0 
+    pos.scale_factor = 1.0
 
     # Note: OpenMMTools NetCDF files store velocities
     # but honestly it's rather useless, so we don't populate them
-    # Note 2: NetCDF file doesn't contain any time information... 
+    # Note 2: NetCDF file doesn't contain any time information...
     # so we can't populate that either, this might trip up some readers..
     # Note 3: We'll need to convert box vectors (in nm) to
     # unitcell (in angstrom & degrees)

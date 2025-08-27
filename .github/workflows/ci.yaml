@@ -35,7 +35,7 @@ jobs:
       - name: Get current date
         id: date
         run: echo "date=$(date +%Y-%m-%d)" >> "${GITHUB_OUTPUT}"
-        
+
       - name: "Setup Micromamba"
         uses: mamba-org/setup-micromamba@v1
         with:
