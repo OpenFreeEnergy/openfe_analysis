@@ -1,6 +1,6 @@
+import numpy as np
 import yaml
 from openff.units import unit
-import numpy as np
 
 
 def omm_quantity_string_to_offunit(expression):

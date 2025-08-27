@@ -1,15 +1,16 @@
 import itertools
-import MDAnalysis as mda
-from MDAnalysis.analysis import rms
-import netCDF4 as nc
-import numpy as np
-from numpy import typing as npt
 import pathlib
 from typing import Optional
+
+import MDAnalysis as mda
+import netCDF4 as nc
+import numpy as np
 import tqdm
+from MDAnalysis.analysis import rms
+from numpy import typing as npt
 
 from .reader import FEReader
-from .transformations import NoJump, Minimiser, Aligner
+from .transformations import Aligner, Minimiser, NoJump
 
 
 def make_Universe(top: pathlib.Path, trj: nc.Dataset, state: int) -> mda.Universe:

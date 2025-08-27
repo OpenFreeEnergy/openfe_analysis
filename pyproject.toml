@@ -69,3 +69,20 @@ file = "src/openfe_analysis/_version.py"
 
 [tool.ruff]
 line-length = 100
+
+exclude = [
+  "*.ipynb", # TODO: auto-format notebooks
+]
+# Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
+lint.select = [
+    "E", # pycodestyle errors
+    "F", # Pyflakes
+    "I", # isort
+    # "C901"  # TODO: mccabe complexity, add this back in
+    # "UP",  # TODO: add this in when we're ready for pyupgrade
+    "W",  # pycodestyle warnings
+]
+
+lint.ignore = [
+    "F401", # TODO: add this back in when we resolve unused imports
+]
