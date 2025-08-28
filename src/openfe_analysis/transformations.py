@@ -5,11 +5,11 @@ they are read.  This allows a trajectory to avoid periodic-boundary issues
 and to automatically align the system to a protein structure.
 """
 
-import numpy as np
-from numpy import typing as npt
 import MDAnalysis as mda
-from MDAnalysis.transformations.base import TransformationBase
+import numpy as np
 from MDAnalysis.analysis.align import rotation_matrix
+from MDAnalysis.transformations.base import TransformationBase
+from numpy import typing as npt
 
 
 class NoJump(TransformationBase):

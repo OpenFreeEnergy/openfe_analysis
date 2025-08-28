@@ -1,3 +1,4 @@
+import numpy as np
 import yaml
 from openff.units import unit
 

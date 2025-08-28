@@ -1,6 +1,7 @@
-import click
 import json
 import pathlib
+
+import click
 
 from . import rmsd
 

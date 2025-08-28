@@ -1,10 +1,8 @@
-from ._version import __version__
-
+from ._version import __version__  # isort: skip
+from . import cli, rmsd
 from .reader import FEReader
 from .transformations import (
-    NoJump,
-    Minimiser,
     Aligner,
+    Minimiser,
+    NoJump,
 )
-from . import rmsd
-from . import cli
