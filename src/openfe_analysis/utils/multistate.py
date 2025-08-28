@@ -1,11 +1,10 @@
-import warnings
-from pathlib import Path
-from typing import Optional, Tuple
-
 import netCDF4 as nc
 import numpy as np
 from numpy.typing import NDArray
+from pathlib import Path
+import warnings
 from openff.units import unit
+from typing import Optional, Tuple
 
 from openfe_analysis import __version__
 

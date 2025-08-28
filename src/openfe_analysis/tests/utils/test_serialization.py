@@ -1,11 +1,10 @@
 import pytest
 import yaml
-from openff.units import unit
-
 from openfe_analysis.utils.serialization import (
-    UnitedYamlLoader,
     omm_quantity_string_to_offunit,
+    UnitedYamlLoader,
 )
+from openff.units import unit
 
 
 @pytest.mark.parametrize(

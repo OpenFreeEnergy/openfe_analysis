@@ -1,10 +1,9 @@
 import MDAnalysis as mda
+from openfe_analysis.reader import FEReader, _determine_iteration_dt
 import netCDF4 as nc
+from numpy.testing import assert_allclose
 import numpy as np
 import pytest
-from numpy.testing import assert_allclose
-
-from openfe_analysis.reader import FEReader, _determine_iteration_dt
 
 
 def test_determine_dt(tmpdir, mcmc_serialized):

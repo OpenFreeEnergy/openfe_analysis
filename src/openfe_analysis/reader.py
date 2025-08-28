@@ -1,10 +1,10 @@
-from typing import Optional
-
+from MDAnalysis.coordinates.base import ReaderBase, Timestep
 import netCDF4 as nc
+from openff.units import unit
 import numpy as np
 import yaml
-from MDAnalysis.coordinates.base import ReaderBase, Timestep
-from openff.units import unit
+from typing import Optional
+
 
 from openfe_analysis.utils import multistate, serialization
 from openfe_analysis.utils.multistate import _determine_position_indices
