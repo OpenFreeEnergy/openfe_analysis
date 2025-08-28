@@ -1,22 +1,19 @@
 import itertools
-import MDAnalysis as mda
-from MDAnalysis.analysis import rms
-import netCDF4 as nc
-import numpy as np
-from numpy import typing as npt
 import pathlib
 from typing import Optional
+
+import MDAnalysis as mda
+import netCDF4 as nc
+import numpy as np
 import tqdm
+from MDAnalysis.analysis import rms
+from numpy import typing as npt
 
 from .reader import FEReader
-from .transformations import (
-    NoJump, Minimiser, Aligner
-)
+from .transformations import Aligner, Minimiser, NoJump
 
 
-def make_Universe(top: pathlib.Path,
-                  trj: nc.Dataset,
-                  state: int) -> mda.Universe:
+def make_Universe(top: pathlib.Path, trj: nc.Dataset, state: int) -> mda.Universe:
     """Makes a Universe and applies some transformations
 
     Identifies two AtomGroups:
@@ -35,11 +32,13 @@ def make_Universe(top: pathlib.Path,
     - prevents the ligand from jumping between periodic images
     """
     u = mda.Universe(
-        top, trj, state_id=state,
+        top,
+        trj,
+        state_id=state,
         format=FEReader,
     )
-    prot = u.select_atoms('protein and name CA')
-    ligand = u.select_atoms('resname UNK')
+    prot = u.select_atoms("protein and name CA")
+    ligand = u.select_atoms("resname UNK")
 
     if prot:
         # if there's a protein in the system:
@@ -51,7 +50,9 @@ def make_Universe(top: pathlib.Path,
         align = Aligner(prot)
 
         u.trajectory.add_transformations(
-            nope, minnie, align,
+            nope,
+            minnie,
+            align,
         )
     else:
         # if there's no protein
@@ -61,15 +62,16 @@ def make_Universe(top: pathlib.Path,
         align = Aligner(ligand)
 
         u.trajectory.add_transformations(
-            nope, align,
+            nope,
+            align,
         )
 
     return u
 
 
-def gather_rms_data(pdb_topology: pathlib.Path,
-                    dataset: pathlib.Path,
-                    skip: Optional[int] = None) -> dict[str, list[float]]:
+def gather_rms_data(
+    pdb_topology: pathlib.Path, dataset: pathlib.Path, skip: Optional[int] = None
+) -> dict[str, list[float]]:
     """Generate structural analysis of RBFE simulation
 
     Parameters
@@ -89,21 +91,21 @@ def gather_rms_data(pdb_topology: pathlib.Path,
     - 2D protein RMSD plot
     """
     output = {
-        'protein_RMSD': [],
-        'ligand_RMSD': [],
-        'ligand_wander': [],
-        'protein_2D_RMSD': [],
+        "protein_RMSD": [],
+        "ligand_RMSD": [],
+        "ligand_wander": [],
+        "protein_2D_RMSD": [],
     }
 
     ds = nc.Dataset(dataset)
-    n_lambda = ds.dimensions['state'].size
+    n_lambda = ds.dimensions["state"].size
 
     # If you're using a new multistate nc file, you need to account for
     # the position skip rate.
-    if hasattr(ds, 'PositionInterval'):
-        n_frames = len(range(0, ds.dimensions['iteration'].size, ds.PositionInterval))
+    if hasattr(ds, "PositionInterval"):
+        n_frames = len(range(0, ds.dimensions["iteration"].size, ds.PositionInterval))
     else:
-        n_frames = ds.dimensions['iteration'].size
+        n_frames = ds.dimensions["iteration"].size
 
     if skip is None:
         # find skip that would give ~500 frames of output
@@ -119,8 +121,8 @@ def gather_rms_data(pdb_topology: pathlib.Path,
         # this then only hits the PDB file once for all replicas
         u = make_Universe(u_top._topology, ds, state=i)
 
-        prot = u.select_atoms('protein and name CA')
-        ligand = u.select_atoms('resname UNK')
+        prot = u.select_atoms("protein and name CA")
+        ligand = u.select_atoms("resname UNK")
 
         # save coordinates for 2D RMSD matrix
         # TODO: Some smart guard to avoid allocating a silly amount of memory?
@@ -142,31 +144,40 @@ def gather_rms_data(pdb_topology: pathlib.Path,
             if prot:
                 prot2d[ts_i, :, :] = prot.positions
                 this_protein_rmsd.append(
-                    rms.rmsd(prot.positions, prot_start, None,  # prot_weights,
-                             center=False, superposition=False)
+                    rms.rmsd(
+                        prot.positions,
+                        prot_start,
+                        None,  # prot_weights,
+                        center=False,
+                        superposition=False,
+                    )
                 )
             if ligand:
                 this_ligand_rmsd.append(
-                    rms.rmsd(ligand.positions, ligand_start, ligand_weights,
-                             center=False, superposition=False)
+                    rms.rmsd(
+                        ligand.positions,
+                        ligand_start,
+                        ligand_weights,
+                        center=False,
+                        superposition=False,
+                    )
                 )
                 this_ligand_wander.append(
                     # distance between start and current ligand position
                     # ignores PBC, but we've already centered the traj
-                    mda.lib.distances.calc_bonds(ligand.center_of_mass(),
-                                                 ligand_initial_com)
+                    mda.lib.distances.calc_bonds(ligand.center_of_mass(), ligand_initial_com)
                 )
 
         if prot:
             # can ignore weights here as it's all Ca
             rmsd2d = twoD_RMSD(prot2d, w=None)  # prot_weights)
-            output['protein_RMSD'].append(this_protein_rmsd)
-            output['protein_2D_RMSD'].append(rmsd2d)
+            output["protein_RMSD"].append(this_protein_rmsd)
+            output["protein_2D_RMSD"].append(rmsd2d)
         if ligand:
-            output['ligand_RMSD'].append(this_ligand_rmsd)
-            output['ligand_wander'].append(this_ligand_wander)
+            output["ligand_RMSD"].append(this_ligand_rmsd)
+            output["ligand_wander"].append(this_ligand_wander)
 
-        output['time(ps)'] = list(np.arange(len(u.trajectory))[::skip] * u.trajectory.dt)
+        output["time(ps)"] = list(np.arange(len(u.trajectory))[::skip] * u.trajectory.dt)
 
     return output
 
@@ -193,8 +204,7 @@ def twoD_RMSD(positions, w: Optional[npt.NDArray]) -> list[float]:
     for i, j in itertools.combinations(range(nframes), 2):
         posi, posj = positions[i], positions[j]
 
-        rmsd = rms.rmsd(posi, posj, w,
-                        center=True, superposition=True)
+        rmsd = rms.rmsd(posi, posj, w, center=True, superposition=True)
 
         output.append(rmsd)
 

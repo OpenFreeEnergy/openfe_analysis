@@ -4,11 +4,12 @@ Many on-the-fly transformations which are used to manipulate trajectories as
 they are read.  This allows a trajectory to avoid periodic-boundary issues
 and to automatically align the system to a protein structure.
 """
-import numpy as np
-from numpy import typing as npt
+
 import MDAnalysis as mda
-from MDAnalysis.transformations.base import TransformationBase
+import numpy as np
 from MDAnalysis.analysis.align import rotation_matrix
+from MDAnalysis.transformations.base import TransformationBase
+from numpy import typing as npt
 
 
 class NoJump(TransformationBase):
@@ -18,9 +19,9 @@ class NoJump(TransformationBase):
     border between two subsequent frames.  This then simplifies the calculation
     of motion over time.
     """
+
     ag: mda.AtomGroup
     prev: npt.NDArray
-
 
     def __init__(self, ag: mda.AtomGroup):
         super().__init__()
@@ -50,6 +51,7 @@ class Minimiser(TransformationBase):
     the box vectors in order to minimise the distance between the center of mass
     to the center of mass of each ag.
     """
+
     central_ag: mda.AtomGroup
     other_ags: list[mda.AtomGroup]
 
@@ -77,6 +79,7 @@ class Aligner(TransformationBase):
     centers all coordinates onto origin
     rotates **entire universe** to minimise rmsd relative to **ref_ag**
     """
+
     ref_pos: npt.NDArray
     ref_idx: npt.NDArray
     weights: npt.NDArray
@@ -98,8 +101,7 @@ class Aligner(TransformationBase):
         mobile_pos -= mobile_com
 
         # rotates mobile to best align with ref
-        R, min_rmsd = rotation_matrix(mobile_pos, self.ref_pos,
-                                      weights=self.weights)
+        R, min_rmsd = rotation_matrix(mobile_pos, self.ref_pos, weights=self.weights)
 
         # apply the transformation onto **all** atoms
         ts.positions -= mobile_com
