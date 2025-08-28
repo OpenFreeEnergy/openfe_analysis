@@ -1,7 +1,7 @@
 from importlib import resources
+
 import pooch
 import pytest
-
 
 RFE_OUTPUT = pooch.create(
     path=pooch.os_cache("openfe_analysis"),

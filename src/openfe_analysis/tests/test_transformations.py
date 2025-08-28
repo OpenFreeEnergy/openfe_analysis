@@ -1,13 +1,13 @@
 import MDAnalysis as mda
-from MDAnalysis.analysis import rms
 import numpy as np
 import pytest
+from MDAnalysis.analysis import rms
 
 from openfe_analysis import FEReader
 from openfe_analysis.transformations import (
+    Aligner,
     Minimiser,
     NoJump,
-    Aligner,
 )
 
 

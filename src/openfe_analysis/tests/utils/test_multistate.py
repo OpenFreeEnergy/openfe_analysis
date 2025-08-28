@@ -1,14 +1,15 @@
 import netCDF4 as nc
 import numpy as np
-from openff.units import unit
-from numpy.testing import assert_allclose
 import pytest
+from numpy.testing import assert_allclose
+from openff.units import unit
+
 from openfe_analysis import __version__
 from openfe_analysis.utils.multistate import (
-    _state_to_replica,
-    _replica_positions_at_frame,
     _create_new_dataset,
     _get_unitcell,
+    _replica_positions_at_frame,
+    _state_to_replica,
 )
 
 

@@ -1,8 +1,9 @@
 import netCDF4 as nc
-from openfe_analysis.rmsd import gather_rms_data
-from numpy.testing import assert_allclose
 import numpy as np
 import pytest
+from numpy.testing import assert_allclose
+
+from openfe_analysis.rmsd import gather_rms_data
 
 
 @pytest.mark.flaky(reruns=3)
