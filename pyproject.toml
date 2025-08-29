@@ -58,7 +58,6 @@ openfe_analysis = "openfe_analysis.cli:cli"
 
 [tool.ruff]
 line-length = 100
-
 exclude = [
   "*.ipynb", # TODO: auto-format notebooks
 ]
