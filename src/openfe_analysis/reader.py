@@ -193,6 +193,7 @@ class FEReader(ReaderBase):
         self._frame_index = -1
 
     def close(self):
-        if self._dataset_owner:
-            self._dataset.close()
-            self._dataset = None
+        if self._dataset is not None:
+            if self._dataset_owner:
+                self._dataset.close()
+                self._dataset = None
