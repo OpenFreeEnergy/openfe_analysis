@@ -105,6 +105,8 @@ def test_universe_creation(simulation_nc, hybrid_system_pdb):
     )
     assert_allclose(u.dimensions, [82.191055, 82.191055, 82.191055, 90.0, 90.0, 90.0])
 
+    u.trajectory.close()
+
 
 def test_universe_from_nc_file(simulation_nc, hybrid_system_pdb):
     ds = nc.Dataset(simulation_nc)
@@ -135,6 +137,7 @@ def test_universe_creation_noconversion(simulation_nc, hybrid_system_pdb):
             ]
         ),
     )
+    u.trajectory.close()
 
 
 def test_fereader_negative_state(simulation_nc, hybrid_system_pdb):
@@ -143,6 +146,7 @@ def test_fereader_negative_state(simulation_nc, hybrid_system_pdb):
 
     assert u.trajectory._state_id == 10
     assert u.trajectory._replica_id is None
+    u.trajectory.close()
 
 
 def test_fereader_negative_replica(simulation_nc, hybrid_system_pdb):
@@ -151,6 +155,7 @@ def test_fereader_negative_replica(simulation_nc, hybrid_system_pdb):
 
     assert u.trajectory._state_id is None
     assert u.trajectory._replica_id == 9
+    u.trajectory.close()
 
 
 @pytest.mark.parametrize("rep_id, state_id", [[None, None], [1, 1]])
@@ -179,3 +184,5 @@ def test_simulation_skipped_nc(simulation_skipped_nc, hybrid_system_skipped_pdb)
         assert np.all(u.atoms.positions > 0)
     with pytest.raises(mda.exceptions.NoDataError, match="This Timestep has no velocities"):
         u.atoms.velocities
+
+    u.trajectory.close()
