@@ -13,7 +13,6 @@ from openfe_analysis.utils.multistate import (
 )
 
 
-@pytest.fixture(scope="module")
 def dataset(simulation_nc):
     return nc.Dataset(simulation_nc)
 
