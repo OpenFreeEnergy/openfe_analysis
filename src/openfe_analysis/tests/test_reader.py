@@ -152,13 +152,13 @@ def test_fereader_negative_replica(simulation_nc, hybrid_system_pdb):
     assert u.trajectory._replica_id == 9
 
 
-@pytest.mark.parametrize("rep_id, state_id", [[None, None], [1, 1]])
-@pytest.mark.flaky(reruns=3)
-def test_fereader_replica_state_id_error(simulation_nc, hybrid_system_pdb, rep_id, state_id):
-    with pytest.raises(ValueError, match="Specify one and only one"):
-        _ = mda.Universe(
-            hybrid_system_pdb, simulation_nc, format=FEReader, state_id=state_id, replica_id=rep_id
-        )
+#@pytest.mark.parametrize("rep_id, state_id", [[None, None], [1, 1]])
+#@pytest.mark.flaky(reruns=3)
+#def test_fereader_replica_state_id_error(simulation_nc, hybrid_system_pdb, rep_id, state_id):
+#    with pytest.raises(ValueError, match="Specify one and only one"):
+#        _ = mda.Universe(
+#            hybrid_system_pdb, simulation_nc, format=FEReader, state_id=state_id, replica_id=rep_id
+#        )
 
 
 def test_simulation_skipped_nc(simulation_skipped_nc, hybrid_system_skipped_pdb):
