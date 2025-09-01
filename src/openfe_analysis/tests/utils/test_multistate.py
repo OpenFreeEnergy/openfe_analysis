@@ -13,6 +13,7 @@ from openfe_analysis.utils.multistate import (
 )
 
 
+@pytest.fixture(scope='module')
 def dataset(simulation_nc):
     return nc.Dataset(simulation_nc)
 
@@ -84,3 +85,5 @@ def test_simulation_skipped_nc_no_positions_box_vectors_frame1(
 
     assert _get_unitcell(dataset, 1, 1) is None
     assert dataset.variables["positions"][1][0].mask.all()
+
+    dataset.close()

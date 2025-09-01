@@ -116,6 +116,7 @@ def test_universe_from_nc_file(simulation_nc, hybrid_system_pdb):
     assert len(u.atoms) == 4782
     assert len(u.trajectory) == 501
     assert u.trajectory.dt == pytest.approx(1.0)
+    ds.close()
 
 
 def test_universe_creation_noconversion(simulation_nc, hybrid_system_pdb):
