@@ -18,6 +18,11 @@ def dataset(simulation_nc):
     return nc.Dataset(simulation_nc)
 
 
+@pytest.fixture(scope='module')
+def skipped_dataset(simulation_skipped_nc)
+    return nc.Dataset(simulation_skipped_nc)
+
+
 @pytest.mark.flaky(reruns=3)
 @pytest.mark.parametrize("state, frame, replica", [[0, 0, 0], [0, 1, 3], [0, -1, 7], [3, 100, 6]])
 def test_state_to_replica(dataset, state, frame, replica):
@@ -79,11 +84,7 @@ def test_get_unitcell(dataset):
 
 
 def test_simulation_skipped_nc_no_positions_box_vectors_frame1(
-    simulation_skipped_nc,
+    skipped_dataset,
 ):
-    dataset = nc.Dataset(simulation_skipped_nc)
-
     assert _get_unitcell(dataset, 1, 1) is None
     assert dataset.variables["positions"][1][0].mask.all()
-
-    dataset.close()
