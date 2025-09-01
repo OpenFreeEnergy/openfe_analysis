@@ -195,3 +195,4 @@ class FEReader(ReaderBase):
     def close(self):
         if self._dataset_owner:
             self._dataset.close()
+            self._dataset = None
