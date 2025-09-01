@@ -90,5 +90,5 @@ def test_get_unitcell(dataset):
 def test_simulation_skipped_nc_no_positions_box_vectors_frame1(
     skipped_dataset,
 ):
-    assert _get_unitcell(dataset, 1, 1) is None
-    assert dataset.variables["positions"][1][0].mask.all()
+    assert _get_unitcell(skipped_dataset, 1, 1) is None
+    assert skipped_dataset.variables["positions"][1][0].mask.all()
