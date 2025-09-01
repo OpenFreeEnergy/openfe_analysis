@@ -13,32 +13,30 @@ from openfe_analysis.utils.multistate import (
 )
 
 
-#@pytest.fixture(scope='module')
-#def dataset(simulation_nc):
-#    ds =  nc.Dataset(simulation_nc)
-#    yield ds
-#    ds.close()
-#
-#
-#@pytest.fixture(scope='module')
-#def skipped_dataset(simulation_skipped_nc):
-#    ds = nc.Dataset(simulation_skipped_nc)
-#    yield ds
-#    ds.close()
-#
-#
-#@pytest.mark.flaky(reruns=3)
-#@pytest.mark.parametrize("state, frame, replica", [[0, 0, 0], [0, 1, 3], [0, -1, 7], [3, 100, 6]])
-#def test_state_to_replica(dataset, state, frame, replica):
-#    assert _state_to_replica(dataset, state, frame) == replica
-#
-#
-#@pytest.mark.flaky(reruns=3)
-#def test_replica_positions_at_frame(dataset):
-#    pos = _replica_positions_at_frame(dataset, 1, -1)
-#    assert_allclose(
-#        pos[-3] * unit("nanometer"), np.array([0.6037003, 7.2835016, 5.804355]) * unit("nanometer")
-#    )
+@pytest.fixture(scope='module')
+def dataset(simulation_nc):
+    ds = nc.Dataset(simulation_nc)
+    yield ds
+    ds.close()
+
+
+@pytest.fixture(scope='module')
+def skipped_dataset(simulation_skipped_nc):
+    ds = nc.Dataset(simulation_skipped_nc)
+    yield ds
+    ds.close()
+
+
+@pytest.mark.parametrize("state, frame, replica", [[0, 0, 0], [0, 1, 3], [0, -1, 7], [3, 100, 6]])
+def test_state_to_replica(dataset, state, frame, replica):
+    assert _state_to_replica(dataset, state, frame) == replica
+
+
+def test_replica_positions_at_frame(dataset):
+    pos = _replica_positions_at_frame(dataset, 1, -1)
+    assert_allclose(
+        pos[-3] * unit("nanometer"), np.array([0.6037003, 7.2835016, 5.804355]) * unit("nanometer")
+    )
 
 
 def test_create_new_dataset(tmpdir):
@@ -81,16 +79,16 @@ def test_create_new_dataset(tmpdir):
         ds.close()
 
 
-#def test_get_unitcell(dataset):
-#    dims = _get_unitcell(dataset, 7, -1)
-#    assert_allclose(dims, [82.12723, 82.12723, 82.12723, 90.0, 90.0, 90.0])
-#
-#    dims = _get_unitcell(dataset, 3, 1)
-#    assert_allclose(dims, [82.191055, 82.191055, 82.191055, 90.0, 90.0, 90.0])
-#
-#
-#def test_simulation_skipped_nc_no_positions_box_vectors_frame1(
-#    skipped_dataset,
-#):
-#    assert _get_unitcell(dataset, 1, 1) is None
-#    assert dataset.variables["positions"][1][0].mask.all()
+def test_get_unitcell(dataset):
+    dims = _get_unitcell(dataset, 7, -1)
+    assert_allclose(dims, [82.12723, 82.12723, 82.12723, 90.0, 90.0, 90.0])
+
+    dims = _get_unitcell(dataset, 3, 1)
+    assert_allclose(dims, [82.191055, 82.191055, 82.191055, 90.0, 90.0, 90.0])
+
+
+def test_simulation_skipped_nc_no_positions_box_vectors_frame1(
+    skipped_dataset,
+):
+    assert _get_unitcell(dataset, 1, 1) is None
+    assert dataset.variables["positions"][1][0].mask.all()
