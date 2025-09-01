@@ -179,6 +179,8 @@ def gather_rms_data(
 
         output["time(ps)"] = list(np.arange(len(u.trajectory))[::skip] * u.trajectory.dt)
 
+    ds.close()
+
     return output
 
 

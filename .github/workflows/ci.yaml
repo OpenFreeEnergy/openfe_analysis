@@ -67,7 +67,7 @@ jobs:
 
       - name: "Run tests"
         run: |
-          pytest -n auto -v --cov=openfe_analysis --cov-report=xml --durations=10
+          pytest -v --cov=openfe_analysis --cov-report=xml --durations=10
 
       - name: "Save pooch test data cache"
         id: cache-testdata-save

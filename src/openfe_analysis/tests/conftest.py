@@ -2,6 +2,16 @@ from importlib import resources
 
 import pooch
 import pytest
+import urllib.request
+
+
+try:
+    urllib.request.urlopen('https://www.google.com')
+except:  # -no-cov-
+    HAS_INTERNET = False
+else:
+    HAS_INTERNET = True
+
 
 RFE_OUTPUT = pooch.create(
     path=pooch.os_cache("openfe_analysis"),
@@ -13,8 +23,8 @@ RFE_OUTPUT = pooch.create(
         "simulation.nc": "92361a0864d4359a75399470135f56642b72c605069a4c33dbc4be6f91f28b31",
         "simulation_real_time_analysis.yaml": "65706002f371fafba96037f29b054fd7e050e442915205df88567f48f5e5e1cf",  # noqa: E501
     },
+    retry_if_failed=5,
 )
-
 
 RFE_OUTPUT_skipped_frames = pooch.create(
     path=pooch.os_cache("openfe_analysis_skipped"),
@@ -23,30 +33,31 @@ RFE_OUTPUT_skipped_frames = pooch.create(
         "hybrid_system.pdb": "77c7914b78724e568f38d5a308d36923f5837c03a1d094e26320b20aeec65fee",
         "simulation.nc": "6749e2c895f16b7e4eba196261c34756a0a062741d36cc74925676b91a36d0cd",
     },
+    retry_if_failed=5,
 )
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope='session')
 def simulation_nc():
     return RFE_OUTPUT.fetch("simulation.nc")
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope='session')
 def simulation_skipped_nc():
     return RFE_OUTPUT_skipped_frames.fetch("simulation.nc")
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope='session')
 def hybrid_system_pdb():
     return RFE_OUTPUT.fetch("hybrid_system.pdb")
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope='session')
 def hybrid_system_skipped_pdb():
     return RFE_OUTPUT_skipped_frames.fetch("hybrid_system.pdb")
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope='session')
 def mcmc_serialized():
     return (
         "_serialized__class_name: LangevinDynamicsMove\n"
