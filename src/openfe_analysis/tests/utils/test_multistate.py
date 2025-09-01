@@ -13,14 +13,14 @@ from openfe_analysis.utils.multistate import (
 )
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture()
 def dataset(simulation_nc):
     ds = nc.Dataset(simulation_nc)
     yield ds
     ds.close()
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture()
 def skipped_dataset(simulation_skipped_nc):
     ds = nc.Dataset(simulation_skipped_nc)
     yield ds
