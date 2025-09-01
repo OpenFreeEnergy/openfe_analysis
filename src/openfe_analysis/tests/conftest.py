@@ -26,27 +26,27 @@ RFE_OUTPUT_skipped_frames = pooch.create(
 )
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def simulation_nc():
     return RFE_OUTPUT.fetch("simulation.nc")
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def simulation_skipped_nc():
     return RFE_OUTPUT_skipped_frames.fetch("simulation.nc")
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def hybrid_system_pdb():
     return RFE_OUTPUT.fetch("hybrid_system.pdb")
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def hybrid_system_skipped_pdb():
     return RFE_OUTPUT_skipped_frames.fetch("hybrid_system.pdb")
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def mcmc_serialized():
     return (
         "_serialized__class_name: LangevinDynamicsMove\n"
