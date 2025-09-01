@@ -13,9 +13,8 @@ else:
     HAS_INTERNET = True
 
 
-POOCH_CACHE = pooch.os_cache("openfe_analysis")
 RFE_OUTPUT = pooch.create(
-    path=POOCH_CACHE,
+    path=pooch.os_cache("openfe_analysis"),
     base_url="doi:10.6084/m9.figshare.24101655",
     registry={
         "checkpoint.nc": "5af398cb14340fddf7492114998b244424b6c3f4514b2e07e4bd411484c08464",
@@ -27,9 +26,8 @@ RFE_OUTPUT = pooch.create(
     retry_if_failed=5,
 )
 
-
 RFE_OUTPUT_skipped_frames = pooch.create(
-    path=POOCH_CACHE,
+    path=pooch.os_cache("openfe_analysis_skipped"),
     base_url="doi:10.6084/m9.figshare.28263203",
     registry={
         "hybrid_system.pdb": "77c7914b78724e568f38d5a308d36923f5837c03a1d094e26320b20aeec65fee",
