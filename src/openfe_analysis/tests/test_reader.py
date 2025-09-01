@@ -154,7 +154,7 @@ def test_fereader_negative_replica(simulation_nc, hybrid_system_pdb):
 
 
 @pytest.mark.parametrize("rep_id, state_id", [[None, None], [1, 1]])
-@pytest.mark.flaky(reruns=3)
+#@pytest.mark.flaky(reruns=3)
 def test_fereader_replica_state_id_error(simulation_nc, hybrid_system_pdb, rep_id, state_id):
     with pytest.raises(ValueError, match="Specify one and only one"):
         _ = mda.Universe(
