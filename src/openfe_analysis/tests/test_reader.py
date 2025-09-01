@@ -179,5 +179,3 @@ def test_simulation_skipped_nc(simulation_skipped_nc, hybrid_system_skipped_pdb)
         assert np.all(u.atoms.positions > 0)
     with pytest.raises(mda.exceptions.NoDataError, match="This Timestep has no velocities"):
         u.atoms.velocities
-
-    u.trajectory.close()
