@@ -14,39 +14,39 @@ ZENODO_RBFE_DATA = pooch.create(
     },
 )
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def rbfe_output_data_dir() -> pathlib.Path:
     ZENODO_RBFE_DATA.fetch("openfe_analysis_simulation_output.tar.gz", processor=pooch.Untar())
     result_dir = pathlib.Path(POOCH_CACHE) / "openfe_analysis_simulation_output.tar.gz.untar/openfe_analysis_simulation_output/"
     return result_dir
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def rbfe_skipped_data_dir() -> pathlib.Path:
     ZENODO_RBFE_DATA.fetch("openfe_analysis_skipped.tar.gz", processor=pooch.Untar())
     result_dir = pathlib.Path(POOCH_CACHE) / "openfe_analysis_skipped.tar.gz.untar/openfe_analysis_skipped/"
     return result_dir
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def simulation_nc(rbfe_output_data_dir) -> pathlib.Path:
     return rbfe_output_data_dir/"simulation.nc"
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def simulation_skipped_nc(rbfe_skipped_data_dir) -> pathlib.Path:
     return rbfe_skipped_data_dir/"simulation.nc"
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def hybrid_system_pdb(rbfe_output_data_dir) -> pathlib.Path:
     return rbfe_output_data_dir/"hybrid_system.pdb"
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def hybrid_system_skipped_pdb(rbfe_skipped_data_dir)->pathlib.Path:
     return rbfe_skipped_data_dir/"hybrid_system.pdb"
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def mcmc_serialized():
     return (
         "_serialized__class_name: LangevinDynamicsMove\n"
