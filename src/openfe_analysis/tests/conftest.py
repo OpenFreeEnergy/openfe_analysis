@@ -14,16 +14,16 @@ ZENODO_RBFE_DATA = pooch.create(
     },
 )
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def rbfe_output_data_dir() -> pathlib.Path:
     ZENODO_RBFE_DATA.fetch("openfe_analysis_simulation_output.tar.gz", processor=pooch.Untar())
-    result_dir = pathlib.Path(POOCH_CACHE) / "cmet_results.tar.gz.untar/cmet_results/"
+    result_dir = pathlib.Path(POOCH_CACHE) / "openfe_analysis_simulation_output.tar.gz.untar/openfe_analysis_simulation_output/"
     return result_dir
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def rbfe_skipped_data_dir() -> pathlib.Path:
-    ZENODO_RBFE_DATA.fetch("openfe_analysis_simulation_output.tar.gz", processor=pooch.Untar())
-    result_dir = pathlib.Path(POOCH_CACHE) / "openfe_analysis_skipped.tar.gz.untar/cmet_results/"
+    ZENODO_RBFE_DATA.fetch("openfe_analysis_skipped.tar.gz", processor=pooch.Untar())
+    result_dir = pathlib.Path(POOCH_CACHE) / "openfe_analysis_skipped.tar.gz.untar/openfe_analysis_skipped/"
     return result_dir
 
 @pytest.fixture
