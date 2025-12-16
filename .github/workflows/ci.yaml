@@ -52,20 +52,6 @@ jobs:
         run: |
           python -m pip install --no-deps .
 
-      - name: Cache Pooch data
-        uses: actions/cache@v4
-        with:
-          path: |
-            # linux cache location
-            ~/.cache/openfe_analysis
-            # osx cache location
-            ~/Library/Caches/openfe_analysis
-          # When files are added or changed in a pooch registry
-          # bump this key to create a new cache, for example if
-          # the key is pooch-${{ matrix.os }}-1 change it to pooch-${{ matrix.os }}-2
-          key: pooch-${{ matrix.os }}-1
-
-
       - name: "Test imports"
         run: |
           python -Ic "import openfe_analysis; print(openfe_analysis.__version__)"
