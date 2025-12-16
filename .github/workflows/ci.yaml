@@ -57,7 +57,10 @@ jobs:
         uses: actions/cache/restore@v3
         with:
           path: |
-            ~/.cache/openfe_analysis/
+            # linux cache location
+            ~/.cache/openfe
+            # osx cache location
+            ~/Library/Caches/openfe
           key: ${{ runner.os }}
 
       - name: "Test imports"
@@ -73,7 +76,10 @@ jobs:
         uses: actions/cache/save@v3
         with:
           path: |
-            ~/.cache/openfe_analysis/
+            # linux cache location
+            ~/.cache/openfe
+            # osx cache location
+            ~/Library/Caches/openfe
           key: ${{ runner.os }}
 
       - name: codecov
