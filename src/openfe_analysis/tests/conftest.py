@@ -1,5 +1,6 @@
 from importlib import resources
 
+import pathlib
 import pooch
 import pytest
 import urllib.request
@@ -13,48 +14,47 @@ else:
     HAS_INTERNET = True
 
 
-RFE_OUTPUT = pooch.create(
-    path=pooch.os_cache("openfe_analysis"),
-    base_url="doi:10.6084/m9.figshare.24101655",
+POOCH_CACHE = pooch.os_cache("openfe_analysis")
+ZENODO_RBFE_DATA = pooch.create(
+    path=POOCH_CACHE,
+    base_url="doi:10.5281/zenodo.17916322",
     registry={
-        "checkpoint.nc": "5af398cb14340fddf7492114998b244424b6c3f4514b2e07e4bd411484c08464",
-        "db.json": "b671f9eb4daf9853f3e1645f9fd7c18150fd2a9bf17c18f23c5cf0c9fd5ca5b3",
-        "hybrid_system.pdb": "07203679cb14b840b36e4320484df2360f45e323faadb02d6eacac244fddd517",
-        "simulation.nc": "92361a0864d4359a75399470135f56642b72c605069a4c33dbc4be6f91f28b31",
-        "simulation_real_time_analysis.yaml": "65706002f371fafba96037f29b054fd7e050e442915205df88567f48f5e5e1cf",  # noqa: E501
+       "openfe_analysis_simulation_output.tar.gz":"md5:09752f2c4e5b7744d8afdee66dbd1414",
+       "openfe_analysis_skipped.tar.gz": "md5:3840d044299caacc4ccd50e6b22c0880",
     },
     retry_if_failed=5,
 )
 
-RFE_OUTPUT_skipped_frames = pooch.create(
-    path=pooch.os_cache("openfe_analysis_skipped"),
-    base_url="doi:10.6084/m9.figshare.28263203",
-    registry={
-        "hybrid_system.pdb": "77c7914b78724e568f38d5a308d36923f5837c03a1d094e26320b20aeec65fee",
-        "simulation.nc": "6749e2c895f16b7e4eba196261c34756a0a062741d36cc74925676b91a36d0cd",
-    },
-    retry_if_failed=5,
-)
+@pytest.fixture(scope="session")
+def rbfe_output_data_dir() -> pathlib.Path:
+    ZENODO_RBFE_DATA.fetch("openfe_analysis_simulation_output.tar.gz", processor=pooch.Untar())
+    result_dir = pathlib.Path(POOCH_CACHE) / "openfe_analysis_simulation_output.tar.gz.untar/openfe_analysis_simulation_output/"
+    return result_dir
+
+@pytest.fixture(scope="session")
+def rbfe_skipped_data_dir() -> pathlib.Path:
+    ZENODO_RBFE_DATA.fetch("openfe_analysis_skipped.tar.gz", processor=pooch.Untar())
+    result_dir = pathlib.Path(POOCH_CACHE) / "openfe_analysis_skipped.tar.gz.untar/openfe_analysis_skipped/"
+    return result_dir
+
+@pytest.fixture(scope="session")
+def simulation_nc(rbfe_output_data_dir) -> pathlib.Path:
+    return rbfe_output_data_dir/"simulation.nc"
 
 
-@pytest.fixture(scope='session')
-def simulation_nc():
-    return RFE_OUTPUT.fetch("simulation.nc")
+@pytest.fixture(scope="session")
+def simulation_skipped_nc(rbfe_skipped_data_dir) -> pathlib.Path:
+    return rbfe_skipped_data_dir/"simulation.nc"
 
 
-@pytest.fixture(scope='session')
-def simulation_skipped_nc():
-    return RFE_OUTPUT_skipped_frames.fetch("simulation.nc")
+@pytest.fixture(scope="session")
+def hybrid_system_pdb(rbfe_output_data_dir) -> pathlib.Path:
+    return rbfe_output_data_dir/"hybrid_system.pdb"
 
 
-@pytest.fixture(scope='session')
-def hybrid_system_pdb():
-    return RFE_OUTPUT.fetch("hybrid_system.pdb")
-
-
-@pytest.fixture(scope='session')
-def hybrid_system_skipped_pdb():
-    return RFE_OUTPUT_skipped_frames.fetch("hybrid_system.pdb")
+@pytest.fixture(scope="session")
+def hybrid_system_skipped_pdb(rbfe_skipped_data_dir)->pathlib.Path:
+    return rbfe_skipped_data_dir/"hybrid_system.pdb"
 
 
 @pytest.fixture(scope='session')
