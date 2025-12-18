@@ -30,6 +30,10 @@ def rbfe_skipped_data_dir() -> pathlib.Path:
 def simulation_nc(rbfe_output_data_dir) -> pathlib.Path:
     return rbfe_output_data_dir/"simulation.nc"
 
+@pytest.fixture(scope="session")
+def simulation_nc_multichain() -> pathlib.Path:
+    return "data/complex.nc"
+
 
 @pytest.fixture(scope="session")
 def simulation_skipped_nc(rbfe_skipped_data_dir) -> pathlib.Path:
@@ -39,6 +43,10 @@ def simulation_skipped_nc(rbfe_skipped_data_dir) -> pathlib.Path:
 @pytest.fixture(scope="session")
 def hybrid_system_pdb(rbfe_output_data_dir) -> pathlib.Path:
     return rbfe_output_data_dir/"hybrid_system.pdb"
+
+@pytest.fixture(scope="session")
+def system_pdb_multichain() -> pathlib.Path:
+    return "data/alchemical_system.pdb"
 
 
 @pytest.fixture(scope="session")

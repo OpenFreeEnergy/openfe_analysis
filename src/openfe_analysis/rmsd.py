@@ -7,15 +7,13 @@ import netCDF4 as nc
 import numpy as np
 import tqdm
 from MDAnalysis.analysis import rms
-from MDAnalysis.transformations import unwrap
+from MDAnalysis.transformations import unwrap, TransformationBase
 from MDAnalysis.lib.mdamath import make_whole
 from numpy import typing as npt
 
 from .reader import FEReader
 from .transformations import Aligner, Minimiser, NoJump
 
-from MDAnalysis.transformations import TransformationBase
-import numpy as np
 
 class ShiftChains(TransformationBase):
     """Shift all protein chains relative to the first chain to keep them in the same box."""
@@ -149,6 +147,9 @@ def gather_rms_data(
         # cheeky, but we can read the PDB topology once and reuse per universe
         # this then only hits the PDB file once for all replicas
         u = make_Universe(u_top._topology, ds, state=i)
+        with mda.Writer("debug_after_pbc.xtc", u.atoms.n_atoms) as W:
+            for ts in u.trajectory[:100]:
+                W.write(u.atoms)
 
         prot = u.select_atoms("protein and name CA")
         ligand = u.select_atoms("resname UNK")
