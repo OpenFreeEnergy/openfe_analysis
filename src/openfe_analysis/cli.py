@@ -12,18 +12,36 @@ def cli():
 
 
 @cli.command(name="RFE_analysis")
-@click.argument(
-    "loc",
-    type=click.Path(
-        exists=True, readable=True, file_okay=False, dir_okay=True, path_type=pathlib.Path
-    ),
+@click.option(
+    "--pdb",
+    type=click.Path(exists=True, readable=True, dir_okay=False, path_type=pathlib.Path),
+    required=True,
+    help="Path to the topology PDB file.",
 )
-@click.argument("output", type=click.Path(writable=True, dir_okay=False, path_type=pathlib.Path))
-def rfe_analysis(loc, output):
-    pdb = loc / "hybrid_system.pdb"
-    trj = loc / "simulation.nc"
+@click.option(
+    "--nc",
+    type=click.Path(exists=True, readable=True, dir_okay=False, path_type=pathlib.Path),
+    required=True,
+    help="Path to the NetCDF trajectory file.",
+)
+@click.option(
+    "--output",
+    type=click.Path(writable=True, dir_okay=False, path_type=pathlib.Path),
+    required=True,
+    help="Path to save the JSON results.",
+)
+def rfe_analysis(pdb: pathlib.Path, nc: pathlib.Path, output: pathlib.Path):
+    """
+    Perform RMSD analysis for an RBFE simulation.
 
-    data = rmsd.gather_rms_data(pdb, trj)
+    Arguments:
+        pdb: path to the topology PDB file.
+        nc: path to the trajectory file (NetCDF format).
+        output: path to save the JSON results.
+    """
+    # Run RMSD analysis
+    data = rmsd.gather_rms_data(pdb, nc)
 
-    with click.open_file(output, "w") as f:
-        f.write(json.dumps(data))
+    # Write results
+    with output.open("w") as f:
+        json.dump(data, f, indent=2)

@@ -7,11 +7,30 @@ import netCDF4 as nc
 import numpy as np
 import tqdm
 from MDAnalysis.analysis import rms
-from MDAnalysis.transformations import make_whole, unwrap
+from MDAnalysis.transformations import unwrap
+from MDAnalysis.lib.mdamath import make_whole
 from numpy import typing as npt
 
 from .reader import FEReader
 from .transformations import Aligner, Minimiser, NoJump
+
+from MDAnalysis.transformations import TransformationBase
+import numpy as np
+
+class ShiftChains(TransformationBase):
+    """Shift all protein chains relative to the first chain to keep them in the same box."""
+    def __init__(self, prot, max_threads=1):
+        self.prot = prot
+        self.max_threads = max_threads  # required by MDAnalysis
+        super().__init__()
+
+    def _transform(self, ts):
+        chains = [seg.atoms for seg in self.prot.segments]
+        ref_chain = chains[0]
+        for chain in chains[1:]:
+            vec = chain.center_of_mass() - ref_chain.center_of_mass()
+            chain.positions -= np.rint(vec / ts.dimensions[:3]) * ts.dimensions[:3]
+        return ts
 
 
 def make_Universe(top: pathlib.Path, trj: nc.Dataset, state: int) -> mda.Universe:
@@ -46,14 +65,21 @@ def make_Universe(top: pathlib.Path, trj: nc.Dataset, state: int) -> mda.Univers
         # - make the protein whole across periodic images between frames
         # - put the ligand in the closest periodic image as the protein
         # - align everything to minimise protein RMSD
-        make_whole_tr = make_whole(prot, compound="segments")
+        # make_whole_tr = make_whole(prot, Compound.SEGMENTS)
+        # Shift all chains relative to first chain to keep in same box
         unwrap_tr = unwrap(prot)
+        shift = ShiftChains(prot)
+
+        # Make each fragment whole internally
+        for frag in prot.fragments:
+            make_whole(frag, reference_atom=frag[0])
         minnie = Minimiser(prot, ligand)
         align = Aligner(prot)
 
         u.trajectory.add_transformations(
-            make_whole_tr,
+            # make_whole_tr,
             unwrap_tr,
+            shift,
             minnie,
             align,
         )
