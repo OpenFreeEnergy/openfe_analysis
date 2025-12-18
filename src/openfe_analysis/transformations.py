@@ -87,7 +87,8 @@ class Aligner(TransformationBase):
     def __init__(self, ref_ag: mda.AtomGroup):
         super().__init__()
         self.ref_idx = ref_ag.ix
-        self.ref_pos = ref_ag.positions
+        # Would this copy be safer?
+        self.ref_pos = ref_ag.positions.copy()
         self.weights = np.asarray(ref_ag.masses, dtype=np.float64)
         self.weights /= np.mean(self.weights)  # normalise weights
         # remove COM shift from reference positions

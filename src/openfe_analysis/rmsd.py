@@ -7,6 +7,7 @@ import netCDF4 as nc
 import numpy as np
 import tqdm
 from MDAnalysis.analysis import rms
+from MDAnalysis.transformations import make_whole, unwrap
 from numpy import typing as npt
 
 from .reader import FEReader
@@ -42,15 +43,17 @@ def make_Universe(top: pathlib.Path, trj: nc.Dataset, state: int) -> mda.Univers
 
     if prot:
         # if there's a protein in the system:
-        # - make the protein not jump periodic images between frames
+        # - make the protein whole across periodic images between frames
         # - put the ligand in the closest periodic image as the protein
         # - align everything to minimise protein RMSD
-        nope = NoJump(prot)
+        make_whole_tr = make_whole(prot, compound="segments")
+        unwrap_tr = unwrap(prot)
         minnie = Minimiser(prot, ligand)
         align = Aligner(prot)
 
         u.trajectory.add_transformations(
-            nope,
+            make_whole_tr,
+            unwrap_tr,
             minnie,
             align,
         )
@@ -128,9 +131,9 @@ def gather_rms_data(
         # TODO: Some smart guard to avoid allocating a silly amount of memory?
         prot2d = np.empty((len(u.trajectory[::skip]), len(prot), 3), dtype=np.float32)
 
-        prot_start = prot.positions
-        # prot_weights = prot.masses / np.mean(prot.masses)
-        ligand_start = ligand.positions
+        # Would this copy be safer?
+        prot_start = prot.positions.copy()
+        ligand_start = ligand.positions.copy()
         ligand_initial_com = ligand.center_of_mass()
         ligand_weights = ligand.masses / np.mean(ligand.masses)
 
