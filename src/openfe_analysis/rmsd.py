@@ -123,7 +123,6 @@ def gather_rms_data(
         "ligand_wander": [],
         "protein_2D_RMSD": [],
     }
-
     ds = nc.Dataset(dataset)
     n_lambda = ds.dimensions["state"].size
 
@@ -134,11 +133,11 @@ def gather_rms_data(
     else:
         n_frames = ds.dimensions["iteration"].size
 
+
     if skip is None:
         # find skip that would give ~500 frames of output
         # max against 1 to avoid skip=0 case
         skip = max(n_frames // 500, 1)
-
     pb = tqdm.tqdm(total=int(n_frames / skip) * n_lambda)
 
     u_top = mda.Universe(pdb_topology)
@@ -147,13 +146,9 @@ def gather_rms_data(
         # cheeky, but we can read the PDB topology once and reuse per universe
         # this then only hits the PDB file once for all replicas
         u = make_Universe(u_top._topology, ds, state=i)
-        with mda.Writer("debug_after_pbc.xtc", u.atoms.n_atoms) as W:
-            for ts in u.trajectory[:100]:
-                W.write(u.atoms)
 
         prot = u.select_atoms("protein and name CA")
         ligand = u.select_atoms("resname UNK")
-
         # save coordinates for 2D RMSD matrix
         # TODO: Some smart guard to avoid allocating a silly amount of memory?
         prot2d = np.empty((len(u.trajectory[::skip]), len(prot), 3), dtype=np.float32)
@@ -172,6 +167,7 @@ def gather_rms_data(
             pb.update()
 
             if prot:
+                # prot2d[ts_i] = prot.positions
                 prot2d[ts_i, :, :] = prot.positions
                 this_protein_rmsd.append(
                     rms.rmsd(
@@ -197,6 +193,7 @@ def gather_rms_data(
                     # ignores PBC, but we've already centered the traj
                     mda.lib.distances.calc_bonds(ligand.center_of_mass(), ligand_initial_com)
                 )
+            # ts_i += 1
 
         if prot:
             # can ignore weights here as it's all Ca
@@ -208,7 +205,7 @@ def gather_rms_data(
             output["ligand_wander"].append(this_ligand_wander)
 
         output["time(ps)"] = list(np.arange(len(u.trajectory))[::skip] * u.trajectory.dt)
-
+    ds.close()
     return output
 
 

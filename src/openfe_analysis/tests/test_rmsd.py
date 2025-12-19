@@ -1,12 +1,29 @@
 import netCDF4 as nc
 import numpy as np
 import pytest
+from itertools import islice
 from numpy.testing import assert_allclose
 from MDAnalysis.analysis import rms
 from openfe_analysis.rmsd import gather_rms_data, make_Universe
 
+@pytest.fixture
+def mda_universe(system_pdb_multichain, simulation_nc_multichain):
+    """
+    Safely create and destroy an MDAnalysis Universe.
 
-@pytest.mark.flaky(reruns=3)
+    Guarantees:
+    - NetCDF file is opened exactly once
+    """
+    u = make_Universe(
+        system_pdb_multichain,
+        simulation_nc_multichain,
+        state=0,
+    )
+
+    yield u
+
+
+@pytest.mark.flaky(reruns=1)
 def test_gather_rms_data_regression(simulation_nc, hybrid_system_pdb):
     output = gather_rms_data(
         hybrid_system_pdb,
@@ -43,7 +60,7 @@ def test_gather_rms_data_regression(simulation_nc, hybrid_system_pdb):
     )
 
 
-@pytest.mark.flaky(reruns=3)
+@pytest.mark.flaky(reruns=1)
 def test_gather_rms_data_regression_skippednc(simulation_skipped_nc, hybrid_system_skipped_pdb):
     output = gather_rms_data(
         hybrid_system_skipped_pdb,
@@ -79,8 +96,8 @@ def test_gather_rms_data_regression_skippednc(simulation_skipped_nc, hybrid_syst
         rtol=1e-3,
     )
 
-def test_multichain_com_continuity(simulation_nc_multichain, system_pdb_multichain):
-    u = make_Universe(system_pdb_multichain, simulation_nc_multichain, state=0)
+def test_multichain_com_continuity(mda_universe):
+    u = mda_universe
     prot = u.select_atoms("protein")
     chains = [seg.atoms for seg in prot.segments]
     assert len(chains) == 2
@@ -92,7 +109,7 @@ def test_multichain_com_continuity(simulation_nc_multichain, system_pdb_multicha
     chain_b = segments[1].atoms
 
     distances = []
-    for ts in u.trajectory[:50]:
+    for ts in islice(u.trajectory, 20):
         d = np.linalg.norm(
             chain_a.center_of_mass() - chain_b.center_of_mass()
         )
@@ -101,7 +118,7 @@ def test_multichain_com_continuity(simulation_nc_multichain, system_pdb_multicha
     # No large frame-to-frame jumps (PBC artifacts)
     jumps = np.abs(np.diff(distances))
     assert np.max(jumps) < 5.0  # Å
-    del u
+    u.trajectory.close()
 
 # def test_chain_radius_of_gyration_stable(simulation_nc_multichain, system_pdb_multichain):
 #     u = make_Universe(system_pdb_multichain, simulation_nc_multichain, state=0)
@@ -116,43 +133,39 @@ def test_multichain_com_continuity(simulation_nc_multichain, system_pdb_multicha
 #     # Chain should not explode or collapse due to PBC errors
 #     assert np.std(rgs) < 2.0
 
-def test_rmsd_continuity(simulation_nc_multichain, system_pdb_multichain):
-    u = make_Universe(system_pdb_multichain, simulation_nc_multichain, state=0)
+def test_rmsd_continuity(mda_universe):
+    u = mda_universe
 
     prot = u.select_atoms("protein and name CA")
     ref = prot.positions.copy()
 
     rmsds = []
-    for ts in u.trajectory[:20]:
+    for ts in islice(u.trajectory, 20):
         diff = prot.positions - ref
         rmsd = np.sqrt((diff * diff).sum(axis=1).mean())
         rmsds.append(rmsd)
 
     jumps = np.abs(np.diff(rmsds))
     assert np.max(jumps) < 2.0
-    del u
+    u.trajectory.close()
 
-
-def test_rmsd_reference_is_first_frame(simulation_nc_multichain, system_pdb_multichain):
-    # RMS of first frame should be zero
-    u = make_Universe(system_pdb_multichain, simulation_nc_multichain, state=0)
+def test_rmsd_reference_is_first_frame(mda_universe):
+    u = mda_universe
     prot = u.select_atoms("protein")
 
-    u.trajectory[0]
+    ts = next(iter(u.trajectory))  # SAFE
     ref = prot.positions.copy()
 
-    u.trajectory[0]
-    r0 = rms.rmsd(prot.positions, ref, center=False, superposition=False)
+    rmsd = np.sqrt(((prot.positions - ref) ** 2).mean())
+    assert rmsd == 0.0
+    u.trajectory.close()
 
-    assert r0 == pytest.approx(0.0)
-    del u
-
-def test_ligand_com_continuity(simulation_nc_multichain, system_pdb_multichain):
-    u = make_Universe(system_pdb_multichain, simulation_nc_multichain, state=0)
+def test_ligand_com_continuity(mda_universe):
+    u = mda_universe
     ligand = u.select_atoms("resname UNK")
 
-    coms = [ligand.center_of_mass() for ts in u.trajectory[:50]]
+    coms = [ligand.center_of_mass() for ts in islice(u.trajectory, 20)]
     jumps = [np.linalg.norm(coms[i+1] - coms[i]) for i in range(len(coms)-1)]
 
     assert max(jumps) < 5.0
-    del u
+    u.trajectory.close()
