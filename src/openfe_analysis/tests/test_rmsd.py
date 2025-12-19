@@ -120,18 +120,19 @@ def test_multichain_com_continuity(mda_universe):
     assert np.max(jumps) < 5.0  # Å
     u.trajectory.close()
 
-# def test_chain_radius_of_gyration_stable(simulation_nc_multichain, system_pdb_multichain):
-#     u = make_Universe(system_pdb_multichain, simulation_nc_multichain, state=0)
-#
-#     protein = u.select_atoms("protein")
-#     chain = protein.segments[0].atoms
-#
-#     rgs = []
-#     for ts in u.trajectory[:50]:
-#         rgs.append(chain.radius_of_gyration())
-#
-#     # Chain should not explode or collapse due to PBC errors
-#     assert np.std(rgs) < 2.0
+def test_chain_radius_of_gyration_stable(simulation_nc_multichain, system_pdb_multichain):
+    u = make_Universe(system_pdb_multichain, simulation_nc_multichain, state=0)
+
+    protein = u.select_atoms("protein")
+    chain = protein.segments[0].atoms
+
+    rgs = []
+    for ts in u.trajectory[:50]:
+        rgs.append(chain.radius_of_gyration())
+
+    # Chain should not explode or collapse due to PBC errors
+    assert np.std(rgs) < 2.0
+    u.trajectory.close()
 
 def test_rmsd_continuity(mda_universe):
     u = mda_universe
