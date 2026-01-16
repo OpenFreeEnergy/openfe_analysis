@@ -7,6 +7,9 @@ from filelock import FileLock
 
 POOCH_CACHE = pooch.os_cache("openfe_analysis")
 POOCH_CACHE.mkdir(parents=True, exist_ok=True)
+LOCKFILE = POOCH_CACHE / "prepare.lock"
+READY_FLAG = POOCH_CACHE / "data_ready.flag"
+
 ZENODO_RBFE_DATA = pooch.create(
     path=POOCH_CACHE,
     base_url="doi:10.5281/zenodo.17916322",
@@ -16,56 +19,44 @@ ZENODO_RBFE_DATA = pooch.create(
     },
 )
 
-POOCH_LOCK = FileLock(str(POOCH_CACHE / "pooch.lock"))
+def _prepare_data():
+    """Download and extract large test data once per machine."""
+    if READY_FLAG.exists():
+        return
 
-def _fetch_and_untar_once(archive_name: str, extracted_dir_name: str) -> pathlib.Path:
-    """
-    Fetch and untar a Zenodo archive exactly once, safely across
-    multiple pytest workers or CI jobs.
-
-    Returns the path to the extracted directory.
-    """
-    untar_dir = (
-        POOCH_CACHE
-        / f"{archive_name}.untar"
-        / extracted_dir_name
-    )
-
-    # Fast path: already fully extracted
-    if untar_dir.exists():
-        return untar_dir
-
-    # Slow path: lock + fetch + extract
-    with POOCH_LOCK:
-        # Another worker may have completed while we waited
-        if untar_dir.exists():
-            return untar_dir
+    with FileLock(str(LOCKFILE)):
+        if READY_FLAG.exists():
+            return
 
         ZENODO_RBFE_DATA.fetch(
-            archive_name,
+            "openfe_analysis_simulation_output.tar.gz",
+            processor=pooch.Untar(),
+        )
+        ZENODO_RBFE_DATA.fetch(
+            "openfe_analysis_skipped.tar.gz",
             processor=pooch.Untar(),
         )
 
-        if not untar_dir.exists():
-            raise RuntimeError(
-                f"Expected extracted directory not found: {untar_dir}"
-            )
+        READY_FLAG.touch()
 
-    return untar_dir
+
+_prepare_data()
 
 @pytest.fixture(scope="session")
 def rbfe_output_data_dir() -> pathlib.Path:
-    return _fetch_and_untar_once(
-        "openfe_analysis_simulation_output.tar.gz",
-        "openfe_analysis_simulation_output",
+    return (
+        POOCH_CACHE
+        / "openfe_analysis_simulation_output.tar.gz.untar"
+        / "openfe_analysis_simulation_output"
     )
 
 
 @pytest.fixture(scope="session")
 def rbfe_skipped_data_dir() -> pathlib.Path:
-    return _fetch_and_untar_once(
-        "openfe_analysis_skipped.tar.gz",
-        "openfe_analysis_skipped",
+    return (
+        POOCH_CACHE
+        / "openfe_analysis_skipped.tar.gz.untar"
+        / "openfe_analysis_skipped"
     )
 
 @pytest.fixture(scope="session")
