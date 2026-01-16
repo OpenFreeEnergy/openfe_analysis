@@ -106,47 +106,44 @@ def test_universe_creation(simulation_nc, hybrid_system_pdb):
     assert_allclose(u.dimensions, [82.191055, 82.191055, 82.191055, 90.0, 90.0, 90.0])
 
 
-def test_universe_from_nc_file(simulation_nc, hybrid_system_pdb):
-    ds = nc.Dataset(simulation_nc)
+def test_universe_from_nc_file(simulation_skipped_nc, hybrid_system_skipped_pdb):
+    ds = nc.Dataset(simulation_skipped_nc)
 
-    with pytest.warns(UserWarning, match="This is an older NetCDF file that"):
-        u = mda.Universe(hybrid_system_pdb, ds, format="MultiStateReporter", state_id=0)
+    u = mda.Universe(hybrid_system_skipped_pdb, ds, format="MultiStateReporter", state_id=0)
 
     assert u
-    assert len(u.atoms) == 4782
-    assert len(u.trajectory) == 501
-    assert u.trajectory.dt == pytest.approx(1.0)
+    assert len(u.atoms) == 4762
+    assert len(u.trajectory) == 6
+    assert u.trajectory.dt == pytest.approx(100.0)
 
 
-def test_universe_creation_noconversion(simulation_nc, hybrid_system_pdb):
-    with pytest.warns(UserWarning, match="This is an older NetCDF file that"):
-        u = mda.Universe(
-            hybrid_system_pdb, simulation_nc, format=FEReader, state_id=0, convert_units=False
-        )
-
+def test_universe_creation_noconversion(simulation_skipped_nc, hybrid_system_skipped_pdb):
+    u = mda.Universe(
+        hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, state_id=0, convert_units=False
+    )
+    assert u.trajectory.ts.frame == 0
     assert_allclose(
         u.atoms[:3].positions,
         np.array(
             [
-                [6.51474, -1.7640617, 8.406607],
-                [6.641961, -1.8410535, 8.433087],
-                [6.71369, -1.8112476, 8.533738],
+                [2.778386, 2.733918, 6.116591],
+                [2.836767, 2.600875, 6.174912],
+                [2.917513, 2.604454, 6.273793],
             ]
         ),
+        atol=1e-6,
     )
 
 
-def test_fereader_negative_state(simulation_nc, hybrid_system_pdb):
-    with pytest.warns(UserWarning, match="This is an older NetCDF file that"):
-        u = mda.Universe(hybrid_system_pdb, simulation_nc, format=FEReader, state_id=-1)
+def test_fereader_negative_state(simulation_skipped_nc, hybrid_system_skipped_pdb):
+    u = mda.Universe(hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, state_id=-1)
 
     assert u.trajectory._state_id == 10
     assert u.trajectory._replica_id is None
 
 
-def test_fereader_negative_replica(simulation_nc, hybrid_system_pdb):
-    with pytest.warns(UserWarning, match="This is an older NetCDF file that"):
-        u = mda.Universe(hybrid_system_pdb, simulation_nc, format=FEReader, replica_id=-2)
+def test_fereader_negative_replica(simulation_skipped_nc, hybrid_system_skipped_pdb):
+    u = mda.Universe(hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, replica_id=-2)
 
     assert u.trajectory._state_id is None
     assert u.trajectory._replica_id == 9
@@ -154,10 +151,10 @@ def test_fereader_negative_replica(simulation_nc, hybrid_system_pdb):
 
 @pytest.mark.parametrize("rep_id, state_id", [[None, None], [1, 1]])
 @pytest.mark.flaky(reruns=3)
-def test_fereader_replica_state_id_error(simulation_nc, hybrid_system_pdb, rep_id, state_id):
+def test_fereader_replica_state_id_error(simulation_skipped_nc, hybrid_system_skipped_pdb, rep_id, state_id):
     with pytest.raises(ValueError, match="Specify one and only one"):
         _ = mda.Universe(
-            hybrid_system_pdb, simulation_nc, format=FEReader, state_id=state_id, replica_id=rep_id
+            hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, state_id=state_id, replica_id=rep_id
         )
 
 
