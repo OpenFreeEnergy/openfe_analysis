@@ -13,12 +13,14 @@ from openfe_analysis.transformations import (
 
 @pytest.fixture
 def universe(hybrid_system_skipped_pdb, simulation_skipped_nc):
-    return mda.Universe(
+    u = mda.Universe(
         hybrid_system_skipped_pdb,
         simulation_skipped_nc,
         format="MultiStateReporter",
         state_id=0,
     )
+    yield u
+    u.trajectory.close()
 
 
 @pytest.mark.flaky(reruns=3)

@@ -15,7 +15,15 @@ from openfe_analysis.utils.multistate import (
 
 @pytest.fixture(scope="module")
 def dataset(simulation_nc):
-    return nc.Dataset(simulation_nc)
+    ds = nc.Dataset(simulation_nc)
+    yield ds
+    ds.close()
+
+@pytest.fixture()
+def skipped_dataset(simulation_skipped_nc):
+    ds = nc.Dataset(simulation_skipped_nc)
+    yield ds
+    ds.close()
 
 
 @pytest.mark.flaky(reruns=3)
@@ -69,6 +77,8 @@ def test_create_new_dataset(tmpdir):
         assert ds.variables["cell_angles"].get_dims()[1].name == "cell_angular"
         assert ds.variables["cell_angles"].dtype.name == "float64"
 
+        ds.close()
+
 
 def test_get_unitcell(dataset):
     dims = _get_unitcell(dataset, 7, -1)
@@ -79,9 +89,8 @@ def test_get_unitcell(dataset):
 
 
 def test_simulation_skipped_nc_no_positions_box_vectors_frame1(
-    simulation_skipped_nc,
+    skipped_dataset,
 ):
-    dataset = nc.Dataset(simulation_skipped_nc)
 
-    assert _get_unitcell(dataset, 1, 1) is None
-    assert dataset.variables["positions"][1][0].mask.all()
+    assert _get_unitcell(skipped_dataset, 1, 1) is None
+    assert skipped_dataset.variables["positions"][1][0].mask.all()
