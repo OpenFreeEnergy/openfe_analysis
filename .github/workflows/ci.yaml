@@ -57,10 +57,11 @@ jobs:
                   "openfe_analysis_simulation_output.tar.gz": "md5:09752f2c4e5b7744d8afdee66dbd1414",
                   "openfe_analysis_skipped.tar.gz": "md5:3840d044299caacc4ccd50e6b22c0880",
               },
+              retry_if_failed = True,
           )
           
-          zenodo.fetch("openfe_analysis_simulation_output.tar.gz", processor=pooch.Untar(), timeout=30)
-          zenodo.fetch("openfe_analysis_skipped.tar.gz", processor=pooch.Untar(), timeout=30)
+          zenodo.fetch("openfe_analysis_simulation_output.tar.gz", processor=pooch.Untar())
+          zenodo.fetch("openfe_analysis_skipped.tar.gz", processor=pooch.Untar())
           EOF
 
       - name: Upload Zenodo data as artifact
