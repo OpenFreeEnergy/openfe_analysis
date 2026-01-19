@@ -22,20 +22,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache Pooch data
-        id: pooch-cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            # linux cache location
-            ~/.cache/openfe_analysis
-            # osx cache location
-            ~/Library/Caches/openfe_analysis
-          # When files are added or changed in a pooch registry
-          # bump this key to create a new cache, for example if
-          # the key is pooch-${{ matrix.os }}-1 change it to pooch-${{ matrix.os }}-2
-          key: pooch-${{ matrix.os }}-v1
-
       - name: "Setup Micromamba"
         uses: mamba-org/setup-micromamba@v2
         with:
@@ -56,7 +42,7 @@ jobs:
           import pooch
           from pathlib import Path
           
-          cache = Path(pooch.os_cache("openfe_analysis"))
+          cache = Path.home() / ".cache/openfe_analysis"
           cache.mkdir(parents=True, exist_ok=True)
           
           zenodo = pooch.create(
@@ -71,6 +57,12 @@ jobs:
           zenodo.fetch("openfe_analysis_simulation_output.tar.gz", processor=pooch.Untar())
           zenodo.fetch("openfe_analysis_skipped.tar.gz", processor=pooch.Untar())
           EOF
+
+      - name: Upload Zenodo data as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: zenodo-data
+          path: ~/.cache/openfe_analysis
 
 
   tests:
@@ -93,19 +85,11 @@ jobs:
         id: date
         run: echo "date=$(date +%Y-%m-%d)" >> "${GITHUB_OUTPUT}"
 
-
-      - name: Restore Pooch Cache
-        uses: actions/cache@v4
+      - name: Download Zenodo data artifact
+        uses: actions/download-artifact@v3
         with:
-          path: |
-            # linux cache location
-            ~/.cache/openfe_analysis
-            # osx cache location
-            ~/Library/Caches/openfe_analysis
-          # When files are added or changed in a pooch registry
-          # bump this key to create a new cache, for example if
-          # the key is pooch-${{ matrix.os }}-1 change it to pooch-${{ matrix.os }}-2
-          key: pooch-${{ matrix.os }}-v1
+          name: zenodo-data
+          path: ~/.cache/openfe_analysis
 
       - name: "Setup Micromamba"
         uses: mamba-org/setup-micromamba@v2
