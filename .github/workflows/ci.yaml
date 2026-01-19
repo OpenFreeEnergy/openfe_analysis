@@ -16,25 +16,81 @@ defaults:
     shell: bash -leo pipefail {0}
 
 jobs:
-  prefetch:
-    name: "Pre-fetch Zenodo Data"
-    runs-on: ubuntu-latest
+#  prefetch:
+#    name: "Pre-fetch Zenodo Data"
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/checkout@v4
+#
+#      - name: Cache Pooch data
+#        id: pooch-cache
+#        uses: actions/cache@v4
+#        with:
+#          path: |
+#            # linux cache location
+#            ~/.cache/openfe_analysis
+#            # osx cache location
+#            ~/Library/Caches/openfe_analysis
+#          # When files are added or changed in a pooch registry
+#          # bump this key to create a new cache, for example if
+#          # the key is pooch-${{ matrix.os }}-1 change it to pooch-${{ matrix.os }}-2
+#          key: pooch-${{ matrix.os }}-v1
+#
+#      - name: "Setup Micromamba"
+#        uses: mamba-org/setup-micromamba@v2
+#        with:
+#          environment-file: environment.yml
+#          environment-name: openfe_analysis_env
+#          cache-environment: true
+#          cache-downloads: true
+#          cache-environment-key: environment-${{ steps.date.outputs.date }}
+#          cache-downloads-key: downloads-${{ steps.date.outputs.date }}
+#          create-args: >-
+#            python=${{ matrix.python-version }}
+#          init-shell: bash
+#
+#      - name: Pre-fetch Zenodo test data
+#        if: steps.pooch-cache.outputs.cache-hit != 'true'
+#        run: |
+#          micromamba run -n openfe_analysis_env python - <<'EOF'
+#          import pooch
+#          from pathlib import Path
+#
+#          cache = Path(pooch.os_cache("openfe_analysis"))
+#          cache.mkdir(parents=True, exist_ok=True)
+#
+#          zenodo = pooch.create(
+#              path=cache,
+#              base_url="doi:10.5281/zenodo.17916322",
+#              registry={
+#                  "openfe_analysis_simulation_output.tar.gz": "md5:09752f2c4e5b7744d8afdee66dbd1414",
+#                  "openfe_analysis_skipped.tar.gz": "md5:3840d044299caacc4ccd50e6b22c0880",
+#              },
+#          )
+#
+#          zenodo.fetch("openfe_analysis_simulation_output.tar.gz", processor=pooch.Untar())
+#          zenodo.fetch("openfe_analysis_skipped.tar.gz", processor=pooch.Untar())
+#          EOF
+#
+
+  tests:
+    runs-on: ${{ matrix.os}}
+    name: "💻-${{matrix.os }} 🐍-${{ matrix.python-version }}"
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-latest", "macos-latest"]
+        python-version:
+          - "3.11"
+          - "3.12"
     steps:
       - uses: actions/checkout@v4
-
-      - name: Cache Pooch data
-        id: pooch-cache
-        uses: actions/cache@v4
         with:
-          path: |
-            # linux cache location
-            ~/.cache/openfe_analysis
-            # osx cache location
-            ~/Library/Caches/openfe_analysis
-          # When files are added or changed in a pooch registry
-          # bump this key to create a new cache, for example if
-          # the key is pooch-${{ matrix.os }}-1 change it to pooch-${{ matrix.os }}-2
-          key: pooch-${{ matrix.os }}-v1
+          fetch-depth: 0
+
+      - name: Get current date
+        id: date
+        run: echo "date=$(date +%Y-%m-%d)" >> "${GITHUB_OUTPUT}"
 
       - name: "Setup Micromamba"
         uses: mamba-org/setup-micromamba@v2
@@ -49,10 +105,9 @@ jobs:
             python=${{ matrix.python-version }}
           init-shell: bash
 
-      - name: Pre-fetch Zenodo test data
-        if: steps.pooch-cache.outputs.cache-hit != 'true'
+      - name: "Download Zenodo data"
         run: |
-          micromamba run -n openfe_analysis_env python - <<'EOF'
+          python - <<'EOF'
           import pooch
           from pathlib import Path
           
@@ -71,54 +126,6 @@ jobs:
           zenodo.fetch("openfe_analysis_simulation_output.tar.gz", processor=pooch.Untar())
           zenodo.fetch("openfe_analysis_skipped.tar.gz", processor=pooch.Untar())
           EOF
-
-
-  tests:
-    runs-on: ${{ matrix.os}}
-    name: "💻-${{matrix.os }} 🐍-${{ matrix.python-version }}"
-    needs: prefetch
-    strategy:
-      fail-fast: false
-      matrix:
-        os: ["ubuntu-latest", "macos-latest"]
-        python-version:
-          - "3.11"
-          - "3.12"
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Get current date
-        id: date
-        run: echo "date=$(date +%Y-%m-%d)" >> "${GITHUB_OUTPUT}"
-
-
-      - name: Restore Pooch Cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            # linux cache location
-            ~/.cache/openfe_analysis
-            # osx cache location
-            ~/Library/Caches/openfe_analysis
-          # When files are added or changed in a pooch registry
-          # bump this key to create a new cache, for example if
-          # the key is pooch-${{ matrix.os }}-1 change it to pooch-${{ matrix.os }}-2
-          key: pooch-${{ matrix.os }}-v1
-
-      - name: "Setup Micromamba"
-        uses: mamba-org/setup-micromamba@v2
-        with:
-          environment-file: environment.yml
-          environment-name: openfe_analysis_env
-          cache-environment: true
-          cache-downloads: true
-          cache-environment-key: environment-${{ steps.date.outputs.date }}
-          cache-downloads-key: downloads-${{ steps.date.outputs.date }}
-          create-args: >-
-            python=${{ matrix.python-version }}
-          init-shell: bash
 
       - name: "Install"
         run: |
