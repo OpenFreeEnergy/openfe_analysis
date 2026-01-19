@@ -59,7 +59,7 @@ jobs:
           EOF
 
       - name: Upload Zenodo data as artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: zenodo-data
           path: ~/.cache/openfe_analysis
@@ -86,7 +86,7 @@ jobs:
         run: echo "date=$(date +%Y-%m-%d)" >> "${GITHUB_OUTPUT}"
 
       - name: Download Zenodo data artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: zenodo-data
           path: ~/.cache/openfe_analysis
