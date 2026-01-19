@@ -16,6 +16,48 @@ defaults:
     shell: bash -leo pipefail {0}
 
 jobs:
+  prefetch:
+    name: "Pre-fetch Zenodo Data"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Pooch data
+        uses: actions/cache@v4
+        with:
+          path: |
+            # linux cache location
+            ~/.cache/openfe_analysis
+            # osx cache location
+            ~/Library/Caches/openfe_analysis
+          # When files are added or changed in a pooch registry
+          # bump this key to create a new cache, for example if
+          # the key is pooch-${{ matrix.os }}-1 change it to pooch-${{ matrix.os }}-2
+          key: pooch-${{ matrix.os }}-v1
+
+      - name: Pre-fetch Zenodo test data
+        run: |
+          python - <<'EOF'
+          import pooch
+          from pathlib import Path
+          
+          cache = Path(pooch.os_cache("openfe_analysis"))
+          cache.mkdir(parents=True, exist_ok=True)
+          
+          zenodo = pooch.create(
+              path=cache,
+              base_url="doi:10.5281/zenodo.17916322",
+              registry={
+                  "openfe_analysis_simulation_output.tar.gz": "md5:09752f2c4e5b7744d8afdee66dbd1414",
+                  "openfe_analysis_skipped.tar.gz": "md5:3840d044299caacc4ccd50e6b22c0880",
+              },
+          )
+          
+          zenodo.fetch("openfe_analysis_simulation_output.tar.gz", processor=pooch.Untar())
+          zenodo.fetch("openfe_analysis_skipped.tar.gz", processor=pooch.Untar())
+          EOF
+
+
   tests:
     runs-on: ${{ matrix.os}}
     name: "💻-${{matrix.os }} 🐍-${{ matrix.python-version }}"
@@ -55,47 +97,6 @@ jobs:
       - name: "Test imports"
         run: |
           python -Ic "import openfe_analysis; print(openfe_analysis.__version__)"
-
-      - name: Cache Pooch data
-        uses: actions/cache@v4
-        with:
-          path: |
-            # linux cache location
-            ~/.cache/openfe_analysis
-            # osx cache location
-            ~/Library/Caches/openfe_analysis
-          # When files are added or changed in a pooch registry
-          # bump this key to create a new cache, for example if
-          # the key is pooch-${{ matrix.os }}-1 change it to pooch-${{ matrix.os }}-2
-          key: pooch-${{ matrix.os }}-v1
-
-      - name: Pre-fetch Zenodo test data
-        run: |
-          python - <<'EOF'
-          import pooch
-          from pathlib import Path
-          
-          cache = Path(pooch.os_cache("openfe_analysis"))
-          cache.mkdir(parents=True, exist_ok=True)
-          
-          zenodo = pooch.create(
-              path=cache,
-              base_url="doi:10.5281/zenodo.17916322",
-              registry={
-                  "openfe_analysis_simulation_output.tar.gz": "md5:09752f2c4e5b7744d8afdee66dbd1414",
-                  "openfe_analysis_skipped.tar.gz": "md5:3840d044299caacc4ccd50e6b22c0880",
-              },
-          )
-          
-          zenodo.fetch(
-              "openfe_analysis_simulation_output.tar.gz",
-              processor=pooch.Untar(),
-          )
-          zenodo.fetch(
-              "openfe_analysis_skipped.tar.gz",
-              processor=pooch.Untar(),
-          )
-          EOF
 
       - name: "Run tests"
         run: |
