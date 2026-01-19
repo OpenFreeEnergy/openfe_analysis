@@ -11,6 +11,10 @@ on:
     - cron: "0 7 * * *"
   workflow_dispatch:
 
+# Normalize cache path for pooch across all OSes
+env:
+  POOCH_CACHE_DIR: $HOME/.pooch
+
 defaults:
   run:
     shell: bash -leo pipefail {0}
@@ -38,11 +42,12 @@ jobs:
       - name: Pre-fetch Zenodo test data
         if: steps.pooch-cache.outputs.cache-hit != 'true'
         run: |
+          mkdir -p "$POOCH_CACHE_DIR/openfe_analysis"
           micromamba run -n openfe_analysis_env python - <<'EOF'
           import pooch
           from pathlib import Path
           
-          cache = Path.home() / ".cache/openfe_analysis"
+          cache = Path(pooch.os_cache("openfe_analysis"))
           cache.mkdir(parents=True, exist_ok=True)
           
           zenodo = pooch.create(
@@ -62,7 +67,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: zenodo-data
-          path: ~/.cache/openfe_analysis
+          path: |
+            $POOCH_CACHE_DIR/openfe_analysis/openfe_analysis_simulation_output
+            $POOCH_CACHE_DIR/openfe_analysis/openfe_analysis_skipped
 
 
   tests:
@@ -89,7 +96,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: zenodo-data
-          path: ~/.cache/openfe_analysis
+          path: $POOCH_CACHE_DIR/openfe_analysis
 
       - name: "Setup Micromamba"
         uses: mamba-org/setup-micromamba@v2
