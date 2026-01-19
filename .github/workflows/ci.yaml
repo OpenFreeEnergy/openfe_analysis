@@ -26,6 +26,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Get current date
+        id: date
+        run: echo "date=$(date +%Y-%m-%d)" >> "${GITHUB_OUTPUT}"
+
       - name: "Setup Micromamba"
         uses: mamba-org/setup-micromamba@v2
         with:
@@ -42,7 +46,7 @@ jobs:
       - name: Pre-fetch Zenodo test data
         if: steps.pooch-cache.outputs.cache-hit != 'true'
         run: |
-          mkdir -p "$POOCH_CACHE_DIR/openfe_analysis"
+          mkdir -p "${{ env.POOCH_CACHE_DIR }}/openfe_analysis"
           micromamba run -n openfe_analysis_env python - <<'EOF'
           import pooch
           from pathlib import Path
@@ -57,7 +61,6 @@ jobs:
                   "openfe_analysis_simulation_output.tar.gz": "md5:09752f2c4e5b7744d8afdee66dbd1414",
                   "openfe_analysis_skipped.tar.gz": "md5:3840d044299caacc4ccd50e6b22c0880",
               },
-              retry_if_failed = True,
           )
           
           zenodo.fetch("openfe_analysis_simulation_output.tar.gz", processor=pooch.Untar())
@@ -69,8 +72,8 @@ jobs:
         with:
           name: zenodo-data
           path: |
-            $POOCH_CACHE_DIR/openfe_analysis/openfe_analysis_simulation_output
-            $POOCH_CACHE_DIR/openfe_analysis/openfe_analysis_skipped
+            ${{ env.POOCH_CACHE_DIR }}/openfe_analysis/openfe_analysis_simulation_output
+            ${{ env.POOCH_CACHE_DIR }}/openfe_analysis/openfe_analysis_skipped
 
 
   tests:
@@ -97,7 +100,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: zenodo-data
-          path: $POOCH_CACHE_DIR/openfe_analysis
+          path: ${{ env.POOCH_CACHE_DIR }}/openfe_analysis
 
       - name: "Setup Micromamba"
         uses: mamba-org/setup-micromamba@v2
