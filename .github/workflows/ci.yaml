@@ -57,17 +57,18 @@ jobs:
           cache = Path(pooch.os_cache("openfe_analysis"))
           cache.mkdir(parents=True, exist_ok=True)
           
-          # Files to download: direct Zenodo URLs + MD5 hashes
+          # Files to download: Zenodo API 'content' URLs + MD5 hashes
           files = {
               "openfe_analysis_simulation_output.tar.gz": (
-                  "https://zenodo.org/records/17916322/files/openfe_analysis_simulation_output.tar.gz",
+                  "https://zenodo.org/api/records/17916322/files/openfe_analysis_simulation_output.tar.gz/content",
                   "09752f2c4e5b7744d8afdee66dbd1414"
               ),
               "openfe_analysis_skipped.tar.gz": (
-                  "https://zenodo.org/records/17916322/files/openfe_analysis_skipped.tar.gz",
+                  "https://zenodo.org/api/records/17916322/files/openfe_analysis_skipped.tar.gz/content",
                   "3840d044299caacc4ccd50e6b22c0880"
               ),
           }
+      
           # Download and untar each file
           for fname, (url, md5) in files.items():
               pooch.retrieve(
