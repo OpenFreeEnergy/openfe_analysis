@@ -12,21 +12,21 @@ def cli():
 
 
 @cli.command(name="RFE_analysis")
-@click.option(
-    "--pdb",
-    type=click.Path(exists=True, readable=True, dir_okay=False, path_type=pathlib.Path),
-    required=True,
-    help="Path to the topology PDB file.",
+@click.argument(
+    "loc",
+    type=click.Path(
+        exists=True, readable=True, file_okay=False, dir_okay=True, path_type=pathlib.Path
+    ),
 )
-@click.option(
-    "--nc",
-    type=click.Path(exists=True, readable=True, dir_okay=False, path_type=pathlib.Path),
-    required=True,
-    help="Path to the NetCDF trajectory file.",
-)
-@click.option(
-    "--output",
-    type=click.Path(writable=True, dir_okay=False, path_type=pathlib.Path),
+@click.argument("output", type=click.Path(writable=True, dir_okay=False, path_type=pathlib.Path))
+def rfe_analysis(loc, output):
+    pdb = loc / "hybrid_system.pdb"
+    trj = loc / "simulation.nc"
+
+    data = rmsd.gather_rms_data(pdb, trj)
+
+    with click.open_file(output, "w") as f:
+        f.write(json.dumps(data))=pathlib.Path),
     required=True,
     help="Path to save the JSON results.",
 )
