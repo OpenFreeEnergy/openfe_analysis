@@ -26,4 +26,4 @@ def rfe_analysis(loc, output):
     data = rmsd.gather_rms_data(pdb, trj)
 
     with click.open_file(output, "w") as f:
-        f.write(json.dumps(data))=pathlib.Path),
+        f.write(json.dumps(data))
