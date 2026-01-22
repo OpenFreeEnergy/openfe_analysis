@@ -27,21 +27,3 @@ def rfe_analysis(loc, output):
 
     with click.open_file(output, "w") as f:
         f.write(json.dumps(data))=pathlib.Path),
-    required=True,
-    help="Path to save the JSON results.",
-)
-def rfe_analysis(pdb: pathlib.Path, nc: pathlib.Path, output: pathlib.Path):
-    """
-    Perform RMSD analysis for an RBFE simulation.
-
-    Arguments:
-        pdb: path to the topology PDB file.
-        nc: path to the trajectory file (NetCDF format).
-        output: path to save the JSON results.
-    """
-    # Run RMSD analysis
-    data = rmsd.gather_rms_data(pdb, nc)
-
-    # Write results
-    with output.open("w") as f:
-        json.dump(data, f, indent=2)
