@@ -42,19 +42,18 @@ def test_nojump(hybrid_system_pdb, simulation_nc):
         hybrid_system_pdb,
         simulation_nc,
         format="MultiStateReporter",
-        state_id=0,
+        state_id=2,
     )
     # find frame where protein would teleport across boundary and check it
     prot = universe.select_atoms("protein and name CA")
 
     nj = NoJump(prot)
     universe.trajectory.add_transformations(nj)
-
-    universe.trajectory[169]
-    universe.trajectory[170]
+    universe.trajectory[282]
+    universe.trajectory[283]
 
     # without the transformation, the y coordinate would jump up to ~81.86
-    ref = np.array([72.37, -0.27, 66.49])
+    ref = np.array([31.79594626, 52.14568866, 30.64103877])
     assert prot.center_of_mass() == pytest.approx(ref, abs=0.01)
 
 

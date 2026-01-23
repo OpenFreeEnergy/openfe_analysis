@@ -15,30 +15,30 @@ def test_gather_rms_data_regression(simulation_nc, hybrid_system_pdb):
     )
 
     assert_allclose(output["time(ps)"], [0.0, 100.0, 200.0, 300.0, 400.0, 500.0])
-    assert len(output["protein_RMSD"]) == 11
+    assert len(output["protein_RMSD"]) == 3
     assert_allclose(
         output["protein_RMSD"][0],
-        [0.0, 1.088, 1.009, 1.120, 1.026, 1.167],
+        [0.0, 1.003, 1.276, 1.263, 1.516, 1.251],
         rtol=1e-3,
     )
-    assert len(output["ligand_RMSD"]) == 11
+    assert len(output["ligand_RMSD"]) == 3
     assert_allclose(
         output["ligand_RMSD"][0],
-        [0.0, 0.9434, 0.8068, 0.8255, 1.2313, 0.7186],
+        [0.0, 0.9094, 1.0398, 0.9774, 1.9108, 1.2149],
         rtol=1e-3,
     )
-    assert len(output["ligand_wander"]) == 11
+    assert len(output["ligand_wander"]) == 3
     assert_allclose(
         output["ligand_wander"][0],
-        [0.0, 0.8128, 0.5010, 0.6392, 1.1071, 0.3021],
+        [0.0, 0.5458, 0.8364, 0.4914, 1.1939, 0.7587],
         rtol=1e-3,
     )
-    assert len(output["protein_2D_RMSD"]) == 11
+    assert len(output["protein_2D_RMSD"]) == 3
     # 15 entries because 6 * 6 frames // 2
     assert len(output["protein_2D_RMSD"][0]) == 15
     assert_allclose(
         output["protein_2D_RMSD"][0][:6],
-        [1.0884, 1.0099, 1.1200, 1.0267, 1.1673, 1.2378],
+        [1.0029, 1.2756, 1.2635, 1.5165, 1.2509, 1.0882],
         rtol=1e-3,
     )
 
