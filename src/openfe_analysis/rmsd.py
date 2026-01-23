@@ -23,11 +23,20 @@ class ShiftChains(TransformationBase):
         super().__init__()
 
     def _transform(self, ts):
+        # Get coordinates of all chains
         chains = [seg.atoms for seg in self.prot.segments]
         ref_chain = chains[0]
+        # Wrap all chains into the same box relative to ref_chain
         for chain in chains[1:]:
+            # Compute COM difference (how far the chain is from ref chain)
             vec = chain.center_of_mass() - ref_chain.center_of_mass()
-            chain.positions -= np.rint(vec / ts.dimensions[:3]) * ts.dimensions[:3]
+            # Wrap positions relative to ref_chain COM
+            # np.linalg.solve: Convert Cartesian vec to fractional coordinates
+            # np.round: Get nearest integer box translation
+            # np.dot: Convert back to Cartesian
+            chain.positions -= np.dot(np.round(np.linalg.solve(ts.cell, vec)),ts.cell)
+            # This only works for cubic cells
+            # chain.positions -= np.rint(vec / ts.dimensions[:3]) * ts.dimensions[:3]
         return ts
 
 
