@@ -24,6 +24,11 @@ def _determine_position_indices(dataset: nc.Dataset) -> NDArray:
     indices : NDArray[int]
       An ordered array of iteration indices which hold positions.
 
+    Raises
+    ------
+    ValueError
+        If positions are not written at a consistent interval.
+
     Note
     ----
     This assumes that the indices are equally spaced by a given
@@ -55,7 +60,8 @@ def _determine_position_indices(dataset: nc.Dataset) -> NDArray:
 
 
 def _state_to_replica(dataset: nc.Dataset, state_num: int, frame_num: int) -> int:
-    """Convert a state index to replica index at a given Dataset frame
+    """
+    Map a thermodynamic state index to the corresponding replica index.
 
     Parameters
     ----------
@@ -170,7 +176,7 @@ def _get_unitcell(
     dataset: nc.Dataset, replica_index: int, frame_num: int
 ) -> Optional[Tuple[unit.Quantity]]:
     """
-    Helper method to extract a unit cell from the stored
+    Helper method to extract unit cell dimensions from the stored
     box vectors in a MultiState reporter generated NetCDF file
     at a given state and Dataset frame.
 

@@ -14,22 +14,46 @@ from .transformations import Aligner, Minimiser, NoJump
 
 
 def make_Universe(top: pathlib.Path, trj: nc.Dataset, state: int) -> mda.Universe:
-    """Makes a Universe and applies some transformations
+    """
+    Construct an MDAnalysis Universe from a MultiState NetCDF trajectory
+    and apply standard analysis transformations.
+
+    The Universe is created using the custom ``FEReader`` to extract a
+    single state from a multistate simulation.
 
     Identifies two AtomGroups:
     - protein, defined as having standard amino acid names, then filtered
       down to CA
     - ligand, defined as resname UNK
 
-    Then applies some transformations.
+    Depending on whether a protein is present, a sequence of trajectory
+    transformations is applied:
 
     If a protein is present:
     - prevents the protein from jumping between periodic images
-    - moves the ligand to the image closest to the protein
-    - aligns the entire system to minimise the protein RMSD
+      (class:`NoJump`)
+    - moves the ligand to the image closest to the protein (:class:`Minimiser`)
+    - aligns the entire system to minimise the protein RMSD (:class:`Aligner`)
 
-    If only a ligand:
+    If only a ligand is present:
     - prevents the ligand from jumping between periodic images
+    - Aligns the ligand to minimize its RMSD
+
+    Parameters
+    ----------
+    top : pathlib.Path or Topology
+        Path to a topology file (e.g. PDB) or an already-loaded MDAnalysis
+        topology object.
+    trj : netCDF4.Dataset
+        Open NetCDF dataset produced by
+        ``openmmtools.multistate.MultiStateReporter``.
+    state : int
+        Thermodynamic state index to extract from the multistate trajectory.
+
+    Returns
+    -------
+    MDAnalysis.Universe
+        A Universe with trajectory transformations applied.
     """
     u = mda.Universe(
         top,
@@ -72,23 +96,37 @@ def make_Universe(top: pathlib.Path, trj: nc.Dataset, state: int) -> mda.Univers
 def gather_rms_data(
     pdb_topology: pathlib.Path, dataset: pathlib.Path, skip: Optional[int] = None
 ) -> dict[str, list[float]]:
-    """Generate structural analysis of RBFE simulation
+    """
+    Compute structural RMSD-based metrics for a multistate RBFE simulation.
+
+    For each thermodynamic state (lambda), this function:
+      - Loads the trajectory using ``FEReader``
+      - Applies standard PBC-handling and alignment transformations
+      - Computes protein and ligand structural metrics over time
+
+    The following analyses are produced per state:
+      - 1D protein CA RMSD time series
+      - 1D ligand RMSD time series
+      - Ligand center-of-mass displacement from its initial position
+        (``ligand_wander``)
+      - Flattened 2D protein RMSD matrix (pairwise RMSD between frames)
 
     Parameters
     ----------
     pdb_topology : pathlib.Path
-      path to pdb topology
+      Path to the PDB file defining system topology.
     dataset : pathlib.Path
-      path to nc trajectory
+      Path to the NetCDF trajectory file produced by a multistate simulation.
     skip : int, optional
-      step at which to progress through the trajectory.  by default, selects a
-      step that produces roughly 500 frames of analysis per replicate
+      Frame stride for analysis. If ``None``, a stride is chosen such that
+      approximately 500 frames are analyzed per state.
 
-    Produces, for each lambda state:
-    - 1D protein RMSD timeseries 'protein_RMSD'
-    - ligand RMSD timeseries
-    - ligand COM motion 'ligand_wander'
-    - 2D protein RMSD plot
+    Returns
+    -------
+    dict[str, list]
+        Dictionary containing per-state analysis results with keys:
+        ``protein_RMSD``, ``ligand_RMSD``, ``ligand_wander``,
+        ``protein_2D_RMSD``, and ``time(ps)``.
     """
     output = {
         "protein_RMSD": [],
@@ -183,19 +221,25 @@ def gather_rms_data(
 
 
 def twoD_RMSD(positions, w: Optional[npt.NDArray]) -> list[float]:
-    """2 dimensions RMSD
+    """
+    Compute a flattened 2D RMSD matrix from a trajectory.
+
+    For all unique frame pairs ``(i, j)`` with ``i < j``, this function
+    computes the RMSD between atomic coordinates after optimal alignment.
 
     Parameters
     ----------
     positions : np.ndarray
-      the protein positions for the entire trajectory
+      Atomic coordinates for all frames in the trajectory.
     w : np.ndarray, optional
-      weights array
+      Per-atom weights to use in the RMSD calculation. If ``None``,
+      all atoms are weighted equally.
 
     Returns
     -------
-    rmsd_matrix : list
-      a flattened version of the 2d
+    list of float
+      Flattened list of RMSD values corresponding to all frame pairs
+      ``(i, j)`` with ``i < j``.
     """
     nframes, _, _ = positions.shape
 

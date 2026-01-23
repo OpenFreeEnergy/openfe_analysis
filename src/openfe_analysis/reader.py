@@ -12,17 +12,24 @@ from openfe_analysis.utils.multistate import _determine_position_indices
 
 def _determine_iteration_dt(dataset) -> float:
     """
-    Find out the timestep between each frame in the trajectory.
+    Determine the time increment between successive iterations
+    in a MultiStateReporter trajectory.
+
+    The timestep is inferred from the serialized MCMC move stored in the
+    ``mcmc_moves`` group of the NetCDF file. Specifically, this assumes the
+    move defines both a ``timestep`` and ``n_steps`` parameter, such that
+
+        dt_iteration = n_steps * timestep
 
     Parameters
     ----------
     dataset : nc.Dataset
-      Dataset holding the MultiStateReporter generated NetCDF file.
+      NetCDF dataset produced by ``openmmtools.multistate.MultiStateReporter``.
 
     Returns
     -------
     float
-      The timestep in units of picoseconds.
+      The time between successive iterations, in picoseconds.
 
     Raises
     ------
@@ -52,12 +59,14 @@ def _determine_iteration_dt(dataset) -> float:
 
 
 class FEReader(ReaderBase):
-    """A MDAnalysis Reader for NetCDF files created by
-    `openmmtools.multistate.MultiStateReporter`
+    """
+    MDAnalysis trajectory reader for NetCDF files written by
+    ``openmmtools.multistate.MultiStateReporter``.
 
     Looks along a multistate NetCDF file along one of two axes:
       - constant state/lambda (varying replica)
       - constant replica (varying lambda)
+    Exactly one of ``state_id`` or ``replica_id`` must be specified.
     """
 
     _state_id: Optional[int]
@@ -75,9 +84,11 @@ class FEReader(ReaderBase):
         Parameters
         ----------
         filename : pathlike or nc.Dataset
-          path to the .nc file
+          Path to a MultiStateReporter NetCDF file, or an already-open
+          ``netCDF4.Dataset`` instance.
         convert_units : bool
-          convert positions to Angstrom
+          If ``True`` (default), positions are converted to Angstroms.
+          Otherwise, raw OpenMM units (nanometers) are returned.
         state_id : Optional[int]
           The Hamiltonian state index to extract. Must be defined if
           ``replica_id`` is not defined. May be negative (see notes below).
@@ -85,12 +96,17 @@ class FEReader(ReaderBase):
           The replica index to extract. Must be defined if ``state_id``
           is not defined. May be negative (see notes below).
 
+        Raises
+        ------
+        ValueError
+            If neither or both of ``state_id`` and ``replica_id`` are specified.
+
         Notes
         -----
         A negative index may be passed to either ``state_id`` or
         ``replica_id``. This will be interpreted as indexing in reverse
-        starting from the last state/replica. For example, passing a
-        value of -2 for ``replica_id`` will select the before last replica.
+        starting from the last state/replica. For example, ``replica_id=-2``
+        will select the before last replica.
         """
         if not ((state_id is None) ^ (replica_id is None)):
             raise ValueError(
@@ -141,16 +157,31 @@ class FEReader(ReaderBase):
 
     @staticmethod
     def parse_n_atoms(filename, **kwargs) -> int:
+        """
+        Determine the number of atoms stored in a MultiStateReporter NetCDF file.
+
+        Parameters
+        ----------
+        filename : path-like
+            Path to the NetCDF file.
+
+        Returns
+        -------
+        int
+            Number of atoms in the system.
+        """
         with nc.Dataset(filename) as ds:
             n_atoms = ds.dimensions["atom"].size
         return n_atoms
 
     def _read_next_timestep(self, ts=None) -> Timestep:
+        # Advance the trajectory by one frame.
         if (self._frame_index + 1) >= len(self):
             raise EOFError
         return self._read_frame(self._frame_index + 1)
 
     def _read_frame(self, frame: int) -> Timestep:
+        # Read a single trajectory frame.
         self._frame_index = frame
 
         if self._state_id is not None:
@@ -187,11 +218,13 @@ class FEReader(ReaderBase):
 
     @property
     def dt(self) -> float:
+        # Time difference between successive trajectory frames.
         return self._dt
 
     def _reopen(self):
         self._frame_index = -1
 
     def close(self):
+        # Close the underlying NetCDF dataset if owned by this reader.
         if self._dataset_owner:
             self._dataset.close()
