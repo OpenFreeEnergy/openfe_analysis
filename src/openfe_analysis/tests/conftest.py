@@ -32,7 +32,7 @@ def simulation_nc(rbfe_output_data_dir) -> pathlib.Path:
 
 @pytest.fixture(scope="session")
 def simulation_nc_multichain() -> pathlib.Path:
-    return "data/complex.nc"
+    return "data/simulation.nc"
 
 
 @pytest.fixture(scope="session")
@@ -46,7 +46,7 @@ def hybrid_system_pdb(rbfe_output_data_dir) -> pathlib.Path:
 
 @pytest.fixture(scope="session")
 def system_pdb_multichain() -> pathlib.Path:
-    return "data/alchemical_system.pdb"
+    return "data/hybrid_system.pdb"
 
 
 @pytest.fixture(scope="session")

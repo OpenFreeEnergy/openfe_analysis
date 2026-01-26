@@ -3,8 +3,13 @@ import numpy as np
 import pytest
 from itertools import islice
 from numpy.testing import assert_allclose
+import MDAnalysis as mda
 from MDAnalysis.analysis import rms
 from openfe_analysis.rmsd import gather_rms_data, make_Universe
+from MDAnalysis.transformations import unwrap
+from MDAnalysis.lib.mdamath import make_whole
+from openfe_analysis.reader import FEReader
+from openfe_analysis.transformations import Aligner
 
 @pytest.fixture
 def mda_universe(system_pdb_multichain, simulation_nc_multichain):
@@ -96,29 +101,38 @@ def test_gather_rms_data_regression_skippednc(simulation_skipped_nc, hybrid_syst
         rtol=1e-3,
     )
 
-def test_multichain_com_continuity(mda_universe):
-    u = mda_universe
+def test_multichain_rmsd_shifting(system_pdb_multichain, simulation_nc_multichain):
+    u = mda.Universe(
+        system_pdb_multichain,
+        simulation_nc_multichain,
+        state_id=0,
+        format=FEReader,
+    )
     prot = u.select_atoms("protein")
+    # Do other transformations, but no shifting
+    unwrap_tr = unwrap(prot)
+    for frag in prot.fragments:
+        make_whole(frag, reference_atom=frag[0])
+    align = Aligner(prot)
+    u.trajectory.add_transformations(unwrap_tr,align)
     chains = [seg.atoms for seg in prot.segments]
-    assert len(chains) == 2
+    assert len(chains) > 1, "Test requires multi-chain protein"
 
-    segments = prot.segments
-    assert len(segments) > 1, "Test requires multi-chain protein"
-
-    chain_a = segments[0].atoms
-    chain_b = segments[1].atoms
-
-    distances = []
-    for ts in islice(u.trajectory, 20):
-        d = np.linalg.norm(
-            chain_a.center_of_mass() - chain_b.center_of_mass()
-        )
-        distances.append(d)
-
-    # No large frame-to-frame jumps (PBC artifacts)
-    jumps = np.abs(np.diff(distances))
-    assert np.max(jumps) < 5.0  # Å
+    # RMSD without shifting
+    r = rms.RMSD(prot)
+    r.run()
+    rmsd_no_shift = r.rmsd[:, 2]
+    assert np.max(np.diff(rmsd_no_shift[:20])) > 10  # expect jumps
     u.trajectory.close()
+
+    # RMSD with shifting
+    u2 = make_Universe(system_pdb_multichain, simulation_nc_multichain, state=0)
+    prot2 = u2.select_atoms("protein")
+    R2 = rms.RMSD(prot2)
+    R2.run()
+    rmsd_shift = R2.rmsd[:, 2]
+    assert np.max(np.diff(rmsd_shift[:20])) < 2  # jumps should disappear
+    u2.trajectory.close()
 
 def test_chain_radius_of_gyration_stable(simulation_nc_multichain, system_pdb_multichain):
     u = make_Universe(system_pdb_multichain, simulation_nc_multichain, state=0)
@@ -132,22 +146,6 @@ def test_chain_radius_of_gyration_stable(simulation_nc_multichain, system_pdb_mu
 
     # Chain should not explode or collapse due to PBC errors
     assert np.std(rgs) < 2.0
-    u.trajectory.close()
-
-def test_rmsd_continuity(mda_universe):
-    u = mda_universe
-
-    prot = u.select_atoms("protein and name CA")
-    ref = prot.positions.copy()
-
-    rmsds = []
-    for ts in islice(u.trajectory, 20):
-        diff = prot.positions - ref
-        rmsd = np.sqrt((diff * diff).sum(axis=1).mean())
-        rmsds.append(rmsd)
-
-    jumps = np.abs(np.diff(rmsds))
-    assert np.max(jumps) < 2.0
     u.trajectory.close()
 
 def test_rmsd_reference_is_first_frame(mda_universe):
