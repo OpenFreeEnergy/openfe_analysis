@@ -9,6 +9,7 @@ import tqdm
 from MDAnalysis.analysis import rms
 from MDAnalysis.transformations import unwrap, TransformationBase
 from MDAnalysis.lib.mdamath import make_whole
+from MDAnalysis.lib.distances import minimize_vectors
 from numpy import typing as npt
 
 from .reader import FEReader
@@ -19,24 +20,23 @@ class ShiftChains(TransformationBase):
     """Shift all protein chains relative to the first chain to keep them in the same box."""
     def __init__(self, prot, max_threads=1):
         self.prot = prot
-        self.max_threads = max_threads  # required by MDAnalysis
+        self.max_threads = max_threads
         super().__init__()
 
     def _transform(self, ts):
         # Get coordinates of all chains
         chains = [seg.atoms for seg in self.prot.segments]
         ref_chain = chains[0]
+        # Ref center of mass
+        ref_com = ref_chain.center_of_mass()
         # Wrap all chains into the same box relative to ref_chain
         for chain in chains[1:]:
             # Compute COM difference (how far the chain is from ref chain)
-            vec = chain.center_of_mass() - ref_chain.center_of_mass()
-            # Wrap positions relative to ref_chain COM
-            # np.linalg.solve: Convert Cartesian vec to fractional coordinates
-            # np.round: Get nearest integer box translation
-            # np.dot: Convert back to Cartesian
-            chain.positions -= np.dot(np.round(np.linalg.solve(ts.cell, vec)),ts.cell)
-            # This only works for cubic cells
-            # chain.positions -= np.rint(vec / ts.dimensions[:3]) * ts.dimensions[:3]
+            vec = chain.center_of_mass() - ref_com
+            # Apply minimum-image convention
+            vec = minimize_vectors(vec[None, :], ts.dimensions)[0]
+            # Shift whole chain back into same image as reference
+            chain.positions -= vec
         return ts
 
 
