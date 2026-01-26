@@ -18,8 +18,9 @@ from .transformations import Aligner, Minimiser, NoJump
 
 class ShiftChains(TransformationBase):
     """Shift all protein chains relative to the first chain to keep them in the same box."""
-    def __init__(self, prot, max_threads=1):
+    def __init__(self, prot, ligand=None, max_threads=1):
         self.prot = prot
+        self.ligand = ligand
         self.max_threads = max_threads
         super().__init__()
 
@@ -37,6 +38,13 @@ class ShiftChains(TransformationBase):
             vec = minimize_vectors(vec[None, :], ts.dimensions)[0]
             # Shift whole chain back into same image as reference
             chain.positions -= vec
+
+        # shift ligand (if present)
+        if self.ligand is not None and len(self.ligand) > 0:
+            vec = self.ligand.center_of_mass() - ref_com
+            vec = minimize_vectors(vec[None, :], ts.dimensions)[0]
+            self.ligand.positions -= vec
+
         return ts
 
 
@@ -74,7 +82,7 @@ def make_Universe(top: pathlib.Path, trj: nc.Dataset, state: int) -> mda.Univers
         # - align everything to minimise protein RMSD
         # Shift all chains relative to first chain to keep in same box
         unwrap_tr = unwrap(prot)
-        shift = ShiftChains(prot)
+        shift = ShiftChains(prot, ligand)
 
         # Make each fragment whole internally
         for frag in prot.fragments:
