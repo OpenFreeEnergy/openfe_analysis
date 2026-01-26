@@ -62,10 +62,6 @@ jobs:
         run: |
           python - <<'EOF'
           import pooch
-#          from pathlib import Path
-#
-#          cache = Path(pooch.os_cache("openfe_analysis"))
-#          cache.mkdir(parents=True, exist_ok=True)
           
           files = {
               'openfe_analysis_simulation_output.tar.gz': 'md5:7f0babaac3dc8f7dd2db63cb79dff00f',
@@ -80,28 +76,6 @@ jobs:
           
           for fname in files:
               zenodo.fetch(fname, processor=pooch.Untar())
-          
-#          # Files to download: Zenodo API 'content' URLs + MD5 hashes
-#          files = {
-#              "openfe_analysis_simulation_output.tar.gz": (
-#                  "https://zenodo.org/api/records/18378051/files/openfe_analysis_simulation_output.tar.gz/content",
-#                  "7f0babaac3dc8f7dd2db63cb79dff00f"
-#              ),
-#              "openfe_analysis_skipped.tar.gz": (
-#                  "https://zenodo.org/api/records/18378051/files/openfe_analysis_skipped.tar.gz/content",
-#                  "ac42219bde9da3641375adf3a9ddffbf"
-#              ),
-#          }
-#
-#          # Download and untar each file
-#          for fname, (url, md5) in files.items():
-#              pooch.retrieve(
-#                  url=url,
-#                  fname=fname,
-#                  path=cache,
-#                  known_hash=f"md5:{md5}",
-#                  processor=pooch.Untar()
-#              )
 
           EOF
 
