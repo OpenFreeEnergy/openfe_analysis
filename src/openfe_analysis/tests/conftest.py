@@ -37,7 +37,7 @@ def rbfe_skipped_data_dir() -> pathlib.Path:
 
 @pytest.fixture(scope="session")
 def simulation_nc(rbfe_output_data_dir) -> pathlib.Path:
-    return "/Users/hannahbaumann/Downloads/openfe_analysis_simulation_output/sim_small.nc"
+    return rbfe_output_data_dir/"simulation.nc"
 
 
 @pytest.fixture(scope="session")
@@ -47,7 +47,7 @@ def simulation_skipped_nc(rbfe_skipped_data_dir) -> pathlib.Path:
 
 @pytest.fixture(scope="session")
 def hybrid_system_pdb(rbfe_output_data_dir) -> pathlib.Path:
-    return "/Users/hannahbaumann/Downloads/openfe_analysis_simulation_output/hybrid_system2.pdb"
+    return rbfe_output_data_dir/"hybrid_system.pdb"
 
 
 @pytest.fixture(scope="session")
