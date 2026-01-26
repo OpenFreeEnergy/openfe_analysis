@@ -7,45 +7,12 @@ import netCDF4 as nc
 import numpy as np
 import tqdm
 from MDAnalysis.analysis import rms
-from MDAnalysis.transformations import unwrap, TransformationBase
+from MDAnalysis.transformations import unwrap
 from MDAnalysis.lib.mdamath import make_whole
-from MDAnalysis.lib.distances import minimize_vectors
 from numpy import typing as npt
 
 from .reader import FEReader
-from .transformations import Aligner, Minimiser, NoJump
-
-
-class ShiftChains(TransformationBase):
-    """Shift all protein chains relative to the first chain to keep them in the same box."""
-    def __init__(self, prot, ligand=None, max_threads=1):
-        self.prot = prot
-        self.ligand = ligand
-        self.max_threads = max_threads
-        super().__init__()
-
-    def _transform(self, ts):
-        # Get coordinates of all chains
-        chains = [seg.atoms for seg in self.prot.segments]
-        ref_chain = chains[0]
-        # Ref center of mass
-        ref_com = ref_chain.center_of_mass()
-        # Wrap all chains into the same box relative to ref_chain
-        for chain in chains[1:]:
-            # Compute COM difference (how far the chain is from ref chain)
-            vec = chain.center_of_mass() - ref_com
-            # Apply minimum-image convention
-            vec = minimize_vectors(vec[None, :], ts.dimensions)[0]
-            # Shift whole chain back into same image as reference
-            chain.positions -= vec
-
-        # shift ligand (if present)
-        if self.ligand is not None and len(self.ligand) > 0:
-            vec = self.ligand.center_of_mass() - ref_com
-            vec = minimize_vectors(vec[None, :], ts.dimensions)[0]
-            self.ligand.positions -= vec
-
-        return ts
+from .transformations import Aligner, NoJump, ClosestImageShift
 
 
 def make_Universe(top: pathlib.Path, trj: nc.Dataset, state: int) -> mda.Universe:
@@ -76,24 +43,21 @@ def make_Universe(top: pathlib.Path, trj: nc.Dataset, state: int) -> mda.Univers
     ligand = u.select_atoms("resname UNK")
 
     if prot:
-        # if there's a protein in the system:
-        # - make the protein whole across periodic images between frames
-        # - put the ligand in the closest periodic image as the protein
-        # - align everything to minimise protein RMSD
-        # Shift all chains relative to first chain to keep in same box
+        # Unwrap all atoms
         unwrap_tr = unwrap(prot)
-        shift = ShiftChains(prot, ligand)
 
-        # Make each fragment whole internally
+        # Shift chains + ligand
+        chains = [seg.atoms for seg in prot.segments]
+        shift = ClosestImageShift(chains[0], [*chains[1:], ligand])
+        # Make each protein chain whole
         for frag in prot.fragments:
             make_whole(frag, reference_atom=frag[0])
-        minnie = Minimiser(prot, ligand)
+
         align = Aligner(prot)
 
         u.trajectory.add_transformations(
             unwrap_tr,
             shift,
-            minnie,
             align,
         )
     else:

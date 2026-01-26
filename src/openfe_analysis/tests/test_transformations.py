@@ -6,7 +6,7 @@ from MDAnalysis.analysis import rms
 from openfe_analysis import FEReader
 from openfe_analysis.transformations import (
     Aligner,
-    Minimiser,
+    ClosestImageShift,
     NoJump,
 )
 
@@ -22,10 +22,10 @@ def universe(hybrid_system_pdb, simulation_nc):
 
 
 @pytest.mark.flaky(reruns=3)
-def test_minimiser(universe):
+def test_closest_image_shift(universe):
     prot = universe.select_atoms("protein and name CA")
     lig = universe.select_atoms("resname UNK")
-    m = Minimiser(prot, lig)
+    m = ClosestImageShift(prot, [lig])
     universe.trajectory.add_transformations(m)
 
     d = mda.lib.distances.calc_bonds(prot.center_of_mass(), lig.center_of_mass())
