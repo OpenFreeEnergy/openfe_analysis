@@ -60,12 +60,12 @@ jobs:
           # Files to download: Zenodo API 'content' URLs + MD5 hashes
           files = {
               "openfe_analysis_simulation_output.tar.gz": (
-                  "https://zenodo.org/api/records/17916322/files/openfe_analysis_simulation_output.tar.gz/content",
-                  "09752f2c4e5b7744d8afdee66dbd1414"
+                  "https://zenodo.org/api/records/18378051/files/openfe_analysis_simulation_output.tar.gz/content",
+                  "7f0babaac3dc8f7dd2db63cb79dff00f"
               ),
               "openfe_analysis_skipped.tar.gz": (
-                  "https://zenodo.org/api/records/17916322/files/openfe_analysis_skipped.tar.gz/content",
-                  "3840d044299caacc4ccd50e6b22c0880"
+                  "https://zenodo.org/api/records/18378051/files/openfe_analysis_skipped.tar.gz/content",
+                  "ac42219bde9da3641375adf3a9ddffbf"
               ),
           }
       
