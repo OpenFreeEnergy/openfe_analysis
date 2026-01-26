@@ -9,10 +9,10 @@ POOCH_CACHE.mkdir(parents=True, exist_ok=True)
 
 ZENODO_RBFE_DATA = pooch.create(
     path=POOCH_CACHE,
-    base_url="doi:10.5281/zenodo.17916322",
+    base_url="doi:10.5281/zenodo.18378051",
     registry={
-       "openfe_analysis_simulation_output.tar.gz":"md5:09752f2c4e5b7744d8afdee66dbd1414",
-       "openfe_analysis_skipped.tar.gz": "md5:3840d044299caacc4ccd50e6b22c0880",
+       "openfe_analysis_simulation_output.tar.gz":"md5:7f0babaac3dc8f7dd2db63cb79dff00f",
+       "openfe_analysis_skipped.tar.gz": "md5:ac42219bde9da3641375adf3a9ddffbf",
     },
 )
 

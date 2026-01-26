@@ -80,8 +80,8 @@ def test_universe_from_nc_file(simulation_skipped_nc, hybrid_system_skipped_pdb)
         u = mda.Universe(hybrid_system_skipped_pdb, ds, format="MultiStateReporter", state_id=0)
 
         assert u
-        assert len(u.atoms) == 4762
-        assert len(u.trajectory) == 6
+        assert len(u.atoms) == 9178
+        assert len(u.trajectory) == 51
         assert u.trajectory.dt == pytest.approx(100.0)
 
 
@@ -94,9 +94,9 @@ def test_universe_creation_noconversion(simulation_skipped_nc, hybrid_system_ski
         u.atoms[:3].positions,
         np.array(
             [
-                [2.778386, 2.733918, 6.116591],
-                [2.836767, 2.600875, 6.174912],
-                [2.917513, 2.604454, 6.273793],
+                [7.958488, 2.319872, -0.927927],
+                [7.976206, 2.407798, -0.810073],
+                [7.981613, 2.526843, -0.828505],
             ]
         ),
         atol=1e-6,
@@ -137,10 +137,10 @@ def test_simulation_skipped_nc(simulation_skipped_nc, hybrid_system_skipped_pdb)
         replica_id=0,
     )
 
-    assert len(u.trajectory) == 6
-    assert u.trajectory.n_frames == 6
+    assert len(u.trajectory) == 51
+    assert u.trajectory.n_frames == 51
     assert u.trajectory.dt == 100
-    times = [0, 100, 200, 300, 400, 500]
+    times = np.arange(0, 5001, 100)
     for inx, ts in enumerate(u.trajectory):
         assert ts.time == times[inx]
         assert np.all(u.atoms.positions > 0)
