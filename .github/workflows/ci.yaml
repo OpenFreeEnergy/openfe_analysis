@@ -56,7 +56,7 @@ jobs:
             ~/.cache/openfe_analysis
             # macOS cache location
             ~/Library/Caches/openfe_analysis
-          key: pooch-${{ matrix.os }}-v1
+          key: pooch-${{ matrix.os }}-v2
 
       - name: "Download Zenodo data"
         run: |
