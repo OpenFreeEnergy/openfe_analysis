@@ -62,16 +62,12 @@ jobs:
         run: |
           python - <<'EOF'
           import pooch
-          
-          files = {
-              'openfe_analysis_simulation_output.tar.gz': 'md5:7f0babaac3dc8f7dd2db63cb79dff00f',
-              'openfe_analysis_skipped.tar.gz': 'md5:ac42219bde9da3641375adf3a9ddffbf',
-          }
+          from openfe_analysis.tests.conftest import ZENODO_DOI, ZENODO_FILES
           
           zenodo = pooch.create(
               path=pooch.os_cache('openfe_analysis'),
-              base_url='doi:10.5281/zenodo.18378051',
-              registry=files,
+              base_url=ZENODO_DOI,
+              registry=ZENODO_FILES,
           )
           
           for fname in files:
