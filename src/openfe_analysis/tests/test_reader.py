@@ -7,19 +7,19 @@ from numpy.testing import assert_allclose
 from openfe_analysis.reader import FEReader, _determine_iteration_dt
 
 
-def test_determine_dt(tmpdir, mcmc_serialized):
-    with tmpdir.as_cwd():
-        # create a fake dataset with a fake mcmc move group
-        ds = nc.Dataset("foo", "w", format="NETCDF3_64BIT_OFFSET")
+def test_determine_dt(tmp_path, mcmc_serialized):
+    file_path = tmp_path / "foo.nc"
+    # create a fake dataset with a fake mcmc move group
+    with nc.Dataset(file_path, "w", format="NETCDF3_64BIT_OFFSET") as ds:
         ds.groups["mcmc_moves"] = {"move0": [mcmc_serialized]}
 
         assert _determine_iteration_dt(ds) == 2.5
 
 
-def test_determine_dt_keyerror(tmpdir, mcmc_serialized):
-    with tmpdir.as_cwd():
-        # create a fake dataset with fake mcmc move without timestep
-        ds = nc.Dataset("foo", "w", format="NETCDF3_64BIT_OFFSET")
+def test_determine_dt_keyerror(tmp_path, mcmc_serialized):
+    file_path = tmp_path / "foo.nc"
+    # create a fake dataset with fake mcmc move without timestep
+    with nc.Dataset(file_path, "w", format="NETCDF3_64BIT_OFFSET") as ds:
         ds.groups["mcmc_moves"] = {"move0": [mcmc_serialized[:-51]]}
 
         with pytest.raises(KeyError, match="`n_steps` or `timestep` are"):
@@ -83,6 +83,7 @@ def test_universe_from_nc_file(simulation_skipped_nc, hybrid_system_skipped_pdb)
         assert len(u.atoms) == 9178
         assert len(u.trajectory) == 51
         assert u.trajectory.dt == pytest.approx(100.0)
+        u.trajectory.close()
 
 
 def test_universe_creation_noconversion(simulation_skipped_nc, hybrid_system_skipped_pdb):
@@ -121,7 +122,6 @@ def test_fereader_negative_replica(simulation_skipped_nc, hybrid_system_skipped_
 
 
 @pytest.mark.parametrize("rep_id, state_id", [[None, None], [1, 1]])
-@pytest.mark.flaky(reruns=3)
 def test_fereader_replica_state_id_error(simulation_skipped_nc, hybrid_system_skipped_pdb, rep_id, state_id):
     with pytest.raises(ValueError, match="Specify one and only one"):
         _ = mda.Universe(

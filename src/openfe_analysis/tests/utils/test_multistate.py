@@ -13,7 +13,7 @@ from openfe_analysis.utils.multistate import (
 )
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture()
 def dataset(simulation_nc):
     ds = nc.Dataset(simulation_nc)
     yield ds
@@ -26,13 +26,11 @@ def skipped_dataset(simulation_skipped_nc):
     ds.close()
 
 
-@pytest.mark.flaky(reruns=3)
 @pytest.mark.parametrize("state, frame, replica", [[0, 0, 0], [0, 1, 0], [0, -1, 2], [1, 100, 1]])
 def test_state_to_replica(dataset, state, frame, replica):
     assert _state_to_replica(dataset, state, frame) == replica
 
 
-@pytest.mark.flaky(reruns=3)
 def test_replica_positions_at_frame(dataset):
     pos = _replica_positions_at_frame(dataset, 1, -1)
     assert_allclose(
@@ -40,9 +38,9 @@ def test_replica_positions_at_frame(dataset):
     )
 
 
-def test_create_new_dataset(tmpdir):
-    with tmpdir.as_cwd():
-        ds = _create_new_dataset("foo.nc", 100, title="bar")
+def test_create_new_dataset(tmp_path):
+    file_path = tmp_path / "foo.nc"
+    with _create_new_dataset(file_path, 100, title="bar") as ds:
 
         # Test metadata
         assert ds.Conventions == "AMBER"
@@ -76,8 +74,6 @@ def test_create_new_dataset(tmpdir):
         assert ds.variables["cell_angles"].get_dims()[0].name == "frame"
         assert ds.variables["cell_angles"].get_dims()[1].name == "cell_angular"
         assert ds.variables["cell_angles"].dtype.name == "float64"
-
-        ds.close()
 
 
 def test_get_unitcell(dataset):

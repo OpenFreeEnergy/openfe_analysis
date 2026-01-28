@@ -23,7 +23,6 @@ def universe(hybrid_system_skipped_pdb, simulation_skipped_nc):
     u.trajectory.close()
 
 
-@pytest.mark.flaky(reruns=3)
 def test_minimiser(universe):
     prot = universe.select_atoms("protein and name CA")
     lig = universe.select_atoms("resname UNK")
@@ -37,7 +36,6 @@ def test_minimiser(universe):
     assert d == pytest.approx(24.79, abs=0.01)
 
 
-@pytest.mark.flaky(reruns=3)
 def test_nojump(hybrid_system_pdb, simulation_nc):
     universe = mda.Universe(
         hybrid_system_pdb,
@@ -58,7 +56,6 @@ def test_nojump(hybrid_system_pdb, simulation_nc):
     assert prot.center_of_mass() == pytest.approx(ref, abs=0.01)
 
 
-@pytest.mark.flaky(reruns=3)
 def test_aligner(universe):
     # checks that rmsd is identical with/without center&super
     prot = universe.select_atoms("protein and name CA")
