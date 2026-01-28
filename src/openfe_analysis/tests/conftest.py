@@ -4,35 +4,48 @@ import pathlib
 import pooch
 import pytest
 
-POOCH_CACHE = pooch.os_cache("openfe_analysis")
+ZENODO_DOI = "doi:10.5281/zenodo.18378051"
+
+ZENODO_FILES = {
+    "openfe_analysis_simulation_output.tar.gz": "md5:7f0babaac3dc8f7dd2db63cb79dff00f",
+    "openfe_analysis_skipped.tar.gz": "md5:ac42219bde9da3641375adf3a9ddffbf",
+}
+
+POOCH_CACHE = pathlib.Path(pooch.os_cache("openfe_analysis"))
+POOCH_CACHE.mkdir(parents=True, exist_ok=True)
+
 ZENODO_RBFE_DATA = pooch.create(
     path=POOCH_CACHE,
-    base_url="doi:10.5281/zenodo.17916322",
-    registry={
-       "openfe_analysis_simulation_output.tar.gz":"md5:09752f2c4e5b7744d8afdee66dbd1414",
-       "openfe_analysis_skipped.tar.gz": "md5:3840d044299caacc4ccd50e6b22c0880",
-    },
+    base_url=ZENODO_DOI,
+    registry=ZENODO_FILES,
 )
+
+def _fetch_and_untar_once(filename: str) -> pathlib.Path:
+    # If already untarred, reuse it
+    untar_dir = POOCH_CACHE / f"{filename}.untar"
+    if untar_dir.exists():
+        return untar_dir
+
+    # Otherwise fetch + untar
+    paths = ZENODO_RBFE_DATA.fetch(filename, processor=pooch.Untar())
+
+    return pathlib.Path(paths[0]).parent
+
 
 @pytest.fixture(scope="session")
 def rbfe_output_data_dir() -> pathlib.Path:
-    ZENODO_RBFE_DATA.fetch("openfe_analysis_simulation_output.tar.gz", processor=pooch.Untar())
-    result_dir = pathlib.Path(POOCH_CACHE) / "openfe_analysis_simulation_output.tar.gz.untar/openfe_analysis_simulation_output/"
-    return result_dir
+    untar_dir = _fetch_and_untar_once("openfe_analysis_simulation_output.tar.gz")
+    return untar_dir / "openfe_analysis_simulation_output"
+
 
 @pytest.fixture(scope="session")
 def rbfe_skipped_data_dir() -> pathlib.Path:
-    ZENODO_RBFE_DATA.fetch("openfe_analysis_skipped.tar.gz", processor=pooch.Untar())
-    result_dir = pathlib.Path(POOCH_CACHE) / "openfe_analysis_skipped.tar.gz.untar/openfe_analysis_skipped/"
-    return result_dir
+    untar_dir = _fetch_and_untar_once("openfe_analysis_skipped.tar.gz")
+    return untar_dir / "openfe_analysis_skipped"
 
 @pytest.fixture(scope="session")
 def simulation_nc(rbfe_output_data_dir) -> pathlib.Path:
     return rbfe_output_data_dir/"simulation.nc"
-
-@pytest.fixture(scope="session")
-def simulation_nc_multichain() -> pathlib.Path:
-    return "data/simulation.nc"
 
 
 @pytest.fixture(scope="session")
@@ -43,10 +56,6 @@ def simulation_skipped_nc(rbfe_skipped_data_dir) -> pathlib.Path:
 @pytest.fixture(scope="session")
 def hybrid_system_pdb(rbfe_output_data_dir) -> pathlib.Path:
     return rbfe_output_data_dir/"hybrid_system.pdb"
-
-@pytest.fixture(scope="session")
-def system_pdb_multichain() -> pathlib.Path:
-    return "data/hybrid_system.pdb"
 
 
 @pytest.fixture(scope="session")

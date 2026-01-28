@@ -12,7 +12,7 @@ from openfe_analysis.reader import FEReader
 from openfe_analysis.transformations import Aligner
 
 @pytest.fixture
-def mda_universe(system_pdb_multichain, simulation_nc_multichain):
+def mda_universe(hybrid_system_skipped_pdb, simulation_skipped_nc):
     """
     Safely create and destroy an MDAnalysis Universe.
 
@@ -20,15 +20,14 @@ def mda_universe(system_pdb_multichain, simulation_nc_multichain):
     - NetCDF file is opened exactly once
     """
     u = make_Universe(
-        system_pdb_multichain,
-        simulation_nc_multichain,
+        hybrid_system_skipped_pdb,
+        simulation_skipped_nc,
         state=0,
     )
-
     yield u
+    u.trajectory.close()
 
 
-@pytest.mark.flaky(reruns=1)
 def test_gather_rms_data_regression(simulation_nc, hybrid_system_pdb):
     output = gather_rms_data(
         hybrid_system_pdb,
@@ -37,35 +36,34 @@ def test_gather_rms_data_regression(simulation_nc, hybrid_system_pdb):
     )
 
     assert_allclose(output["time(ps)"], [0.0, 100.0, 200.0, 300.0, 400.0, 500.0])
-    assert len(output["protein_RMSD"]) == 11
+    assert len(output["protein_RMSD"]) == 3
     assert_allclose(
         output["protein_RMSD"][0],
-        [0.0, 1.088, 1.009, 1.120, 1.026, 1.167],
+        [0.0, 1.003, 1.276, 1.263, 1.516, 1.251],
         rtol=1e-3,
     )
-    assert len(output["ligand_RMSD"]) == 11
+    assert len(output["ligand_RMSD"]) == 3
     assert_allclose(
         output["ligand_RMSD"][0],
-        [0.0, 0.9434, 0.8068, 0.8255, 1.2313, 0.7186],
+        [0.0, 0.9094, 1.0398, 0.9774, 1.9108, 1.2149],
         rtol=1e-3,
     )
-    assert len(output["ligand_wander"]) == 11
+    assert len(output["ligand_wander"]) == 3
     assert_allclose(
         output["ligand_wander"][0],
-        [0.0, 0.8128, 0.5010, 0.6392, 1.1071, 0.3021],
+        [0.0, 0.5458, 0.8364, 0.4914, 1.1939, 0.7587],
         rtol=1e-3,
     )
-    assert len(output["protein_2D_RMSD"]) == 11
+    assert len(output["protein_2D_RMSD"]) == 3
     # 15 entries because 6 * 6 frames // 2
     assert len(output["protein_2D_RMSD"][0]) == 15
     assert_allclose(
         output["protein_2D_RMSD"][0][:6],
-        [1.0884, 1.0099, 1.1200, 1.0267, 1.1673, 1.2378],
+        [1.0029, 1.2756, 1.2635, 1.5165, 1.2509, 1.0882],
         rtol=1e-3,
     )
 
 
-@pytest.mark.flaky(reruns=1)
 def test_gather_rms_data_regression_skippednc(simulation_skipped_nc, hybrid_system_skipped_pdb):
     output = gather_rms_data(
         hybrid_system_skipped_pdb,
@@ -73,38 +71,40 @@ def test_gather_rms_data_regression_skippednc(simulation_skipped_nc, hybrid_syst
         skip=None,
     )
 
-    assert_allclose(output["time(ps)"], [0.0, 100.0, 200.0, 300.0, 400.0, 500.0])
+    assert_allclose(output["time(ps)"], np.arange(0, 5001, 100))
     assert len(output["protein_RMSD"]) == 11
+    # RMSD is low for this multichain protein
     assert_allclose(
-        output["protein_RMSD"][0],
-        [0, 1.176307, 1.203364, 1.486987, 1.17462, 1.143457],
+        output["protein_RMSD"][0][:6],
+        [0, 1.089747, 1.006143, 1.045068, 1.476353, 1.332893],
         rtol=1e-3,
     )
     assert len(output["ligand_RMSD"]) == 11
     assert_allclose(
-        output["ligand_RMSD"][0],
-        [0.0, 1.066418, 1.314562, 1.051574, 0.451605, 0.706698],
+        output["ligand_RMSD"][0][:6],
+        [0.0, 1.092039, 0.839234, 1.228383, 1.533331, 1.276798],
         rtol=1e-3,
     )
     assert len(output["ligand_wander"]) == 11
     assert_allclose(
-        output["ligand_wander"][0],
-        [0.0, 0.726258, 0.628337, 0.707796, 0.329651, 0.483037],
+        output["ligand_wander"][0][:6],
+        [0.0, 0.908097, 0.674262, 0.971328, 0.909263, 1.101882],
         rtol=1e-3,
     )
     assert len(output["protein_2D_RMSD"]) == 11
     # 15 entries because 6 * 6 frames // 2
-    assert len(output["protein_2D_RMSD"][0]) == 15
+    assert len(output["protein_2D_RMSD"][0]) == 1275
+    # TODO: very large as the multichain fix is not in yet
     assert_allclose(
         output["protein_2D_RMSD"][0][:6],
-        [1.176307, 1.203364, 1.486987, 1.17462, 1.143457, 1.244173],
+        [1.089747, 1.006143, 1.045068, 1.476353, 1.332893, 1.110507],
         rtol=1e-3,
     )
 
-def test_multichain_rmsd_shifting(system_pdb_multichain, simulation_nc_multichain):
+def test_multichain_rmsd_shifting(simulation_skipped_nc, hybrid_system_skipped_pdb):
     u = mda.Universe(
-        system_pdb_multichain,
-        simulation_nc_multichain,
+        hybrid_system_skipped_pdb,
+        simulation_skipped_nc,
         state_id=0,
         format=FEReader,
     )
@@ -126,7 +126,7 @@ def test_multichain_rmsd_shifting(system_pdb_multichain, simulation_nc_multichai
     u.trajectory.close()
 
     # RMSD with shifting
-    u2 = make_Universe(system_pdb_multichain, simulation_nc_multichain, state=0)
+    u2 = make_Universe(hybrid_system_skipped_pdb, simulation_skipped_nc, state=0)
     prot2 = u2.select_atoms("protein")
     R2 = rms.RMSD(prot2)
     R2.run()
@@ -134,8 +134,8 @@ def test_multichain_rmsd_shifting(system_pdb_multichain, simulation_nc_multichai
     assert np.max(np.diff(rmsd_shift[:20])) < 2  # jumps should disappear
     u2.trajectory.close()
 
-def test_chain_radius_of_gyration_stable(simulation_nc_multichain, system_pdb_multichain):
-    u = make_Universe(system_pdb_multichain, simulation_nc_multichain, state=0)
+def test_chain_radius_of_gyration_stable(simulation_skipped_nc, hybrid_system_skipped_pdb):
+    u = make_Universe(hybrid_system_skipped_pdb, simulation_skipped_nc, state=0)
 
     protein = u.select_atoms("protein")
     chain = protein.segments[0].atoms

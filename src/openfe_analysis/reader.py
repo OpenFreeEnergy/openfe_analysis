@@ -196,4 +196,4 @@ class FEReader(ReaderBase):
         if self._dataset is not None:
             if self._dataset_owner:
                 self._dataset.close()
-                self._dataset = None
+            self._dataset = None
