@@ -74,7 +74,7 @@ jobs:
               registry=ZENODO_FILES,
           )
           
-          for fname in files:
+          for fname in ZENODO_FILES:
               zenodo.fetch(fname, processor=pooch.Untar())
 
           EOF
