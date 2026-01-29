@@ -14,22 +14,44 @@ from .transformations import Aligner, Minimiser, NoJump
 
 
 def make_Universe(top: pathlib.Path, trj: nc.Dataset, state: int) -> mda.Universe:
-    """Makes a Universe and applies some transformations
+    """
+    Construct an MDAnalysis Universe from a MultiState NetCDF trajectory
+    and apply standard analysis transformations.
+
+    The Universe is created using the custom ``FEReader`` to extract a
+    single state from a multistate simulation.
 
     Identifies two AtomGroups:
-    - protein, defined as having standard amino acid names, then filtered
-      down to CA
+    - protein, defined as having standard amino acid names, then filtered down to CA
     - ligand, defined as resname UNK
 
-    Then applies some transformations.
+    Depending on whether a protein is present, a sequence of trajectory
+    transformations is applied:
 
     If a protein is present:
-    - prevents the protein from jumping between periodic images
-    - moves the ligand to the image closest to the protein
-    - aligns the entire system to minimise the protein RMSD
+    - prevents the protein from jumping between periodic images (class:`NoJump`)
+    - moves the ligand to the image closest to the protein (:class:`Minimiser`)
+    - aligns the entire system to minimise the protein RMSD (:class:`Aligner`)
 
-    If only a ligand:
+    If only a ligand is present:
     - prevents the ligand from jumping between periodic images
+    - Aligns the ligand to minimize its RMSD
+
+    Parameters
+    ----------
+    top : pathlib.Path or Topology
+        Path to a topology file (e.g. PDB) or an already-loaded MDAnalysis
+        topology object.
+    trj : netCDF4.Dataset
+        Open NetCDF dataset produced by
+        ``openmmtools.multistate.MultiStateReporter``.
+    state : int
+        Thermodynamic state index to extract from the multistate trajectory.
+
+    Returns
+    -------
+    MDAnalysis.Universe
+        A Universe with trajectory transformations applied.
     """
     u = mda.Universe(
         top,
