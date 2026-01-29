@@ -1,15 +1,18 @@
+from itertools import islice
+
+import MDAnalysis as mda
 import netCDF4 as nc
 import numpy as np
 import pytest
-from itertools import islice
-from numpy.testing import assert_allclose
-import MDAnalysis as mda
 from MDAnalysis.analysis import rms
-from openfe_analysis.rmsd import gather_rms_data, make_Universe
-from MDAnalysis.transformations import unwrap
 from MDAnalysis.lib.mdamath import make_whole
+from MDAnalysis.transformations import unwrap
+from numpy.testing import assert_allclose
+
 from openfe_analysis.reader import FEReader
+from openfe_analysis.rmsd import gather_rms_data, make_Universe
 from openfe_analysis.transformations import Aligner
+
 
 @pytest.fixture
 def mda_universe(hybrid_system_skipped_pdb, simulation_skipped_nc):
@@ -101,6 +104,7 @@ def test_gather_rms_data_regression_skippednc(simulation_skipped_nc, hybrid_syst
         rtol=1e-3,
     )
 
+
 def test_multichain_rmsd_shifting(simulation_skipped_nc, hybrid_system_skipped_pdb):
     u = mda.Universe(
         hybrid_system_skipped_pdb,
@@ -114,7 +118,7 @@ def test_multichain_rmsd_shifting(simulation_skipped_nc, hybrid_system_skipped_p
     for frag in prot.fragments:
         make_whole(frag, reference_atom=frag[0])
     align = Aligner(prot)
-    u.trajectory.add_transformations(unwrap_tr,align)
+    u.trajectory.add_transformations(unwrap_tr, align)
     chains = [seg.atoms for seg in prot.segments]
     assert len(chains) > 1, "Test requires multi-chain protein"
 
@@ -134,6 +138,7 @@ def test_multichain_rmsd_shifting(simulation_skipped_nc, hybrid_system_skipped_p
     assert np.max(np.diff(rmsd_shift[:20])) < 2  # jumps should disappear
     u2.trajectory.close()
 
+
 def test_chain_radius_of_gyration_stable(simulation_skipped_nc, hybrid_system_skipped_pdb):
     u = make_Universe(hybrid_system_skipped_pdb, simulation_skipped_nc, state=0)
 
@@ -148,6 +153,7 @@ def test_chain_radius_of_gyration_stable(simulation_skipped_nc, hybrid_system_sk
     assert np.std(rgs) < 2.0
     u.trajectory.close()
 
+
 def test_rmsd_reference_is_first_frame(mda_universe):
     u = mda_universe
     prot = u.select_atoms("protein")
@@ -159,12 +165,13 @@ def test_rmsd_reference_is_first_frame(mda_universe):
     assert rmsd == 0.0
     u.trajectory.close()
 
+
 def test_ligand_com_continuity(mda_universe):
     u = mda_universe
     ligand = u.select_atoms("resname UNK")
 
     coms = [ligand.center_of_mass() for ts in islice(u.trajectory, 20)]
-    jumps = [np.linalg.norm(coms[i+1] - coms[i]) for i in range(len(coms)-1)]
+    jumps = [np.linalg.norm(coms[i + 1] - coms[i]) for i in range(len(coms) - 1)]
 
     assert max(jumps) < 5.0
     u.trajectory.close()

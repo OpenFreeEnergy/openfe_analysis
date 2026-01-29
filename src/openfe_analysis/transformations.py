@@ -8,8 +8,8 @@ and to automatically align the system to a protein structure.
 import MDAnalysis as mda
 import numpy as np
 from MDAnalysis.analysis.align import rotation_matrix
-from MDAnalysis.transformations.base import TransformationBase
 from MDAnalysis.lib.mdamath import triclinic_vectors
+from MDAnalysis.transformations.base import TransformationBase
 from numpy import typing as npt
 
 

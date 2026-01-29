@@ -7,12 +7,12 @@ import netCDF4 as nc
 import numpy as np
 import tqdm
 from MDAnalysis.analysis import rms
-from MDAnalysis.transformations import unwrap
 from MDAnalysis.lib.mdamath import make_whole
+from MDAnalysis.transformations import unwrap
 from numpy import typing as npt
 
 from .reader import FEReader
-from .transformations import Aligner, NoJump, ClosestImageShift
+from .transformations import Aligner, ClosestImageShift, NoJump
 
 
 def make_Universe(top: pathlib.Path, trj: nc.Dataset, state: int) -> mda.Universe:
@@ -183,7 +183,6 @@ def gather_rms_data(
             if ligand:
                 output["ligand_RMSD"].append(this_ligand_rmsd)
                 output["ligand_wander"].append(this_ligand_wander)
-
 
             output["time(ps)"] = list(np.arange(len(u.trajectory))[::skip] * u.trajectory.dt)
 

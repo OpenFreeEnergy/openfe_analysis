@@ -52,7 +52,7 @@ def test_universe_creation(simulation_nc, hybrid_system_pdb):
         )
         * 10,
     )
-    assert_allclose(u.dimensions, [78.11549, 78.11549, 78.11549, 60 , 60 , 90])
+    assert_allclose(u.dimensions, [78.11549, 78.11549, 78.11549, 60, 60, 90])
 
     # Now check the second frame
     u.trajectory[1]
@@ -76,7 +76,6 @@ def test_universe_creation(simulation_nc, hybrid_system_pdb):
 
 def test_universe_from_nc_file(simulation_skipped_nc, hybrid_system_skipped_pdb):
     with nc.Dataset(simulation_skipped_nc) as ds:
-
         u = mda.Universe(hybrid_system_skipped_pdb, ds, format="MultiStateReporter", state_id=0)
 
         assert u
@@ -88,7 +87,11 @@ def test_universe_from_nc_file(simulation_skipped_nc, hybrid_system_skipped_pdb)
 
 def test_universe_creation_noconversion(simulation_skipped_nc, hybrid_system_skipped_pdb):
     u = mda.Universe(
-        hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, state_id=0, convert_units=False
+        hybrid_system_skipped_pdb,
+        simulation_skipped_nc,
+        format=FEReader,
+        state_id=0,
+        convert_units=False,
     )
     assert u.trajectory.ts.frame == 0
     assert_allclose(
@@ -114,7 +117,9 @@ def test_fereader_negative_state(simulation_skipped_nc, hybrid_system_skipped_pd
 
 
 def test_fereader_negative_replica(simulation_skipped_nc, hybrid_system_skipped_pdb):
-    u = mda.Universe(hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, replica_id=-2)
+    u = mda.Universe(
+        hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, replica_id=-2
+    )
 
     assert u.trajectory._state_id is None
     assert u.trajectory._replica_id == 9
@@ -122,15 +127,22 @@ def test_fereader_negative_replica(simulation_skipped_nc, hybrid_system_skipped_
 
 
 @pytest.mark.parametrize("rep_id, state_id", [[None, None], [1, 1]])
-def test_fereader_replica_state_id_error(simulation_skipped_nc, hybrid_system_skipped_pdb, rep_id, state_id):
+def test_fereader_replica_state_id_error(
+    simulation_skipped_nc, hybrid_system_skipped_pdb, rep_id, state_id
+):
     with pytest.raises(ValueError, match="Specify one and only one"):
         _ = mda.Universe(
-            hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, state_id=state_id, replica_id=rep_id
+            hybrid_system_skipped_pdb,
+            simulation_skipped_nc,
+            format=FEReader,
+            state_id=state_id,
+            replica_id=rep_id,
         )
 
 
 def test_simulation_skipped_nc(simulation_skipped_nc, hybrid_system_skipped_pdb):
     from MDAnalysis.transformations import wrap
+
     u = mda.Universe(
         hybrid_system_skipped_pdb,
         simulation_skipped_nc,

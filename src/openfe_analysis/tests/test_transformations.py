@@ -23,7 +23,6 @@ def universe(hybrid_system_skipped_pdb, simulation_skipped_nc):
     u.trajectory.close()
 
 
-
 def test_closest_image_shift(universe):
     prot = universe.select_atoms("protein and name CA")
     lig = universe.select_atoms("resname UNK")
