@@ -15,11 +15,26 @@ from .reader import FEReader
 from .transformations import Aligner, ClosestImageShift, NoJump
 
 
+def select_protein_and_ligands(
+    u: mda.Universe,
+    protein_selection: str,
+    ligand_selection: str,
+):
+    prot = u.select_atoms(protein_selection)
+
+    lig_atoms = u.select_atoms(ligand_selection)
+
+    # split into individual ligands by residue
+    ligands = [res.atoms for res in lig_atoms.residues]
+
+    return prot, ligands
+
+
 def make_Universe(
     top: pathlib.Path,
     trj: nc.Dataset,
     state: int,
-    ligand_resname: str = "UNK",
+    ligand_selection: str = "resname UNK",
     protein_selection: str = "protein and name CA",
 ) -> mda.Universe:
     """
@@ -33,8 +48,8 @@ def make_Universe(
       Trajectory dataset.
     state : int
       State index in the trajectory.
-    ligand_resname : str, default 'UNK'
-      Residue name(s) for ligands. Supports multiple ligands.
+    ligand_selection : str, default 'resname UNK'
+      MDAnalysis selection string for ligands. Supports multiple ligands.
     protein_selection : str, default 'protein and name CA'
       MDAnalysis selection string for the protein atoms to consider.
 
@@ -59,8 +74,8 @@ def make_Universe(
         state_id=state,
         format=FEReader,
     )
-    prot = u.select_atoms(protein_selection)
-    ligands = [res.atoms for res in u.residues if res.resname == ligand_resname]
+
+    prot, ligands = select_protein_and_ligands(u, protein_selection, ligand_selection)
 
     if prot:
         # Unwrap all atoms
@@ -94,7 +109,7 @@ def gather_rms_data(
     pdb_topology: pathlib.Path,
     dataset: pathlib.Path,
     skip: Optional[int] = None,
-    ligand_resname: str = "UNK",
+    ligand_selection: str = "resname UNK",
     protein_selection: str = "protein and name CA",
 ) -> dict[str, list[float]]:
     """Generate structural analysis of RBFE simulation
@@ -108,8 +123,8 @@ def gather_rms_data(
     skip : int, optional
       step at which to progress through the trajectory.  by default, selects a
       step that produces roughly 500 frames of analysis per replicate
-    ligand_resname : str, default 'UNK'
-      Residue name for ligand(s). Supports multiple ligands.
+    ligand_selection: str = "resname UNK",
+      MDAnalysis selection string for ligand(s). Supports multiple ligands.
     protein_selection : str, default 'protein and name CA'
       MDAnalysis selection string for the protein atoms to consider.
 
@@ -153,12 +168,11 @@ def gather_rms_data(
                 u_top._topology,
                 ds,
                 state=i,
-                ligand_resname=ligand_resname,
+                ligand_resname=ligand_selection,
                 protein_selection=protein_selection,
             )
 
-            prot = u.select_atoms(protein_selection)
-            ligands = [res.atoms for res in u.residues if res.resname == ligand_resname]
+            prot, ligands = select_protein_and_ligands(u, protein_selection, ligand_selection)
 
             # Prepare storage
             if prot:
