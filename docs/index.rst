@@ -16,7 +16,7 @@ The **OpenFE Analysis** toolkit provides a free and open-source framework for an
         :link: reference/api/index
         :link-type: doc
 
-        Comprehensive details of the **openfe** Python API.
+        Comprehensive details of the **openfe_analysis** Python API.
 
 
 .. toctree::
