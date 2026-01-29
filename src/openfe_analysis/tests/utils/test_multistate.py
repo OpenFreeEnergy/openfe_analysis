@@ -19,6 +19,7 @@ def dataset(simulation_nc):
     yield ds
     ds.close()
 
+
 @pytest.fixture(scope="module")
 def skipped_dataset(simulation_skipped_nc):
     ds = nc.Dataset(simulation_skipped_nc)
@@ -34,14 +35,15 @@ def test_state_to_replica(dataset, state, frame, replica):
 def test_replica_positions_at_frame(dataset):
     pos = _replica_positions_at_frame(dataset, 1, -1)
     assert_allclose(
-        pos[-3] * unit("nanometer"), np.array([4.674962, 2.110855, 0.844064]) * unit("nanometer"), atol=1e-6,
+        pos[-3] * unit("nanometer"),
+        np.array([4.674962, 2.110855, 0.844064]) * unit("nanometer"),
+        atol=1e-6,
     )
 
 
 def test_create_new_dataset(tmp_path):
     file_path = tmp_path / "foo.nc"
     with _create_new_dataset(file_path, 100, title="bar") as ds:
-
         # Test metadata
         assert ds.Conventions == "AMBER"
         assert ds.ConventionVersion == "1.0"
@@ -87,6 +89,5 @@ def test_get_unitcell(dataset):
 def test_simulation_skipped_nc_no_positions_box_vectors_frame1(
     skipped_dataset,
 ):
-
     assert _get_unitcell(skipped_dataset, 1, 1) is None
     assert skipped_dataset.variables["positions"][1][0].mask.all()

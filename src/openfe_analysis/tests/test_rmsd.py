@@ -54,21 +54,21 @@ def test_gather_rms_data_regression_skippednc(simulation_skipped_nc, hybrid_syst
     # TODO: RMSD is very large as the multichain fix is not in yet
     assert_allclose(
         output["protein_RMSD"][0][:6],
-        [0, 30.620948, 31.158894,  1.045068, 30.735975, 30.999849],
+        [0, 30.620948, 31.158894, 1.045068, 30.735975, 30.999849],
         rtol=1e-3,
     )
     assert len(output["ligand_RMSD"]) == 11
     # TODO: RMSD is very large as the multichain fix is not in yet
     assert_allclose(
         output["ligand_RMSD"][0][:6],
-        [0.0, 12.607834, 13.882825,  1.228384, 14.129542, 14.535247],
+        [0.0, 12.607834, 13.882825, 1.228384, 14.129542, 14.535247],
         rtol=1e-3,
     )
     assert len(output["ligand_wander"]) == 11
     # TODO: very large as the multichain fix is not in yet
     assert_allclose(
         output["ligand_wander"][0][:6],
-        [0.0, 10.150182, 11.868109,  0.971329, 12.160156, 12.843338],
+        [0.0, 10.150182, 11.868109, 0.971329, 12.160156, 12.843338],
         rtol=1e-3,
     )
     assert len(output["protein_2D_RMSD"]) == 11
@@ -77,6 +77,6 @@ def test_gather_rms_data_regression_skippednc(simulation_skipped_nc, hybrid_syst
     # TODO: very large as the multichain fix is not in yet
     assert_allclose(
         output["protein_2D_RMSD"][0][:6],
-        [30.620948, 31.158894,  1.045068, 30.735975, 30.999849, 31.102847],
+        [30.620948, 31.158894, 1.045068, 30.735975, 30.999849, 31.102847],
         rtol=1e-3,
     )
