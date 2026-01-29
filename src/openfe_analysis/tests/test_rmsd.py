@@ -47,13 +47,13 @@ def test_gather_rms_data_regression(simulation_nc, hybrid_system_pdb):
     )
     assert len(output["ligand_RMSD"]) == 3
     assert_allclose(
-        output["ligand_RMSD"][0],
+        output["ligand_RMSD"][0][0],
         [0.0, 0.9094, 1.0398, 0.9774, 1.9108, 1.2149],
         rtol=1e-3,
     )
     assert len(output["ligand_wander"]) == 3
     assert_allclose(
-        output["ligand_wander"][0],
+        output["ligand_wander"][0][0],
         [0.0, 0.5458, 0.8364, 0.4914, 1.1939, 0.7587],
         rtol=1e-3,
     )
@@ -65,6 +65,38 @@ def test_gather_rms_data_regression(simulation_nc, hybrid_system_pdb):
         [1.0029, 1.2756, 1.2635, 1.5165, 1.2509, 1.0882],
         rtol=1e-3,
     )
+
+
+def test_gather_rms_data_septop(simulation_nc_septop, system_septop):
+    output = gather_rms_data(
+        system_septop,
+        simulation_nc_septop,
+        skip=100,
+    )
+
+    assert_allclose(output["time(ps)"], [0.0, 10000.0])
+    assert len(output["protein_RMSD"]) == 19
+    assert len(output["ligand_RMSD"]) == 19
+    # Check that we have two lists, one for each ligand
+    assert len(output["ligand_RMSD"][0]) == 2
+    assert len(output["ligand_wander"]) == 19
+    # Check that we have two lists, one for each ligand
+    assert len(output["ligand_wander"][0]) == 2
+
+
+def test_make_universe_two_ligands(simulation_nc_septop, system_septop):
+    # Create Universe
+    u = make_Universe(top=system_septop, trj=simulation_nc_septop, state=0)
+
+    # Select protein and ligands
+    prot = u.select_atoms("protein and name CA")
+    ligands = [res.atoms for res in u.residues if res.resname == "UNK"]
+
+    # Check that we have two ligands
+    assert len(ligands) == 2, f"Expected 2 ligands, got {len(ligands)}"
+
+    # Check protein is present
+    assert len(prot) > 0
 
 
 def test_gather_rms_data_regression_skippednc(simulation_skipped_nc, hybrid_system_skipped_pdb):
@@ -84,13 +116,13 @@ def test_gather_rms_data_regression_skippednc(simulation_skipped_nc, hybrid_syst
     )
     assert len(output["ligand_RMSD"]) == 11
     assert_allclose(
-        output["ligand_RMSD"][0][:6],
+        output["ligand_RMSD"][0][0][:6],
         [0.0, 1.092039, 0.839234, 1.228383, 1.533331, 1.276798],
         rtol=1e-3,
     )
     assert len(output["ligand_wander"]) == 11
     assert_allclose(
-        output["ligand_wander"][0][:6],
+        output["ligand_wander"][0][0][:6],
         [0.0, 0.908097, 0.674262, 0.971328, 0.909263, 1.101882],
         rtol=1e-3,
     )
@@ -158,7 +190,7 @@ def test_rmsd_reference_is_first_frame(mda_universe):
     u = mda_universe
     prot = u.select_atoms("protein")
 
-    ts = next(iter(u.trajectory))  # SAFE
+    _ = next(iter(u.trajectory))  # SAFE
     ref = prot.positions.copy()
 
     rmsd = np.sqrt(((prot.positions - ref) ** 2).mean())
