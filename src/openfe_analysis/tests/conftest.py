@@ -1,5 +1,4 @@
 import pathlib
-from importlib import resources
 
 import pooch
 import pytest
