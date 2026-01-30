@@ -76,21 +76,17 @@ class RMSResults:
         )
 
 
-def select_protein_and_ligands(
+def _select_protein_and_ligands(
     u: mda.Universe,
     protein_selection: str,
     ligand_selection: str,
-):
-    prot = u.select_atoms(protein_selection)
-
-    lig_residues = u.select_atoms(ligand_selection).residues
-    print([res.resid for res in lig_residues])
-    print([res.segid for res in lig_residues])
-
+) -> tuple[mda.core.groups.AtomGroup, list[mda.core.groups.AtomGroup]]:
+    protein = u.select_atoms(protein_selection)
+    lig_atoms = u.select_atoms(ligand_selection)
     # split into individual ligands by residue
-    ligands = [res.atoms for res in lig_residues]
+    ligands = [res.atoms for res in lig_atoms.residues]
 
-    return prot, ligands
+    return protein, ligands
 
 
 def make_Universe(
@@ -138,7 +134,7 @@ def make_Universe(
         format=FEReader,
     )
 
-    prot, ligands = select_protein_and_ligands(u, protein_selection, ligand_selection)
+    prot, ligands = _select_protein_and_ligands(u, protein_selection, ligand_selection)
 
     if prot:
         # Unwrap all atoms
@@ -166,6 +162,131 @@ def make_Universe(
             u.trajectory.add_transformations(NoJump(lig), Aligner(lig))
 
     return u
+
+
+def twoD_RMSD(positions: np.ndarray, w: Optional[npt.NDArray]) -> list[float]:
+    """2 dimensions RMSD
+
+    Parameters
+    ----------
+    positions : np.ndarray
+      the protein positions for the entire trajectory
+    w : np.ndarray, optional
+      weights array
+
+    Returns
+    -------
+    rmsd_matrix : list
+      Flattened list of RMSD values between all frame pairs.
+    """
+    nframes, _, _ = positions.shape
+
+    output = []
+
+    for i, j in itertools.combinations(range(nframes), 2):
+        posi, posj = positions[i], positions[j]
+
+        rmsd = rms.rmsd(posi, posj, w, center=True, superposition=True)
+
+        output.append(rmsd)
+
+    return output
+
+
+def analyze_state(
+    u: mda.Universe,
+    prot: Optional[mda.core.groups.AtomGroup],
+    ligands: list[mda.core.groups.AtomGroup],
+    skip: int,
+) -> tuple[
+    Optional[list[float]],
+    Optional[np.ndarray],
+    Optional[list[list[float]]],
+    Optional[list[list[float]]],
+]:
+    """
+    Compute RMSD and COM drift for a single lambda state.
+
+    Parameters
+    ----------
+    u : mda.Universe
+        Universe containing the trajectory.
+    protein : AtomGroup or None
+        Protein atoms to compute RMSD for.
+    ligands : list of AtomGroups
+        Ligands to compute RMSD and COM drift for.
+    skip : int
+        Step size to skip frames (e.g., every `skip`-th frame).
+
+    Returns
+    -------
+    StateRMSData
+        RMSD data for protein and ligands.
+    """
+    traj_slice = u.trajectory[::skip]
+    # Prepare storage
+    if prot:
+        prot_positions = np.empty((len(traj_slice), len(prot), 3), dtype=np.float32)
+        prot_start = prot.positions.copy()
+        prot_rmsd = []
+
+    lig_starts = [lig.positions.copy() for lig in ligands]
+    lig_initial_coms = [lig.center_of_mass() for lig in ligands]
+    lig_rmsd: list[list[float]] = [[] for _ in ligands]
+    lig_com_drift: list[list[float]] = [[] for _ in ligands]
+
+    for ts_i, ts in enumerate(traj_slice):
+        if prot:
+            prot_positions[ts_i, :, :] = prot.positions
+            prot_rmsd.append(
+                rms.rmsd(
+                    prot.positions,
+                    prot_start,
+                    None,  # prot_weights,
+                    center=False,
+                    superposition=False,
+                )
+            )
+        for i, lig in enumerate(ligands):
+            lig_rmsd[i].append(
+                rms.rmsd(
+                    lig.positions,
+                    lig_starts[i],
+                    lig.masses / np.mean(lig.masses),
+                    center=False,
+                    superposition=False,
+                )
+            )
+            lig_com_drift[i].append(
+                # distance between start and current ligand position
+                # ignores PBC, but we've already centered the traj
+                mda.lib.distances.calc_bonds(lig.center_of_mass(), lig_initial_coms[i])
+            )
+
+    protein_2d = twoD_RMSD(prot_positions, w=None) if prot else None
+    protein_rmsd_out = prot_rmsd if prot else None
+
+    ligands_data = None
+    if ligands:
+        single_ligands = [
+            SingleLigandRMSData(
+                rmsd=lig_rmsd[i],
+                com_drift=lig_com_drift[i],
+                resname=lig.residues[0].resname,
+                resid=lig.residues[0].resid,
+                segid=lig.residues[0].segid,
+            )
+            for i, lig in enumerate(ligands)
+        ]
+        ligands_data = LigandsRMSData(single_ligands)
+
+    state_data = StateRMSData(
+        protein_rmsd=protein_rmsd_out,
+        protein_2d_rmsd=protein_2d,
+        ligands=ligands_data,
+    )
+
+    return state_data
 
 
 def gather_rms_data(
@@ -223,118 +344,24 @@ def gather_rms_data(
 
         states: list[StateRMSData] = []
 
-        for i in range(n_lambda):
+        for state in range(n_lambda):
             # cheeky, but we can read the PDB topology once and reuse per universe
             # this then only hits the PDB file once for all replicas
             u = make_Universe(
                 u_top._topology,
                 ds,
-                state=i,
+                state=state,
                 ligand_selection=ligand_selection,
                 protein_selection=protein_selection,
             )
 
-            prot, ligands = select_protein_and_ligands(u, protein_selection, ligand_selection)
+            prot, ligands = _select_protein_and_ligands(u, protein_selection, ligand_selection)
 
-            # Prepare storage
-            if prot:
-                prot_positions = np.empty(
-                    (len(u.trajectory[::skip]), len(prot), 3), dtype=np.float32
-                )
-                prot_start = prot.positions.copy()
-                prot_rmsd = []
-            else:
-                prot_rmsd = []
-                prot_positions = None
+            state_data = analyze_state(u, prot, ligands, skip)
 
-            lig_starts = [lig.positions.copy() for lig in ligands]
-            lig_initial_coms = [lig.center_of_mass() for lig in ligands]
-            lig_rmsd: list[list[float]] = [[] for _ in ligands]
-            lig_com_drift: list[list[float]] = [[] for _ in ligands]
-
-            for ts_i, ts in enumerate(u.trajectory[::skip]):
-                pb.update()
-                if prot:
-                    prot_positions[ts_i, :, :] = prot.positions
-                    prot_rmsd.append(
-                        rms.rmsd(
-                            prot.positions,
-                            prot_start,
-                            None,  # prot_weights,
-                            center=False,
-                            superposition=False,
-                        )
-                    )
-                for i, lig in enumerate(ligands):
-                    lig_rmsd[i].append(
-                        rms.rmsd(
-                            lig.positions,
-                            lig_starts[i],
-                            lig.masses / np.mean(lig.masses),
-                            center=False,
-                            superposition=False,
-                        )
-                    )
-                    lig_com_drift[i].append(
-                        # distance between start and current ligand position
-                        # ignores PBC, but we've already centered the traj
-                        mda.lib.distances.calc_bonds(lig.center_of_mass(), lig_initial_coms[i])
-                    )
-
-            protein_2d = twoD_RMSD(prot_positions, w=None) if prot else None
-            protein_rmsd_out = prot_rmsd if prot else None
-
-            ligands_data = None
-            if ligands:
-                single_ligands = [
-                    SingleLigandRMSData(
-                        rmsd=lig_rmsd[i],
-                        com_drift=lig_com_drift[i],
-                        resname=lig.residues[0].resname,
-                        resid=lig.residues[0].resid,
-                        segid=lig.residues[0].segid,
-                    )
-                    for i, lig in enumerate(ligands)
-                ]
-                ligands_data = LigandsRMSData(single_ligands)
-
-            states.append(
-                StateRMSData(
-                    protein_rmsd=protein_rmsd_out,
-                    protein_2d_rmsd=protein_2d,
-                    ligands=ligands_data,
-                ),
-            )
+            states.append(state_data)
 
             time = list(np.arange(len(u.trajectory))[::skip] * u.trajectory.dt)
+            pb.update(len(u.trajectory[::skip]))
 
     return RMSResults(time_ps=time, states=states)
-
-
-def twoD_RMSD(positions: np.ndarray, w: Optional[npt.NDArray]) -> list[float]:
-    """2 dimensions RMSD
-
-    Parameters
-    ----------
-    positions : np.ndarray
-      the protein positions for the entire trajectory
-    w : np.ndarray, optional
-      weights array
-
-    Returns
-    -------
-    rmsd_matrix : list
-      a flattened version of the 2d
-    """
-    nframes, _, _ = positions.shape
-
-    output = []
-
-    for i, j in itertools.combinations(range(nframes), 2):
-        posi, posj = positions[i], positions[j]
-
-        rmsd = rms.rmsd(posi, posj, w, center=True, superposition=True)
-
-        output.append(rmsd)
-
-    return output
