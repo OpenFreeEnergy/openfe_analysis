@@ -1,49 +1,78 @@
-from importlib import resources
-
 import pathlib
+
 import pooch
 import pytest
 
-POOCH_CACHE = pooch.os_cache("openfe_analysis")
+ZENODO_DOI = "doi:10.5281/zenodo.17916321"
+
+ZENODO_FILES = {
+    "openfe_analysis_full.tar.gz": "md5:a51b1f8d98b91ab1a69a6f55508d07db",
+    "openfe_analysis_skipped.tar.gz": "md5:ac42219bde9da3641375adf3a9ddffbf",
+    "openfe_analysis_septop.tar.gz": "md5:4b47198c57025bd6e0c6cf76f864370a",
+}
+
+POOCH_CACHE = pathlib.Path(pooch.os_cache("openfe_analysis"))
+POOCH_CACHE.mkdir(parents=True, exist_ok=True)
+
 ZENODO_RBFE_DATA = pooch.create(
     path=POOCH_CACHE,
-    base_url="doi:10.5281/zenodo.17916322",
-    registry={
-       "openfe_analysis_simulation_output.tar.gz":"md5:09752f2c4e5b7744d8afdee66dbd1414",
-       "openfe_analysis_skipped.tar.gz": "md5:3840d044299caacc4ccd50e6b22c0880",
-    },
+    base_url=ZENODO_DOI,
+    registry=ZENODO_FILES,
 )
+
+
+def _fetch_and_untar(dirname: str) -> pathlib.Path:
+    ZENODO_RBFE_DATA.fetch(f"{dirname}.tar.gz", processor=pooch.Untar())
+    cached_dir = pathlib.Path(f"{POOCH_CACHE}/{dirname}.tar.gz.untar/{dirname}")
+    return cached_dir
+
 
 @pytest.fixture(scope="session")
 def rbfe_output_data_dir() -> pathlib.Path:
-    ZENODO_RBFE_DATA.fetch("openfe_analysis_simulation_output.tar.gz", processor=pooch.Untar())
-    result_dir = pathlib.Path(POOCH_CACHE) / "openfe_analysis_simulation_output.tar.gz.untar/openfe_analysis_simulation_output/"
-    return result_dir
+    cached_dir = _fetch_and_untar("openfe_analysis_full")
+    return cached_dir
+
 
 @pytest.fixture(scope="session")
 def rbfe_skipped_data_dir() -> pathlib.Path:
-    ZENODO_RBFE_DATA.fetch("openfe_analysis_skipped.tar.gz", processor=pooch.Untar())
-    result_dir = pathlib.Path(POOCH_CACHE) / "openfe_analysis_skipped.tar.gz.untar/openfe_analysis_skipped/"
-    return result_dir
+    cached_dir = _fetch_and_untar("openfe_analysis_skipped")
+    return cached_dir
+
+
+@pytest.fixture(scope="session")
+def rbfe_septop_data_dir() -> pathlib.Path:
+    cached_dir = _fetch_and_untar("openfe_analysis_septop")
+    return cached_dir
+
 
 @pytest.fixture(scope="session")
 def simulation_nc(rbfe_output_data_dir) -> pathlib.Path:
-    return rbfe_output_data_dir/"simulation.nc"
+    return rbfe_output_data_dir / "simulation.nc"
 
 
 @pytest.fixture(scope="session")
 def simulation_skipped_nc(rbfe_skipped_data_dir) -> pathlib.Path:
-    return rbfe_skipped_data_dir/"simulation.nc"
+    return rbfe_skipped_data_dir / "simulation.nc"
+
+
+@pytest.fixture(scope="session")
+def simulation_nc_septop(rbfe_septop_data_dir) -> pathlib.Path:
+    return rbfe_septop_data_dir / "complex.nc"
+
+
+@pytest.fixture(scope="session")
+def system_septop(rbfe_septop_data_dir) -> pathlib.Path:
+    return rbfe_septop_data_dir / "alchemical_system.pdb"
 
 
 @pytest.fixture(scope="session")
 def hybrid_system_pdb(rbfe_output_data_dir) -> pathlib.Path:
-    return rbfe_output_data_dir/"hybrid_system.pdb"
+    return rbfe_output_data_dir / "hybrid_system.pdb"
 
 
 @pytest.fixture(scope="session")
-def hybrid_system_skipped_pdb(rbfe_skipped_data_dir)->pathlib.Path:
-    return rbfe_skipped_data_dir/"hybrid_system.pdb"
+def hybrid_system_skipped_pdb(rbfe_skipped_data_dir) -> pathlib.Path:
+    return rbfe_skipped_data_dir / "hybrid_system.pdb"
 
 
 @pytest.fixture(scope="session")

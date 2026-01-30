@@ -52,6 +52,33 @@ jobs:
         run: |
           python -m pip install --no-deps .
 
+      - name: Cache Pooch data
+        uses: actions/cache@v4
+        with:
+          path: |
+            # Linux cache location
+            ~/.cache/openfe_analysis
+            # macOS cache location
+            ~/Library/Caches/openfe_analysis
+          key: pooch-${{ matrix.os }}-v1
+
+      - name: "Download Zenodo data"
+        run: |
+          python - <<'EOF'
+          import pooch
+          from openfe_analysis.tests.conftest import ZENODO_DOI, ZENODO_FILES
+
+          zenodo = pooch.create(
+              path=pooch.os_cache('openfe_analysis'),
+              base_url=ZENODO_DOI,
+              registry=ZENODO_FILES,
+          )
+
+          for fname in ZENODO_FILES:
+              zenodo.fetch(fname, processor=pooch.Untar())
+
+          EOF
+
       - name: "Test imports"
         run: |
           python -Ic "import openfe_analysis; print(openfe_analysis.__version__)"
