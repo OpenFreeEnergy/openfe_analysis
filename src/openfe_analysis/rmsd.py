@@ -1,7 +1,7 @@
 import itertools
 import pathlib
 from dataclasses import asdict, dataclass, field
-from typing import List, Optional
+from typing import Optional
 
 import MDAnalysis as mda
 import netCDF4 as nc
@@ -198,12 +198,8 @@ def analyze_state(
     prot: Optional[mda.core.groups.AtomGroup],
     ligands: list[mda.core.groups.AtomGroup],
     skip: int,
-) -> tuple[
-    Optional[list[float]],
-    Optional[np.ndarray],
-    Optional[list[list[float]]],
-    Optional[list[list[float]]],
-]:
+    pb: Optional[tqdm.tqdm] = None,
+) -> StateRMSData:
     """
     Compute RMSD and COM drift for a single lambda state.
 
@@ -231,11 +227,13 @@ def analyze_state(
         prot_rmsd = []
 
     lig_starts = [lig.positions.copy() for lig in ligands]
-    lig_initial_coms = [lig.center_of_mass() for lig in ligands]
+    lig_initial_coms = np.array([lig.center_of_mass() for lig in ligands])
     lig_rmsd: list[list[float]] = [[] for _ in ligands]
     lig_com_drift: list[list[float]] = [[] for _ in ligands]
 
     for ts_i, ts in enumerate(traj_slice):
+        if pb:
+            pb.update()
         if prot:
             prot_positions[ts_i, :, :] = prot.positions
             prot_rmsd.append(
@@ -257,11 +255,9 @@ def analyze_state(
                     superposition=False,
                 )
             )
-            lig_com_drift[i].append(
-                # distance between start and current ligand position
-                # ignores PBC, but we've already centered the traj
-                mda.lib.distances.calc_bonds(lig.center_of_mass(), lig_initial_coms[i])
-            )
+            com = lig.center_of_mass()
+            drift = np.linalg.norm(com - lig_initial_coms[i])
+            lig_com_drift[i].append(drift)
 
     protein_2d = twoD_RMSD(prot_positions, w=None) if prot else None
     protein_rmsd_out = prot_rmsd if prot else None
@@ -357,11 +353,10 @@ def gather_rms_data(
 
             prot, ligands = _select_protein_and_ligands(u, protein_selection, ligand_selection)
 
-            state_data = analyze_state(u, prot, ligands, skip)
+            state_data = analyze_state(u, prot, ligands, skip, pb)
 
             states.append(state_data)
 
             time = list(np.arange(len(u.trajectory))[::skip] * u.trajectory.dt)
-            pb.update(len(u.trajectory[::skip]))
 
     return RMSResults(time_ps=time, states=states)
