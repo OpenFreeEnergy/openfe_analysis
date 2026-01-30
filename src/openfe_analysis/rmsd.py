@@ -1,6 +1,7 @@
 import itertools
 import pathlib
-from typing import Optional
+from dataclasses import asdict, dataclass, field
+from typing import List, Optional
 
 import MDAnalysis as mda
 import netCDF4 as nc
@@ -15,6 +16,66 @@ from .reader import FEReader
 from .transformations import Aligner, ClosestImageShift, NoJump
 
 
+@dataclass
+class SingleLigandRMSData:
+    rmsd: list[float]
+    com_drift: list[float]
+    resname: str
+    resid: int
+    segid: str
+
+
+@dataclass
+class LigandsRMSData:
+    ligands: list[SingleLigandRMSData]
+
+    def __iter__(self):
+        return iter(self.ligands)
+
+    def __len__(self):
+        return len(self.ligands)
+
+    def __getitem__(self, idx):
+        return self.ligands[idx]
+
+
+@dataclass
+class StateRMSData:
+    protein_rmsd: list[float] | None
+    protein_2d_rmsd: list[float] | None
+    ligands: LigandsRMSData | None
+
+
+@dataclass
+class RMSResults:
+    time_ps: list[float]
+    states: list[StateRMSData] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        """Convert results to a JSON-serializable dictionary."""
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, d):
+        return cls(
+            time_ps=d["time_ps"],
+            states=[
+                StateRMSData(
+                    protein_rmsd=s["protein_rmsd"],
+                    protein_2d_rmsd=s["protein_2d_rmsd"],
+                    ligands=(
+                        LigandsRMSData(
+                            ligands=[SingleLigandRMSData(**lig) for lig in s["ligands"]["ligands"]]
+                        )
+                        if s["ligands"] is not None
+                        else None
+                    ),
+                )
+                for s in d["states"]
+            ],
+        )
+
+
 def select_protein_and_ligands(
     u: mda.Universe,
     protein_selection: str,
@@ -22,10 +83,12 @@ def select_protein_and_ligands(
 ):
     prot = u.select_atoms(protein_selection)
 
-    lig_atoms = u.select_atoms(ligand_selection)
+    lig_residues = u.select_atoms(ligand_selection).residues
+    print([res.resid for res in lig_residues])
+    print([res.segid for res in lig_residues])
 
     # split into individual ligands by residue
-    ligands = [res.atoms for res in lig_atoms.residues]
+    ligands = [res.atoms for res in lig_residues]
 
     return prot, ligands
 
@@ -111,7 +174,7 @@ def gather_rms_data(
     skip: Optional[int] = None,
     ligand_selection: str = "resname UNK",
     protein_selection: str = "protein and name CA",
-) -> dict[str, list[float]]:
+) -> RMSResults:
     """Generate structural analysis of RBFE simulation
 
     Parameters
@@ -128,19 +191,16 @@ def gather_rms_data(
     protein_selection : str, default 'protein and name CA'
       MDAnalysis selection string for the protein atoms to consider.
 
-    Produces, for each lambda state:
-    - 1D protein RMSD timeseries 'protein_RMSD'
-    - ligand RMSD timeseries
-    - ligand COM motion 'ligand_COM_drift'
-    - 2D protein RMSD plot
+    Returns
+    -------
+    RMSResults
+        Per-state RMSD data for protein and ligands.
+        Produces, for each lambda state:
+        - 1D protein RMSD timeseries 'protein_RMSD'
+        - ligand RMSD timeseries
+        - ligand COM motion 'ligand_COM_drift'
+        - 2D protein RMSD plot
     """
-    output = {
-        "protein_RMSD": [],
-        "ligand_RMSD": [],
-        "ligand_COM_drift": [],
-        "protein_2D_RMSD": [],
-    }
-
     # Open the NetCDF file safely using a context manager
     with nc.Dataset(dataset) as ds:
         n_lambda = ds.dimensions["state"].size
@@ -160,6 +220,8 @@ def gather_rms_data(
         pb = tqdm.tqdm(total=int(n_frames / skip) * n_lambda)
 
         u_top = mda.Universe(pdb_topology)
+
+        states: list[StateRMSData] = []
 
         for i in range(n_lambda):
             # cheeky, but we can read the PDB topology once and reuse per universe
@@ -181,6 +243,9 @@ def gather_rms_data(
                 )
                 prot_start = prot.positions.copy()
                 prot_rmsd = []
+            else:
+                prot_rmsd = []
+                prot_positions = None
 
             lig_starts = [lig.positions.copy() for lig in ligands]
             lig_initial_coms = [lig.center_of_mass() for lig in ligands]
@@ -216,18 +281,34 @@ def gather_rms_data(
                         mda.lib.distances.calc_bonds(lig.center_of_mass(), lig_initial_coms[i])
                     )
 
-            if prot:
-                # can ignore weights here as it's all Ca
-                rmsd2d = twoD_RMSD(prot_positions, w=None)  # prot_weights)
-                output["protein_RMSD"].append(prot_rmsd)
-                output["protein_2D_RMSD"].append(rmsd2d)
+            protein_2d = twoD_RMSD(prot_positions, w=None) if prot else None
+            protein_rmsd_out = prot_rmsd if prot else None
+
+            ligands_data = None
             if ligands:
-                output["ligand_RMSD"].append(lig_rmsd)
-                output["ligand_COM_drift"].append(lig_com_drift)
+                single_ligands = [
+                    SingleLigandRMSData(
+                        rmsd=lig_rmsd[i],
+                        com_drift=lig_com_drift[i],
+                        resname=lig.residues[0].resname,
+                        resid=lig.residues[0].resid,
+                        segid=lig.residues[0].segid,
+                    )
+                    for i, lig in enumerate(ligands)
+                ]
+                ligands_data = LigandsRMSData(single_ligands)
 
-            output["time(ps)"] = list(np.arange(len(u.trajectory))[::skip] * u.trajectory.dt)
+            states.append(
+                StateRMSData(
+                    protein_rmsd=protein_rmsd_out,
+                    protein_2d_rmsd=protein_2d,
+                    ligands=ligands_data,
+                ),
+            )
 
-    return output
+            time = list(np.arange(len(u.trajectory))[::skip] * u.trajectory.dt)
+
+    return RMSResults(time_ps=time, states=states)
 
 
 def twoD_RMSD(positions: np.ndarray, w: Optional[npt.NDArray]) -> list[float]:

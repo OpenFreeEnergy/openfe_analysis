@@ -10,7 +10,7 @@ from MDAnalysis.transformations import unwrap
 from numpy.testing import assert_allclose
 
 from openfe_analysis.reader import FEReader
-from openfe_analysis.rmsd import gather_rms_data, make_Universe
+from openfe_analysis.rmsd import RMSResults, gather_rms_data, make_Universe
 from openfe_analysis.transformations import Aligner
 
 
@@ -38,30 +38,28 @@ def test_gather_rms_data_regression(simulation_nc, hybrid_system_pdb):
         skip=100,
     )
 
-    assert_allclose(output["time(ps)"], [0.0, 100.0, 200.0, 300.0, 400.0, 500.0])
-    assert len(output["protein_RMSD"]) == 3
+    assert_allclose(output.time_ps, [0.0, 100.0, 200.0, 300.0, 400.0, 500.0])
+    assert len(output.states) == 3
+    state0 = output.states[0]
     assert_allclose(
-        output["protein_RMSD"][0],
+        state0.protein_rmsd,
         [0.0, 1.003, 1.276, 1.263, 1.516, 1.251],
         rtol=1e-3,
     )
-    assert len(output["ligand_RMSD"]) == 3
     assert_allclose(
-        output["ligand_RMSD"][0][0],
+        state0.ligands[0].rmsd,
         [0.0, 0.9094, 1.0398, 0.9774, 1.9108, 1.2149],
         rtol=1e-3,
     )
-    assert len(output["ligand_COM_drift"]) == 3
     assert_allclose(
-        output["ligand_COM_drift"][0][0],
+        state0.ligands[0].com_drift,
         [0.0, 0.5458, 0.8364, 0.4914, 1.1939, 0.7587],
         rtol=1e-3,
     )
-    assert len(output["protein_2D_RMSD"]) == 3
     # 15 entries because 6 * 6 frames // 2
-    assert len(output["protein_2D_RMSD"][0]) == 15
+    assert len(state0.protein_2d_rmsd) == 15
     assert_allclose(
-        output["protein_2D_RMSD"][0][:6],
+        state0.protein_2d_rmsd[:6],
         [1.0029, 1.2756, 1.2635, 1.5165, 1.2509, 1.0882],
         rtol=1e-3,
     )
@@ -74,14 +72,12 @@ def test_gather_rms_data_septop(simulation_nc_septop, system_septop):
         skip=100,
     )
 
-    assert_allclose(output["time(ps)"], [0.0, 10000.0])
-    assert len(output["protein_RMSD"]) == 19
-    assert len(output["ligand_RMSD"]) == 19
-    # Check that we have two lists, one for each ligand
-    assert len(output["ligand_RMSD"][0]) == 2
-    assert len(output["ligand_COM_drift"]) == 19
-    # Check that we have two lists, one for each ligand
-    assert len(output["ligand_COM_drift"][0]) == 2
+    assert_allclose(output.time_ps, [0.0, 10000.0])
+    assert len(output.states) == 19
+    state0 = output.states[0]
+    # Check that we have two ligands
+    assert len(state0.ligands) == 2
+    assert state0.ligands[0].segid != state0.ligands[1].segid
 
 
 def test_make_universe_two_ligands(simulation_nc_septop, system_septop):
@@ -106,32 +102,30 @@ def test_gather_rms_data_regression_skippednc(simulation_skipped_nc, hybrid_syst
         skip=None,
     )
 
-    assert_allclose(output["time(ps)"], np.arange(0, 5001, 100))
-    assert len(output["protein_RMSD"]) == 11
+    assert_allclose(output.time_ps, np.arange(0, 5001, 100))
+    assert len(output.states) == 11
+    state0 = output.states[0]
     # RMSD is low for this multichain protein
     assert_allclose(
-        output["protein_RMSD"][0][:6],
+        state0.protein_rmsd[:6],
         [0, 1.089747, 1.006143, 1.045068, 1.476353, 1.332893],
         rtol=1e-3,
     )
-    assert len(output["ligand_RMSD"]) == 11
     assert_allclose(
-        output["ligand_RMSD"][0][0][:6],
+        state0.ligands[0].rmsd[:6],
         [0.0, 1.092039, 0.839234, 1.228383, 1.533331, 1.276798],
         rtol=1e-3,
     )
-    assert len(output["ligand_COM_drift"]) == 11
     assert_allclose(
-        output["ligand_COM_drift"][0][0][:6],
+        state0.ligands[0].com_drift[:6],
         [0.0, 0.908097, 0.674262, 0.971328, 0.909263, 1.101882],
         rtol=1e-3,
     )
-    assert len(output["protein_2D_RMSD"]) == 11
     # 15 entries because 6 * 6 frames // 2
-    assert len(output["protein_2D_RMSD"][0]) == 1275
+    assert len(state0.protein_2d_rmsd) == 1275
     # TODO: very large as the multichain fix is not in yet
     assert_allclose(
-        output["protein_2D_RMSD"][0][:6],
+        state0.protein_2d_rmsd[:6],
         [1.089747, 1.006143, 1.045068, 1.476353, 1.332893, 1.110507],
         rtol=1e-3,
     )
@@ -207,3 +201,27 @@ def test_ligand_com_continuity(mda_universe):
 
     assert max(jumps) < 5.0
     u.trajectory.close()
+
+
+def test_rmsresults_serialization_roundtrip(simulation_nc, hybrid_system_pdb):
+    results = gather_rms_data(
+        hybrid_system_pdb,
+        simulation_nc,
+        skip=100,
+    )
+
+    results_dict = results.to_dict()
+
+    loaded = RMSResults.from_dict(results_dict)
+
+    # basic structure
+    assert_allclose(loaded.time_ps, results.time_ps)
+    assert len(loaded.states) == len(results.states)
+
+    # spot-check first state
+    s0 = loaded.states[0]
+    r0 = results.states[0]
+
+    assert_allclose(s0.protein_rmsd, r0.protein_rmsd)
+    assert_allclose(s0.ligands[0].rmsd, r0.ligands[0].rmsd)
+    assert_allclose(s0.ligands[0].com_drift, r0.ligands[0].com_drift)
