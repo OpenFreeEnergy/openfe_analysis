@@ -131,13 +131,13 @@ def gather_rms_data(
     Produces, for each lambda state:
     - 1D protein RMSD timeseries 'protein_RMSD'
     - ligand RMSD timeseries
-    - ligand COM motion 'ligand_wander'
+    - ligand COM motion 'ligand_COM_drift'
     - 2D protein RMSD plot
     """
     output = {
         "protein_RMSD": [],
         "ligand_RMSD": [],
-        "ligand_wander": [],
+        "ligand_COM_drift": [],
         "protein_2D_RMSD": [],
     }
 
@@ -185,7 +185,7 @@ def gather_rms_data(
             lig_starts = [lig.positions.copy() for lig in ligands]
             lig_initial_coms = [lig.center_of_mass() for lig in ligands]
             lig_rmsd: list[list[float]] = [[] for _ in ligands]
-            lig_wander: list[list[float]] = [[] for _ in ligands]
+            lig_com_drift: list[list[float]] = [[] for _ in ligands]
 
             for ts_i, ts in enumerate(u.trajectory[::skip]):
                 pb.update()
@@ -210,7 +210,7 @@ def gather_rms_data(
                             superposition=False,
                         )
                     )
-                    lig_wander[i].append(
+                    lig_com_drift[i].append(
                         # distance between start and current ligand position
                         # ignores PBC, but we've already centered the traj
                         mda.lib.distances.calc_bonds(lig.center_of_mass(), lig_initial_coms[i])
@@ -223,7 +223,7 @@ def gather_rms_data(
                 output["protein_2D_RMSD"].append(rmsd2d)
             if ligands:
                 output["ligand_RMSD"].append(lig_rmsd)
-                output["ligand_wander"].append(lig_wander)
+                output["ligand_COM_drift"].append(lig_com_drift)
 
             output["time(ps)"] = list(np.arange(len(u.trajectory))[::skip] * u.trajectory.dt)
 

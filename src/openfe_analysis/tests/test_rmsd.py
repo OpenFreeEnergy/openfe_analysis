@@ -51,9 +51,9 @@ def test_gather_rms_data_regression(simulation_nc, hybrid_system_pdb):
         [0.0, 0.9094, 1.0398, 0.9774, 1.9108, 1.2149],
         rtol=1e-3,
     )
-    assert len(output["ligand_wander"]) == 3
+    assert len(output["ligand_COM_drift"]) == 3
     assert_allclose(
-        output["ligand_wander"][0][0],
+        output["ligand_COM_drift"][0][0],
         [0.0, 0.5458, 0.8364, 0.4914, 1.1939, 0.7587],
         rtol=1e-3,
     )
@@ -79,9 +79,9 @@ def test_gather_rms_data_septop(simulation_nc_septop, system_septop):
     assert len(output["ligand_RMSD"]) == 19
     # Check that we have two lists, one for each ligand
     assert len(output["ligand_RMSD"][0]) == 2
-    assert len(output["ligand_wander"]) == 19
+    assert len(output["ligand_COM_drift"]) == 19
     # Check that we have two lists, one for each ligand
-    assert len(output["ligand_wander"][0]) == 2
+    assert len(output["ligand_COM_drift"][0]) == 2
 
 
 def test_make_universe_two_ligands(simulation_nc_septop, system_septop):
@@ -120,9 +120,9 @@ def test_gather_rms_data_regression_skippednc(simulation_skipped_nc, hybrid_syst
         [0.0, 1.092039, 0.839234, 1.228383, 1.533331, 1.276798],
         rtol=1e-3,
     )
-    assert len(output["ligand_wander"]) == 11
+    assert len(output["ligand_COM_drift"]) == 11
     assert_allclose(
-        output["ligand_wander"][0][0][:6],
+        output["ligand_COM_drift"][0][0][:6],
         [0.0, 0.908097, 0.674262, 0.971328, 0.909263, 1.101882],
         rtol=1e-3,
     )
