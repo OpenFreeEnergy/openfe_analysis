@@ -168,7 +168,7 @@ def gather_rms_data(
                 u_top._topology,
                 ds,
                 state=i,
-                ligand_resname=ligand_selection,
+                ligand_selection=ligand_selection,
                 protein_selection=protein_selection,
             )
 

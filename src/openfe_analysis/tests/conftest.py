@@ -3,10 +3,10 @@ import pathlib
 import pooch
 import pytest
 
-ZENODO_DOI = "doi:10.5281/zenodo.18415326"
+ZENODO_DOI = "doi:10.5281/zenodo.17916321"
 
 ZENODO_FILES = {
-    "openfe_analysis_full.tar.gz": "md5:7f0babaac3dc8f7dd2db63cb79dff00f",
+    "openfe_analysis_full.tar.gz": "md5:a51b1f8d98b91ab1a69a6f55508d07db",
     "openfe_analysis_skipped.tar.gz": "md5:ac42219bde9da3641375adf3a9ddffbf",
     "openfe_analysis_septop.tar.gz": "md5:4b47198c57025bd6e0c6cf76f864370a",
 }
@@ -21,34 +21,28 @@ ZENODO_RBFE_DATA = pooch.create(
 )
 
 
-def _fetch_and_untar_once(filename: str) -> pathlib.Path:
-    # If already untarred, reuse it
-    untar_dir = POOCH_CACHE / f"{filename}.untar"
-    if untar_dir.exists():
-        return untar_dir
-
-    # Otherwise fetch + untar
-    paths = ZENODO_RBFE_DATA.fetch(filename, processor=pooch.Untar())
-
-    return pathlib.Path(paths[0]).parent
+def _fetch_and_untar(dirname: str) -> pathlib.Path:
+    ZENODO_RBFE_DATA.fetch(f"{dirname}.tar.gz", processor=pooch.Untar())
+    cached_dir = pathlib.Path(f"{POOCH_CACHE}/{dirname}.tar.gz.untar/{dirname}")
+    return cached_dir
 
 
 @pytest.fixture(scope="session")
 def rbfe_output_data_dir() -> pathlib.Path:
-    untar_dir = _fetch_and_untar_once("openfe_analysis_full.tar.gz")
-    return untar_dir / "openfe_analysis_full"
+    cached_dir = _fetch_and_untar("openfe_analysis_full")
+    return cached_dir
 
 
 @pytest.fixture(scope="session")
 def rbfe_skipped_data_dir() -> pathlib.Path:
-    untar_dir = _fetch_and_untar_once("openfe_analysis_skipped.tar.gz")
-    return untar_dir / "openfe_analysis_skipped"
+    cached_dir = _fetch_and_untar("openfe_analysis_skipped")
+    return cached_dir
 
 
 @pytest.fixture(scope="session")
 def rbfe_septop_data_dir() -> pathlib.Path:
-    untar_dir = _fetch_and_untar_once("openfe_analysis_septop.tar.gz")
-    return untar_dir / "openfe_analysis_septop"
+    cached_dir = _fetch_and_untar("openfe_analysis_septop")
+    return cached_dir
 
 
 @pytest.fixture(scope="session")
