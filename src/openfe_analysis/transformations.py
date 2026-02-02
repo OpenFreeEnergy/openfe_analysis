@@ -64,7 +64,7 @@ class ClosestImageShift(TransformationBase):
         for ag in self.targets:
             vec = ag.center_of_mass() - center
             frac = np.linalg.solve(box.T, vec)  # fractional coordinates
-            shift = np.dot(np.round(frac), box)  # nearest image
+            shift = np.dot(np.round(frac), box)  # nearest image, then compute shift
             ag.positions -= shift
 
         return ts
