@@ -57,16 +57,16 @@ class FEReader(ReaderBase):
     MDAnalysis Reader for NetCDF files created by
     `openmmtools.multistate.MultiStateReporter`
 
-    Provides a 1D trajectory view along either:
+    Provides a 1D trajectory along either:
 
-    - constant Hamiltonian state (`view="state"`)
-    - constant replica (`view="replica"`)
+    - constant Hamiltonian state (`index_method="state"`)
+    - constant replica (`index_method="replica"`)
 
     selected via the `index` argument.
     """
 
-    _index: Optional[int]
-    _view: Optional[str]
+    _multistate_index: Optional[int]
+    _index_method: Optional[str]
     _frame_index: int
     _dataset: nc.Dataset
     _dataset_owner: bool
@@ -80,7 +80,7 @@ class FEReader(ReaderBase):
         filename: str | pathlib.Path | nc.Dataset,
         *,
         index: int,
-        view: Literal["state", "replica"] = "state",
+        index_method: Literal["state", "replica"] = "state",
         convert_units: bool = True,
         **kwargs,
     ):
@@ -91,7 +91,7 @@ class FEReader(ReaderBase):
             Path to the .nc file or an open Dataset.
         index : int
             Index of the state or replica to extract. May be negative.
-        view : {"state", "replica"}, default "state"
+        index_method : {"state", "replica"}, default "state"
             Whether `index` refers to a Hamiltonian state or a replica.
         convert_units : bool
             Convert positions to Angstrom.
@@ -105,18 +105,18 @@ class FEReader(ReaderBase):
             self._dataset = nc.Dataset(filename)
             self._dataset_owner = True
 
-        if view not in {"state", "replica"}:
-            raise ValueError(f"View must be 'state' or 'replica', got {view}")
+        if index_method not in {"state", "replica"}:
+            raise ValueError(f"View must be 'state' or 'replica', got {index_method}")
 
-        self._view = view
+        self._index_method = index_method
 
         # Handle the negative ID case
-        if view == "state":
+        if index_method == "state":
             size = self._dataset.dimensions["state"].size
         else:
             size = self._dataset.dimensions["replica"].size
 
-        self._index = index % size
+        self._multistate_index = index % size
 
         self._n_atoms = self._dataset.dimensions["atom"].size
         self.ts = Timestep(self._n_atoms)
@@ -124,7 +124,6 @@ class FEReader(ReaderBase):
         # The MDAnalysis trajectory "dt" is the iteration dt
         # multiplied by the number of iterations between frames.
         self._dt = _determine_iteration_dt(self._dataset) * np.diff(self._frames)[0]
-        self._frame_index = -1
         self._read_frame(0)
 
     @staticmethod
@@ -134,7 +133,7 @@ class FEReader(ReaderBase):
 
     @property
     def index(self) -> int:
-        return self._index
+        return self._multistate_index
 
     @property
     def n_atoms(self) -> int:
@@ -145,8 +144,8 @@ class FEReader(ReaderBase):
         return len(self._frames)
 
     @property
-    def view(self) -> str:
-        return self._view
+    def index_method(self) -> str:
+        return self._index_method
 
     @staticmethod
     def parse_n_atoms(filename, **kwargs) -> int:
@@ -164,14 +163,14 @@ class FEReader(ReaderBase):
 
         frame = self._frames[self._frame_index]
 
-        if self._view == "state":
+        if self._index_method == "state":
             rep = multistate._state_to_replica(
                 self._dataset,
-                self._index,
+                self._multistate_index,
                 frame,
             )
         else:
-            rep = self._index
+            rep = self._multistate_index
 
         pos = multistate._replica_positions_at_frame(self._dataset, rep, frame)
         dim = multistate._get_unitcell(self._dataset, rep, frame)

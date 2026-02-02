@@ -111,7 +111,7 @@ def test_universe_creation_noconversion(simulation_skipped_nc, hybrid_system_ski
 def test_fereader_negative_state(simulation_skipped_nc, hybrid_system_skipped_pdb):
     u = mda.Universe(hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, index=-1)
 
-    assert u.trajectory._index == 10
+    assert u.trajectory._multistate_index == 10
     u.trajectory.close()
 
 
@@ -121,11 +121,11 @@ def test_fereader_negative_replica(simulation_skipped_nc, hybrid_system_skipped_
         simulation_skipped_nc,
         format=FEReader,
         index=-2,
-        view="replica",
+        index_method="replica",
     )
 
-    assert u.trajectory._index == 9
-    assert u.trajectory._view == "replica"
+    assert u.trajectory._multistate_index == 9
+    assert u.trajectory._index_method == "replica"
     u.trajectory.close()
 
 
@@ -139,7 +139,7 @@ def test_fereader_replica_state_id_error(
             simulation_skipped_nc,
             format=FEReader,
             index=0,
-            view="wrong",
+            index_method="wrong",
         )
 
 
@@ -147,7 +147,11 @@ def test_simulation_skipped_nc(simulation_skipped_nc, hybrid_system_skipped_pdb)
     from MDAnalysis.transformations import wrap
 
     u = mda.Universe(
-        hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, index=0, view="replica"
+        hybrid_system_skipped_pdb,
+        simulation_skipped_nc,
+        format=FEReader,
+        index=0,
+        index_method="replica",
     )
     # Wrap all atoms inside the simulation box
     u.trajectory.add_transformations(wrap(u.atoms))
