@@ -63,8 +63,8 @@ jobs:
           key: pooch-${{ matrix.os }}-v2
 
       - name: "Download Zenodo data"
+        shell: python
         run: |
-          python - <<'EOF'
           import pooch
           from openfe_analysis.tests.conftest import ZENODO_DOI, ZENODO_FILES
 
@@ -76,8 +76,6 @@ jobs:
 
           for fname in ZENODO_FILES:
               zenodo.fetch(fname, processor=pooch.Untar())
-
-          EOF
 
       - name: "Test imports"
         run: |
