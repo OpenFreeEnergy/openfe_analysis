@@ -132,7 +132,7 @@ class FEReader(ReaderBase):
         return isinstance(thing, nc.Dataset)
 
     @property
-    def index(self) -> int:
+    def multistate_index(self) -> int:
         return self._multistate_index
 
     @property
