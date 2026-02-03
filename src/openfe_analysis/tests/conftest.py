@@ -39,10 +39,12 @@ def rbfe_output_data_dir() -> pathlib.Path:
     return untar_dir / "openfe_analysis_simulation_output"
 
 
+
 @pytest.fixture(scope="session")
 def rbfe_skipped_data_dir() -> pathlib.Path:
     untar_dir = _fetch_and_untar_once("openfe_analysis_skipped.tar.gz")
     return untar_dir / "openfe_analysis_skipped"
+
 
 
 @pytest.fixture(scope="session")
