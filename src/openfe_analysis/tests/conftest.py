@@ -33,12 +33,10 @@ def rbfe_output_data_dir() -> pathlib.Path:
     return cached_dir
 
 
-
 @pytest.fixture(scope="session")
 def rbfe_skipped_data_dir() -> pathlib.Path:
     cached_dir = _fetch_and_untar("openfe_analysis_skipped")
     return cached_dir
-
 
 
 @pytest.fixture(scope="session")
