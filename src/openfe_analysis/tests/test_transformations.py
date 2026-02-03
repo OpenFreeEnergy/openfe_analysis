@@ -20,7 +20,6 @@ def universe(hybrid_system_skipped_pdb, simulation_skipped_nc):
         state_id=0,
     )
     yield u
-    u.trajectory.close()
 
 
 def test_minimiser(universe):
