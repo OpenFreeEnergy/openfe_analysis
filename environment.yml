@@ -16,5 +16,3 @@ dependencies:
   - pytest-cov
   - pytest-xdist
   - pytest-rerunfailures
-  - pip:
-    - git+https://github.com/fatiando/pooch@main  # related to https://github.com/fatiando/pooch/issues/502
