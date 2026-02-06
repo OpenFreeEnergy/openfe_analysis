@@ -54,6 +54,7 @@ def test_nojump(hybrid_system_pdb, simulation_nc):
     # without the transformation, the y coordinate would jump up to ~81.86
     ref = np.array([31.79594626, 52.14568866, 30.64103877])
     assert prot.center_of_mass() == pytest.approx(ref, abs=0.01)
+    universe.trajectory.close()
 
 
 def test_aligner(universe):

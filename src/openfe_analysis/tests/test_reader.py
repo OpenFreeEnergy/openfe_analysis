@@ -148,7 +148,7 @@ def test_fereader_negative_replica(simulation_skipped_nc, hybrid_system_skipped_
 def test_fereader_replica_state_id_error(
     simulation_skipped_nc, hybrid_system_skipped_pdb, rep_id, state_id
 ):
-    with pytest.raises(ValueError, match="iew must be 'state'"):
+    with pytest.raises(ValueError, match="index_method must be 'state'"):
         _ = mda.Universe(
             hybrid_system_skipped_pdb,
             simulation_skipped_nc,
