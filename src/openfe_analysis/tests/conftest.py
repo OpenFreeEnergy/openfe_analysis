@@ -39,7 +39,6 @@ def rbfe_skipped_data_dir() -> pathlib.Path:
     return cached_dir
 
 
-
 @pytest.fixture(scope="session")
 def simulation_nc(rbfe_output_data_dir) -> pathlib.Path:
     return rbfe_output_data_dir / "simulation.nc"
