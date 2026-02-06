@@ -106,7 +106,7 @@ class FEReader(ReaderBase):
             self._dataset_owner = True
 
         if index_method not in {"state", "replica"}:
-            raise ValueError(f"View must be 'state' or 'replica', got {index_method}")
+            raise ValueError(f"index_method must be 'state' or 'replica', got {index_method}")
 
         self._index_method = index_method
 
