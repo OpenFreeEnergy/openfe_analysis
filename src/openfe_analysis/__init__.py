@@ -1,5 +1,5 @@
 from ._version import __version__  # isort: skip
-from . import cli, rmsd
+from . import rmsd
 from .reader import FEReader
 from .transformations import (
     Aligner,
