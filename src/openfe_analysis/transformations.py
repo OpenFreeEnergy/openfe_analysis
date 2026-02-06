@@ -8,6 +8,7 @@ and to automatically align the system to a protein structure.
 import MDAnalysis as mda
 import numpy as np
 from MDAnalysis.analysis.align import rotation_matrix
+from MDAnalysis.lib.mdamath import triclinic_vectors
 from MDAnalysis.transformations.base import TransformationBase
 from numpy import typing as npt
 
@@ -44,31 +45,27 @@ class NoJump(TransformationBase):
         return ts
 
 
-class Minimiser(TransformationBase):
-    """Minimises the difference from ags to central_ag by choosing image
-
-    This transformation will translate any AtomGroup in *ags* in multiples of
-    the box vectors in order to minimise the distance between the center of mass
-    to the center of mass of each ag.
+class ClosestImageShift(TransformationBase):
+    """
+    PBC-safe transformation that shifts one or more target AtomGroups
+    so that their COM is in the closest image relative to a reference AtomGroup.
+    Works for any box type (triclinic or orthorhombic).
     """
 
-    central_ag: mda.AtomGroup
-    other_ags: list[mda.AtomGroup]
-
-    def __init__(self, central_ag: mda.AtomGroup, *ags):
+    def __init__(self, reference: mda.AtomGroup, targets: list[mda.AtomGroup]):
         super().__init__()
-        self.central_ag = central_ag
-        self.other_ags = ags
+        self.reference = reference
+        self.targets = targets
 
     def _transform(self, ts):
-        center = self.central_ag.center_of_mass()
-        box = self.central_ag.dimensions[:3]
+        center = self.reference.center_of_mass()
+        box = triclinic_vectors(ts.dimensions)
 
-        for ag in self.other_ags:
+        for ag in self.targets:
             vec = ag.center_of_mass() - center
-
-            # this only works for orthogonal boxes
-            ag.positions -= np.rint(vec / box) * box
+            frac = np.linalg.solve(box.T, vec)  # fractional coordinates
+            shift = np.dot(np.round(frac), box)  # nearest image
+            ag.positions -= shift
 
         return ts
 
@@ -87,7 +84,8 @@ class Aligner(TransformationBase):
     def __init__(self, ref_ag: mda.AtomGroup):
         super().__init__()
         self.ref_idx = ref_ag.ix
-        self.ref_pos = ref_ag.positions
+        # Would this copy be safer?
+        self.ref_pos = ref_ag.positions.copy()
         self.weights = np.asarray(ref_ag.masses, dtype=np.float64)
         self.weights /= np.mean(self.weights)  # normalise weights
         # remove COM shift from reference positions

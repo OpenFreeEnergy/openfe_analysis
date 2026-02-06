@@ -6,7 +6,7 @@ from MDAnalysis.analysis import rms
 from openfe_analysis import FEReader
 from openfe_analysis.transformations import (
     Aligner,
-    Minimiser,
+    ClosestImageShift,
     NoJump,
 )
 
@@ -17,16 +17,16 @@ def universe(hybrid_system_skipped_pdb, simulation_skipped_nc):
         hybrid_system_skipped_pdb,
         simulation_skipped_nc,
         format="MultiStateReporter",
-        state_id=0,
+        index=0,
     )
     yield u
     u.trajectory.close()
 
 
-def test_minimiser(universe):
+def test_closest_image_shift(universe):
     prot = universe.select_atoms("protein and name CA")
     lig = universe.select_atoms("resname UNK")
-    m = Minimiser(prot, lig)
+    m = ClosestImageShift(prot, [lig])
     universe.trajectory.add_transformations(m)
 
     d = mda.lib.distances.calc_bonds(prot.center_of_mass(), lig.center_of_mass())
@@ -41,7 +41,7 @@ def test_nojump(hybrid_system_pdb, simulation_nc):
         hybrid_system_pdb,
         simulation_nc,
         format="MultiStateReporter",
-        state_id=2,
+        index=2,
     )
     # find frame where protein would teleport across boundary and check it
     prot = universe.select_atoms("protein and name CA")
@@ -54,6 +54,7 @@ def test_nojump(hybrid_system_pdb, simulation_nc):
     # without the transformation, the y coordinate would jump up to ~81.86
     ref = np.array([31.79594626, 52.14568866, 30.64103877])
     assert prot.center_of_mass() == pytest.approx(ref, abs=0.01)
+    universe.trajectory.close()
 
 
 def test_aligner(universe):
