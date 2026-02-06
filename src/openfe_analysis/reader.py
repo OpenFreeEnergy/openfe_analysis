@@ -225,6 +225,7 @@ class FEReader(ReaderBase):
         self._frame_index = -1
 
     def close(self):
-        # Close the underlying NetCDF dataset if owned by this reader.
-        if self._dataset_owner:
-            self._dataset.close()
+        if self._dataset is not None:
+            if self._dataset_owner:
+                self._dataset.close()
+            self._dataset = None

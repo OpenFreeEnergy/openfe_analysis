@@ -4,34 +4,41 @@ from importlib import resources
 import pooch
 import pytest
 
-POOCH_CACHE = pooch.os_cache("openfe_analysis")
+ZENODO_DOI = "doi:10.5281/zenodo.18378051"
+
+ZENODO_FILES = {
+    "openfe_analysis_simulation_output.tar.gz": "md5:7f0babaac3dc8f7dd2db63cb79dff00f",
+    "openfe_analysis_skipped.tar.gz": "md5:ac42219bde9da3641375adf3a9ddffbf",
+}
+
+POOCH_CACHE = pathlib.Path(pooch.os_cache("openfe_analysis"))
+POOCH_CACHE.mkdir(parents=True, exist_ok=True)
+
 ZENODO_RBFE_DATA = pooch.create(
     path=POOCH_CACHE,
-    base_url="doi:10.5281/zenodo.17916322",
-    registry={
-        "openfe_analysis_simulation_output.tar.gz": "md5:09752f2c4e5b7744d8afdee66dbd1414",
-        "openfe_analysis_skipped.tar.gz": "md5:3840d044299caacc4ccd50e6b22c0880",
-    },
+    base_url=ZENODO_DOI,
+    registry=ZENODO_FILES,
 )
+
+
+def _fetch_and_untar(dirname: str) -> pathlib.Path:
+    ZENODO_RBFE_DATA.fetch(f"{dirname}.tar.gz", processor=pooch.Untar())
+    cached_dir = pathlib.Path(f"{POOCH_CACHE}/{dirname}.tar.gz.untar/{dirname}")
+    return cached_dir
 
 
 @pytest.fixture(scope="session")
 def rbfe_output_data_dir() -> pathlib.Path:
-    ZENODO_RBFE_DATA.fetch("openfe_analysis_simulation_output.tar.gz", processor=pooch.Untar())
-    result_dir = (
-        pathlib.Path(POOCH_CACHE)
-        / "openfe_analysis_simulation_output.tar.gz.untar/openfe_analysis_simulation_output/"
-    )
-    return result_dir
+    cached_dir = _fetch_and_untar("openfe_analysis_simulation_output")
+    return cached_dir
+
 
 
 @pytest.fixture(scope="session")
 def rbfe_skipped_data_dir() -> pathlib.Path:
-    ZENODO_RBFE_DATA.fetch("openfe_analysis_skipped.tar.gz", processor=pooch.Untar())
-    result_dir = (
-        pathlib.Path(POOCH_CACHE) / "openfe_analysis_skipped.tar.gz.untar/openfe_analysis_skipped/"
-    )
-    return result_dir
+    cached_dir = _fetch_and_untar("openfe_analysis_skipped")
+    return cached_dir
+
 
 
 @pytest.fixture(scope="session")
