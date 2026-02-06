@@ -21,28 +21,22 @@ ZENODO_RBFE_DATA = pooch.create(
 )
 
 
-def _fetch_and_untar_once(filename: str) -> pathlib.Path:
-    # If already untarred, reuse it
-    untar_dir = POOCH_CACHE / f"{filename}.untar"
-    if untar_dir.exists():
-        return untar_dir
-
-    # Otherwise fetch + untar
-    paths = ZENODO_RBFE_DATA.fetch(filename, processor=pooch.Untar())
-
-    return pathlib.Path(paths[0]).parent
+def _fetch_and_untar(dirname: str) -> pathlib.Path:
+    ZENODO_RBFE_DATA.fetch(f"{dirname}.tar.gz", processor=pooch.Untar())
+    cached_dir = pathlib.Path(f"{POOCH_CACHE}/{dirname}.tar.gz.untar/{dirname}")
+    return cached_dir
 
 
 @pytest.fixture(scope="session")
 def rbfe_output_data_dir() -> pathlib.Path:
-    untar_dir = _fetch_and_untar_once("openfe_analysis_simulation_output.tar.gz")
-    return untar_dir / "openfe_analysis_simulation_output"
+    cached_dir = _fetch_and_untar("openfe_analysis_simulation_output")
+    return cached_dir
 
 
 @pytest.fixture(scope="session")
 def rbfe_skipped_data_dir() -> pathlib.Path:
-    untar_dir = _fetch_and_untar_once("openfe_analysis_skipped.tar.gz")
-    return untar_dir / "openfe_analysis_skipped"
+    cached_dir = _fetch_and_untar("openfe_analysis_skipped")
+    return cached_dir
 
 
 @pytest.fixture(scope="session")

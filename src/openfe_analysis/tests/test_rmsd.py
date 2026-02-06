@@ -83,12 +83,14 @@ def test_gather_rms_data_regression_skippednc(simulation_skipped_nc, hybrid_syst
         rtol=1e-3,
     )
     assert len(output["ligand_RMSD"]) == 11
+    # TODO: RMSD is very large as the multichain fix is not in yet
     assert_allclose(
         output["ligand_RMSD"][0][:6],
         [0.0, 1.092039, 0.839234, 1.228383, 1.533331, 1.276798],
         rtol=1e-3,
     )
     assert len(output["ligand_wander"]) == 11
+    # TODO: very large as the multichain fix is not in yet
     assert_allclose(
         output["ligand_wander"][0][:6],
         [0.0, 0.908097, 0.674262, 0.971328, 0.909263, 1.101882],

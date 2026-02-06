@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from numpy.testing import assert_allclose
 
-from openfe_analysis.reader import FEReader, _determine_iteration_dt
+from openfe_analysis.reader import FEReader, _determine_iteration_dt, _determine_position_indices
 
 
 def test_determine_dt(tmp_path, mcmc_serialized):
@@ -24,6 +24,23 @@ def test_determine_dt_keyerror(tmp_path, mcmc_serialized):
 
         with pytest.raises(KeyError, match="`n_steps` or `timestep` are"):
             _ = _determine_iteration_dt(ds)
+
+
+def test_determine_position_indices_warns_for_old_nc(tmp_path):
+    ncfile = tmp_path / "old.nc"
+
+    # Create a minimal NetCDF file with an iteration dimension
+    with nc.Dataset(ncfile, "w") as ds:
+        ds.createDimension("iteration", 10)
+        # IMPORTANT: do NOT set PositionInterval
+
+    # Reopen for reading and test
+    with nc.Dataset(ncfile) as ds:
+        with pytest.warns(UserWarning, match="This is an older NetCDF file that"):
+            indices = _determine_position_indices(ds)
+
+    # Sanity check: should default to every iteration
+    assert np.array_equal(indices, np.arange(10))
 
 
 def test_universe_creation(simulation_nc, hybrid_system_pdb):
@@ -70,7 +87,6 @@ def test_universe_creation(simulation_nc, hybrid_system_pdb):
         atol=1e-6,
     )
     assert_allclose(u.dimensions, [78.141495, 78.141495, 78.141495, 60.0, 60.0, 90.0])
-
     u.trajectory.close()
 
 
@@ -82,7 +98,6 @@ def test_universe_from_nc_file(simulation_skipped_nc, hybrid_system_skipped_pdb)
         assert len(u.atoms) == 9178
         assert len(u.trajectory) == 51
         assert u.trajectory.dt == pytest.approx(100.0)
-        u.trajectory.close()
 
 
 def test_universe_creation_noconversion(simulation_skipped_nc, hybrid_system_skipped_pdb):
