@@ -160,7 +160,7 @@ def test_rmsd_reference_is_first_frame(mda_universe):
     u = mda_universe
     prot = u.select_atoms("protein")
 
-    ts = next(iter(u.trajectory))  # SAFE
+    _ = next(iter(u.trajectory))  # SAFE
     ref = prot.positions.copy()
 
     rmsd = np.sqrt(((prot.positions - ref) ** 2).mean())
