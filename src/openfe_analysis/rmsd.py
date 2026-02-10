@@ -82,9 +82,6 @@ def make_Universe(
         # Shift chains + ligand
         chains = [seg.atoms for seg in protein.segments]
         shift = ClosestImageShift(chains[0], [*chains[1:], *ligands])
-        # Make each protein chain whole
-        for frag in protein.fragments:
-            make_whole(frag, reference_atom=frag[0])
 
         align = Aligner(protein)
 
