@@ -156,19 +156,25 @@ def test_fereader_replica_state_id_error(
 
 
 def test_simulation_skipped_nc(simulation_skipped_nc, hybrid_system_skipped_pdb):
+    from MDAnalysis.transformations import wrap
+
     u = mda.Universe(
         hybrid_system_skipped_pdb,
         simulation_skipped_nc,
         format=FEReader,
         replica_id=0,
     )
+
+    # Wrap all atoms inside the simulation box
+    u.trajectory.add_transformations(wrap(u.atoms))
+
     assert len(u.trajectory) == 51
     assert u.trajectory.n_frames == 51
     assert u.trajectory.dt == 100
     times = np.arange(0, 5001, 100)
     for inx, ts in enumerate(u.trajectory):
         assert ts.time == times[inx]
-        # Positions are not all zero since PBC is not removed
+        assert np.all(u.atoms.positions > 0)
         assert np.any(u.atoms.positions != 0)
     with pytest.raises(mda.exceptions.NoDataError, match="This Timestep has no velocities"):
         u.atoms.velocities
