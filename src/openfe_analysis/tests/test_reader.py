@@ -87,7 +87,6 @@ def test_universe_creation(simulation_nc, hybrid_system_pdb):
         atol=1e-6,
     )
     assert_allclose(u.dimensions, [78.141495, 78.141495, 78.141495, 60.0, 60.0, 90.0])
-
     u.trajectory.close()
 
 
