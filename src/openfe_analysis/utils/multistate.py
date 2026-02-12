@@ -65,7 +65,7 @@ def _state_to_replica(dataset: nc.Dataset, state_num: int, frame_num: int) -> in
 
     Parameters
     ----------
-    dataset : netCDF4.Dataset
+    dataset : nc.Dataset
         Dataset containing the MultiState reporter generated NetCDF file
         with information about all the frames and replica in the system.
     state_num : int
@@ -92,7 +92,7 @@ def _replica_positions_at_frame(
 
     Parameters
     ----------
-    dataset : netCDF4.Dataset
+    dataset : nc.Dataset
         Dataset containing the MultiState information.
     replica_index : int
         Replica index to extract positions for.
@@ -131,7 +131,7 @@ def _create_new_dataset(filename: Path, n_atoms: int, title: str) -> nc.Dataset:
 
     Returns
     -------
-    netCDF4.Dataset
+    nc.Dataset
         AMBER Conventions compliant NetCDF dataset to store information
         contained in MultiState reporter generated NetCDF file.
     """
@@ -182,7 +182,7 @@ def _get_unitcell(
 
     Parameters
     ----------
-    dataset : netCDF4.Dataset
+    dataset : nc.Dataset
         Dataset of MultiState reporter generated NetCDF file.
     replica_index : int
         Replica for which to get the unit cell for.

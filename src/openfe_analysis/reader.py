@@ -85,7 +85,7 @@ class FEReader(ReaderBase):
         ----------
         filename : pathlike or nc.Dataset
           Path to a MultiStateReporter NetCDF file, or an already-open
-          ``netCDF4.Dataset`` instance.
+          ``nc.Dataset`` instance.
         convert_units : bool
           If ``True`` (default), positions are converted to Angstroms.
           Otherwise, raw OpenMM units (nanometers) are returned.

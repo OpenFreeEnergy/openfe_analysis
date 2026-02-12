@@ -44,7 +44,7 @@ def make_Universe(top: pathlib.Path, trj: nc.Dataset, state: int) -> mda.Univers
     top : pathlib.Path or Topology
         Path to a topology file (e.g. PDB) or an already-loaded MDAnalysis
         topology object.
-    trj : netCDF4.Dataset
+    trj : nc.Dataset
         Open NetCDF dataset produced by
         ``openmmtools.multistate.MultiStateReporter``.
     state : int
@@ -97,7 +97,7 @@ def gather_rms_data(
     pdb_topology: pathlib.Path, dataset: pathlib.Path, skip: Optional[int] = None
 ) -> dict[str, list[float]]:
     """
-    Compute structural RMSD-based metrics for a multistate RBFE simulation.
+    Compute structural RMSD-based metrics for a multistate BFE simulation.
 
     For each thermodynamic state (lambda), this function:
       - Loads the trajectory using ``FEReader``
