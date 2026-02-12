@@ -13,11 +13,32 @@ from numpy import typing as npt
 
 
 class NoJump(TransformationBase):
-    """Stops an AtomGroup from moving more than half a box length between frames
+    """
+    Prevent an AtomGroup from jumping between periodic images.
 
-    This transformation prevents an AtomGroup "teleporting" across the box
-    border between two subsequent frames.  This then simplifies the calculation
-    of motion over time.
+    This on-the-fly trajectory transformation removes large apparent
+    center-of-mass displacements caused by periodic boundary conditions.
+    If the AtomGroup moves by more than half a box length between
+    consecutive frames, it is translated by an integer number of box
+    vectors to keep its motion continuous.
+
+    The transformation operates in-place on the AtomGroup coordinates
+    and is intended to be applied before analyses that rely on smooth
+    time evolution (e.g. RMSD, COM motion).
+
+    Parameters
+    ----------
+    ag : MDAnalysis.AtomGroup
+        AtomGroup whose center-of-mass motion should be made continuous.
+
+    Notes
+    -----
+    - This transformation assumes an orthorhombic unit cell.
+    - Only translations are applied; no rotations or scaling.
+    - The correction is based on center-of-mass motion and is therefore
+      most appropriate for compact groups (e.g. proteins, ligands).
+    - Must be applied before any alignment transformations to avoid
+      mixing reference frames.
     """
 
     ag: mda.AtomGroup
@@ -45,11 +66,31 @@ class NoJump(TransformationBase):
 
 
 class Minimiser(TransformationBase):
-    """Minimises the difference from ags to central_ag by choosing image
+    """
+    Translate AtomGroups to the nearest periodic image relative to a reference.
 
-    This transformation will translate any AtomGroup in *ags* in multiples of
-    the box vectors in order to minimise the distance between the center of mass
-    to the center of mass of each ag.
+    This transformation shifts one or more AtomGroups by integer multiples
+    of the simulation box vectors such that their center of mass is as close
+    as possible to the center of mass of a reference AtomGroup.
+
+    It is commonly used to keep ligands in the same periodic image as a
+    protein during alchemical or replica-exchange simulations.
+
+    Parameters
+    ----------
+    central_ag : MDAnalysis.AtomGroup
+        Reference AtomGroup whose center of mass defines the target image.
+    *ags : MDAnalysis.AtomGroup
+        One or more AtomGroups to be translated into the closest periodic
+        image relative to ``central_ag``.
+
+    Notes
+    -----
+    - This transformation assumes an orthorhombic simulation box.
+    - Translations are applied independently for each AtomGroup.
+    - Coordinates are modified in-place.
+    - This transformation does not prevent inter-frame jumps by itself
+      and is typically used in combination with :class:`NoJump`.
     """
 
     central_ag: mda.AtomGroup
@@ -74,10 +115,13 @@ class Minimiser(TransformationBase):
 
 
 class Aligner(TransformationBase):
-    """On-the-fly transformation to align a trajectory to minimise RMSD
+    """
+    Align a trajectory to a reference AtomGroup by minimizing RMSD.
 
-    centers all coordinates onto origin
-    rotates **entire universe** to minimise rmsd relative to **ref_ag**
+    This transformation performs an on-the-fly least-squares alignment
+    of the entire universe to a reference AtomGroup.
+    At each frame, the coordinates are translated and rotated to minimize the
+    RMSD of the atoms relative to their positions in the reference.
     """
 
     ref_pos: npt.NDArray

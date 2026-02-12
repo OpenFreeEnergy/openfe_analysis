@@ -24,6 +24,11 @@ def _determine_position_indices(dataset: nc.Dataset) -> NDArray:
     indices : NDArray[int]
       An ordered array of iteration indices which hold positions.
 
+    Raises
+    ------
+    ValueError
+        If positions are not written at a consistent interval.
+
     Note
     ----
     This assumes that the indices are equally spaced by a given
@@ -55,11 +60,12 @@ def _determine_position_indices(dataset: nc.Dataset) -> NDArray:
 
 
 def _state_to_replica(dataset: nc.Dataset, state_num: int, frame_num: int) -> int:
-    """Convert a state index to replica index at a given Dataset frame
+    """
+    Map a thermodynamic state index to the corresponding replica index.
 
     Parameters
     ----------
-    dataset : netCDF4.Dataset
+    dataset : nc.Dataset
         Dataset containing the MultiState reporter generated NetCDF file
         with information about all the frames and replica in the system.
     state_num : int
@@ -86,7 +92,7 @@ def _replica_positions_at_frame(
 
     Parameters
     ----------
-    dataset : netCDF4.Dataset
+    dataset : nc.Dataset
         Dataset containing the MultiState information.
     replica_index : int
         Replica index to extract positions for.
@@ -125,7 +131,7 @@ def _create_new_dataset(filename: Path, n_atoms: int, title: str) -> nc.Dataset:
 
     Returns
     -------
-    netCDF4.Dataset
+    nc.Dataset
         AMBER Conventions compliant NetCDF dataset to store information
         contained in MultiState reporter generated NetCDF file.
     """
@@ -170,13 +176,13 @@ def _get_unitcell(
     dataset: nc.Dataset, replica_index: int, frame_num: int
 ) -> Optional[Tuple[unit.Quantity]]:
     """
-    Helper method to extract a unit cell from the stored
+    Helper method to extract unit cell dimensions from the stored
     box vectors in a MultiState reporter generated NetCDF file
     at a given state and Dataset frame.
 
     Parameters
     ----------
-    dataset : netCDF4.Dataset
+    dataset : nc.Dataset
         Dataset of MultiState reporter generated NetCDF file.
     replica_index : int
         Replica for which to get the unit cell for.
