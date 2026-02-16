@@ -44,7 +44,7 @@ def make_Universe(top: pathlib.Path, trj: nc.Dataset, state: int) -> mda.Univers
 
     if prot:
         # Unwrap all atoms
-        unwrap_tr = unwrap(prot)
+        unwrap_tr = unwrap(prot + ligand)
 
         # Shift chains + ligand
         chains = [seg.atoms for seg in prot.segments]
