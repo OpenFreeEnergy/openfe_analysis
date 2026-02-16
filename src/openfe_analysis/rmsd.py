@@ -22,19 +22,19 @@ def make_Universe(top: pathlib.Path, trj: nc.Dataset, state: int) -> mda.Univers
     single state from a multistate simulation.
 
     Identifies two AtomGroups:
-    - protein, defined as having standard amino acid names, then filtered down to CA
-    - ligand, defined as resname UNK
+    - Protein, defined as having standard amino acid names, then filtered down to CA
+    - Ligand, defined as resname UNK
 
     Depending on whether a protein is present, a sequence of trajectory
     transformations is applied:
 
     If a protein is present:
-    - prevents the protein from jumping between periodic images (class:`NoJump`)
-    - moves the ligand to the image closest to the protein (:class:`Minimiser`)
-    - aligns the entire system to minimise the protein RMSD (:class:`Aligner`)
+    - Prevents the protein from jumping between periodic images (class:`NoJump`)
+    - Moves the ligand to the image closest to the protein (:class:`Minimiser`)
+    - Aligns the entire system to minimise the protein RMSD (:class:`Aligner`)
 
     If only a ligand is present:
-    - prevents the ligand from jumping between periodic images
+    - Prevents the ligand from jumping between periodic images
     - Aligns the ligand to minimize its RMSD
 
     Parameters
