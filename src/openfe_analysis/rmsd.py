@@ -77,11 +77,11 @@ def make_Universe(
 
     if protein:
         # Unwrap all atoms
-        unwrap_tr = unwrap(prot + ligand)
+        unwrap_tr = unwrap(protein + ligands)
 
         # Shift chains + ligand
         chains = [seg.atoms for seg in protein.segments]
-        shift = ClosestImageShift(chains[0], [*chains[1:], ligand])
+        shift = ClosestImageShift(chains[0], [*chains[1:], *ligands])
 
         align = Aligner(protein)
 
@@ -147,7 +147,7 @@ def analyze_state(
     ----------
     u : mda.Universe
         Universe containing the trajectory.
-    protein : AtomGroup or None
+    prot : AtomGroup or None
         Protein atoms to compute RMSD for.
     ligands : list of AtomGroups
         Ligands to compute RMSD and COM drift for.
@@ -165,22 +165,21 @@ def analyze_state(
     ligand_com_drift : list of list[float] or None
         COM drift of each ligand per frame.
     """
-    traj_slice = u.trajectory[::skip]
     # Prepare storage
     if prot:
-        prot_positions = np.empty((len(traj_slice), len(prot), 3), dtype=np.float32)
-        prot_start = prot.positions.copy()
+        prot_positions = np.empty((len(u.trajectory[::skip]), len(prot), 3), dtype=np.float32)
+        prot_start = prot.positions
         prot_rmsd = []
     else:
         prot_positions = None
         prot_rmsd = None
 
-    lig_starts = [lig.positions.copy() for lig in ligands]
+    lig_starts = [lig.positions for lig in ligands]
     lig_initial_coms = [lig.center_of_mass() for lig in ligands]
     lig_rmsd: list[list[float]] = [[] for _ in ligands]
     lig_com_drift: list[list[float]] = [[] for _ in ligands]
 
-    for ts_i, ts in enumerate(traj_slice):
+    for ts_i, ts in enumerate(u.trajectory[::skip]):
         if prot:
             prot_positions[ts_i, :, :] = prot.positions
             prot_rmsd.append(
