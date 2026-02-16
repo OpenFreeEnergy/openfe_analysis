@@ -36,8 +36,6 @@ def test_closest_image_shift(universe):
     ts = universe.trajectory.ts
     box = ts.triclinic_dimensions
     lig.positions += box[0]
-
-    # Distance after moving to another periodic image
     distance_shifted = mda.lib.distances.calc_bonds(prot.center_of_mass(), lig.center_of_mass())
     # Check it was shifted
     assert distance_shifted != pytest.approx(distance_orig, abs=1e-5)
@@ -45,11 +43,9 @@ def test_closest_image_shift(universe):
     # Apply the ClosestImageShift transformation
     m = ClosestImageShift(prot, [lig])
     universe.trajectory.add_transformations(m)
-
-    # Distance after transformation should be back to original distance
     distance_after = mda.lib.distances.calc_bonds(prot.center_of_mass(), lig.center_of_mass())
 
-    # Assert that the COM distance matches the original minimal-image distance
+    # Check that the COM distance matches the original COM distance
     assert distance_after == pytest.approx(distance_orig, abs=0.01)
 
 
