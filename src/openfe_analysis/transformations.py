@@ -59,7 +59,7 @@ class ClosestImageShift(TransformationBase):
 
     def _transform(self, ts):
         center = self.reference.center_of_mass()
-        box = triclinic_vectors(ts.dimensions)
+        box = ts.triclinic_dimensions
 
         for ag in self.targets:
             vec = ag.center_of_mass() - center
