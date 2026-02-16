@@ -8,7 +8,6 @@ and to automatically align the system to a protein structure.
 import MDAnalysis as mda
 import numpy as np
 from MDAnalysis.analysis.align import rotation_matrix
-from MDAnalysis.lib.mdamath import triclinic_vectors
 from MDAnalysis.transformations.base import TransformationBase
 from numpy import typing as npt
 
@@ -59,12 +58,12 @@ class ClosestImageShift(TransformationBase):
 
     def _transform(self, ts):
         center = self.reference.center_of_mass()
-        box = triclinic_vectors(ts.dimensions)
+        box = ts.triclinic_dimensions
 
         for ag in self.targets:
             vec = ag.center_of_mass() - center
             frac = np.linalg.solve(box.T, vec)  # fractional coordinates
-            shift = np.dot(np.round(frac), box)  # nearest image
+            shift = np.dot(np.rint(frac), box)  # nearest image, then compute shift
             ag.positions -= shift
 
         return ts
@@ -84,8 +83,7 @@ class Aligner(TransformationBase):
     def __init__(self, ref_ag: mda.AtomGroup):
         super().__init__()
         self.ref_idx = ref_ag.ix
-        # Would this copy be safer?
-        self.ref_pos = ref_ag.positions.copy()
+        self.ref_pos = ref_ag.positions
         self.weights = np.asarray(ref_ag.masses, dtype=np.float64)
         self.weights /= np.mean(self.weights)  # normalise weights
         # remove COM shift from reference positions

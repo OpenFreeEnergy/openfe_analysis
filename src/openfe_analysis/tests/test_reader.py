@@ -168,8 +168,10 @@ def test_simulation_skipped_nc(simulation_skipped_nc, hybrid_system_skipped_pdb)
         index=0,
         index_method="replica",
     )
+
     # Wrap all atoms inside the simulation box
     u.trajectory.add_transformations(wrap(u.atoms))
+
     assert len(u.trajectory) == 51
     assert u.trajectory.n_frames == 51
     assert u.trajectory.dt == 100
