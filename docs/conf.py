@@ -101,19 +101,7 @@ exclude_patterns = [
 ]
 
 autodoc_mock_imports = [
-    "cinnabar",
-    "dill",
     "MDAnalysis",
-    "matplotlib",
-    "mdtraj",
-    "openmmforcefields",
-    "openmmtools",
-    "pymbar",
-    "openff.interchange",
-    "openmmforcefields",
-    "psutil",
-    "py3Dmol",
-    "zstandard",
 ]
 
 # Extensions for the myst parser
@@ -177,78 +165,3 @@ html_css_files = [
 # custom-api.css is compiled from custom-api.scss
 sass_src_dir = "_sass"
 sass_out_dir = "_static/css"
-
-# Clone or update ExampleNotebooks
-example_notebooks_path = Path("ExampleNotebooks")
-try:
-    if example_notebooks_path.exists():
-        repo = git.Repo(example_notebooks_path)
-        try:
-            repo.remote("origin").pull()
-        except git.exc.GitCommandError:
-            # cannot pull if on a tag
-            pass
-    else:
-        repo = git.Repo.clone_from(
-            "https://github.com/OpenFreeEnergy/ExampleNotebooks.git",
-            branch="2025.12.04",
-            to_path=example_notebooks_path,
-        )
-except Exception as e:
-    from sphinx.util.logging import getLogger
-
-    filename = e.__traceback__.tb_frame.f_code.co_filename
-    lineno = e.__traceback__.tb_lineno
-    getLogger("sphinx.ext.openfe_git").warning(
-        f"Getting ExampleNotebooks failed in {filename} line {lineno}: {e}"
-    )
-
-
-# First, create links at top of notebook pages
-# All notebooks are in ExampleNotebooks repo, so link to that
-# Finally, add sphinx reference anchor in prolog so that we can make refs
-nbsphinx_prolog = cleandoc(r"""
-    {%- set gh_repo = "OpenFreeEnergy/ExampleNotebooks" -%}
-    {%- set gh_branch = "main" -%}
-    {%- set path = env.doc2path(env.docname, base=None) -%}
-    {%- if path.endswith(".nblink") -%}
-        {%- set path = env.metadata[env.docname]["nbsphinx-link-target"] -%}
-    {%- endif -%}
-    {%- if path.startswith("ExampleNotebooks/") -%}
-        {%- set path = path.replace("ExampleNotebooks/", "", 1) -%}
-    {%- endif -%}
-    {%- set gh_url =
-        "https://www.github.com/"
-        ~ gh_repo
-        ~ "/blob/"
-        ~ gh_branch
-        ~ "/"
-        ~ path
-    -%}
-    {%- set dl_url =
-        "https://raw.githubusercontent.com/"
-        ~ gh_repo
-        ~ "/"
-        ~ gh_branch
-        ~ "/"
-        ~ path
-    -%}
-
-    .. container:: ofe-top-of-notebook
-
-        .. button-link:: {{gh_url}}
-            :color: primary
-            :shadow:
-            :outline:
-
-            :octicon:`mark-github` View on GitHub
-
-        .. button-link:: {{dl_url}}
-            :color: primary
-            :shadow:
-            :outline:
-
-            :octicon:`download` Download Notebook
-
-    .. _{{ env.doc2path(env.docname, base=None) }}:
-""")
