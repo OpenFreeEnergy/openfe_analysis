@@ -23,7 +23,7 @@ def _select_protein_and_ligands(
     protein = u.select_atoms(protein_selection)
     lig_atoms = u.select_atoms(ligand_selection)
     # split ligands by fragment
-    ligands = list(lig_atoms.fragments)
+    ligands = lig_atoms.fragments
     return protein, ligands
 
 
