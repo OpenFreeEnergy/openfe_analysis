@@ -132,9 +132,8 @@ def gather_rms_data(
             # TODO: Some smart guard to avoid allocating a silly amount of memory?
             prot2d = np.empty((len(u.trajectory[::skip]), len(prot), 3), dtype=np.float32)
 
-            # Would this copy be safer?
-            prot_start = prot.positions.copy()
-            ligand_start = ligand.positions.copy()
+            prot_start = prot.positions
+            ligand_start = ligand.positions
             ligand_initial_com = ligand.center_of_mass()
             ligand_weights = ligand.masses / np.mean(ligand.masses)
 
