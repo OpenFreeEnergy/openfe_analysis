@@ -8,6 +8,7 @@ and to automatically align the system to a protein structure.
 import MDAnalysis as mda
 import numpy as np
 from MDAnalysis.analysis.align import rotation_matrix
+from MDAnalysis.lib import distances
 from MDAnalysis.transformations.base import TransformationBase
 from numpy import typing as npt
 
@@ -49,6 +50,12 @@ class ClosestImageShift(TransformationBase):
     PBC-safe transformation that shifts one or more target AtomGroups
     so that their COM is in the closest image relative to a reference AtomGroup.
     Works for any box type (triclinic or orthorhombic).
+
+    CAVEAT:
+    This Transformation requires the AtomGroups to be unwrapped!
+
+    Inspired from:
+    https://github.com/wolberlab/OpenMMDL/blob/main/openmmdl/openmmdl_simulation/scripts/post_md_conversions.py
     """
 
     def __init__(self, reference: mda.AtomGroup, targets: list[mda.AtomGroup]):
@@ -58,13 +65,11 @@ class ClosestImageShift(TransformationBase):
 
     def _transform(self, ts):
         center = self.reference.center_of_mass()
-        box = ts.triclinic_dimensions
 
         for ag in self.targets:
             vec = ag.center_of_mass() - center
-            frac = np.linalg.solve(box.T, vec)  # fractional coordinates
-            shift = np.dot(np.rint(frac), box)  # nearest image, then compute shift
-            ag.positions -= shift
+            vec_min = distances.minimize_vectors(vec.reshape(1, 3), ts.dimensions)[0]
+            ag.translate(vec_min - vec)
 
         return ts
 
