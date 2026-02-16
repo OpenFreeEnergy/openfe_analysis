@@ -77,11 +77,11 @@ def make_Universe(
 
     if protein:
         # Unwrap all atoms
-        unwrap_tr = unwrap(protein)
+        unwrap_tr = unwrap(prot + ligand)
 
         # Shift chains + ligand
         chains = [seg.atoms for seg in protein.segments]
-        shift = ClosestImageShift(chains[0], [*chains[1:], *ligands])
+        shift = ClosestImageShift(chains[0], [*chains[1:], ligand])
 
         align = Aligner(protein)
 

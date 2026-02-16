@@ -87,18 +87,7 @@ def test_universe_creation(simulation_nc, hybrid_system_pdb):
         atol=1e-6,
     )
     assert_allclose(u.dimensions, [78.141495, 78.141495, 78.141495, 60.0, 60.0, 90.0])
-
     u.trajectory.close()
-
-
-def test_universe_from_nc_file(simulation_skipped_nc, hybrid_system_skipped_pdb):
-    with nc.Dataset(simulation_skipped_nc) as ds:
-        u = mda.Universe(hybrid_system_skipped_pdb, ds, format="MultiStateReporter", state_id=0)
-
-        assert u
-        assert len(u.atoms) == 9178
-        assert len(u.trajectory) == 51
-        assert u.trajectory.dt == pytest.approx(100.0)
 
 
 def test_universe_from_nc_file(simulation_skipped_nc, hybrid_system_skipped_pdb):
