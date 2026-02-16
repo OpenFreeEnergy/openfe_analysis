@@ -7,10 +7,12 @@ import netCDF4 as nc
 import numpy as np
 import tqdm
 from MDAnalysis.analysis import rms
+from MDAnalysis.lib.mdamath import make_whole
+from MDAnalysis.transformations import unwrap
 from numpy import typing as npt
 
 from .reader import FEReader
-from .transformations import Aligner, Minimiser, NoJump
+from .transformations import Aligner, ClosestImageShift, NoJump
 
 
 def make_Universe(top: pathlib.Path, trj: nc.Dataset, state: int) -> mda.Universe:
@@ -41,17 +43,18 @@ def make_Universe(top: pathlib.Path, trj: nc.Dataset, state: int) -> mda.Univers
     ligand = u.select_atoms("resname UNK")
 
     if prot:
-        # if there's a protein in the system:
-        # - make the protein not jump periodic images between frames
-        # - put the ligand in the closest periodic image as the protein
-        # - align everything to minimise protein RMSD
-        nope = NoJump(prot)
-        minnie = Minimiser(prot, ligand)
+        # Unwrap all atoms
+        unwrap_tr = unwrap(prot + ligand)
+
+        # Shift chains + ligand
+        chains = [seg.atoms for seg in prot.segments]
+        shift = ClosestImageShift(chains[0], [*chains[1:], ligand])
+
         align = Aligner(prot)
 
         u.trajectory.add_transformations(
-            nope,
-            minnie,
+            unwrap_tr,
+            shift,
             align,
         )
     else:
@@ -130,7 +133,6 @@ def gather_rms_data(
             prot2d = np.empty((len(u.trajectory[::skip]), len(prot), 3), dtype=np.float32)
 
             prot_start = prot.positions
-            # prot_weights = prot.masses / np.mean(prot.masses)
             ligand_start = ligand.positions
             ligand_initial_com = ligand.center_of_mass()
             ligand_weights = ligand.masses / np.mean(ligand.masses)

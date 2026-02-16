@@ -6,7 +6,7 @@ from MDAnalysis.analysis import rms
 from openfe_analysis import FEReader
 from openfe_analysis.transformations import (
     Aligner,
-    Minimiser,
+    ClosestImageShift,
     NoJump,
 )
 
@@ -23,17 +23,30 @@ def universe(hybrid_system_skipped_pdb, simulation_skipped_nc):
     u.trajectory.close()
 
 
-def test_minimiser(universe):
+def test_closest_image_shift(universe):
     prot = universe.select_atoms("protein and name CA")
     lig = universe.select_atoms("resname UNK")
-    m = Minimiser(prot, lig)
-    universe.trajectory.add_transformations(m)
+    # The ligand is in the same periodic image as the protein.
+    # We translate it first into a different image, then transform it back.
 
-    d = mda.lib.distances.calc_bonds(prot.center_of_mass(), lig.center_of_mass())
-    # in the raw trajectory this is ~71 A as they're in diff images
-    # accounting for pbc should result in ~11.10
-    # TODO: This will be updated in the next PR!!!!
-    assert d == pytest.approx(24.79, abs=0.01)
+    # Original COM distance
+    distance_orig = mda.lib.distances.calc_bonds(prot.center_of_mass(), lig.center_of_mass())
+
+    # Move ligand by exactly one box length along first dimension
+    ts = universe.trajectory.ts
+    box = ts.triclinic_dimensions
+    lig.positions += box[0]
+    distance_shifted = mda.lib.distances.calc_bonds(prot.center_of_mass(), lig.center_of_mass())
+    # Check it was shifted
+    assert distance_shifted != pytest.approx(distance_orig, abs=1e-5)
+
+    # Apply the ClosestImageShift transformation
+    m = ClosestImageShift(prot, [lig])
+    universe.trajectory.add_transformations(m)
+    distance_after = mda.lib.distances.calc_bonds(prot.center_of_mass(), lig.center_of_mass())
+
+    # Check that the COM distance matches the original COM distance
+    assert distance_after == pytest.approx(distance_orig, abs=0.01)
 
 
 def test_nojump(hybrid_system_pdb, simulation_nc):
@@ -54,6 +67,7 @@ def test_nojump(hybrid_system_pdb, simulation_nc):
     # without the transformation, the y coordinate would jump up to ~81.86
     ref = np.array([31.79594626, 52.14568866, 30.64103877])
     assert prot.center_of_mass() == pytest.approx(ref, abs=0.01)
+    universe.trajectory.close()
 
 
 def test_aligner(universe):
