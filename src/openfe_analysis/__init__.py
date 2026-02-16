@@ -3,6 +3,6 @@ from . import rmsd
 from .reader import FEReader
 from .transformations import (
     Aligner,
-    Minimiser,
+    ClosestImageShift,
     NoJump,
 )

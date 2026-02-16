@@ -8,6 +8,7 @@ and to automatically align the system to a protein structure.
 import MDAnalysis as mda
 import numpy as np
 from MDAnalysis.analysis.align import rotation_matrix
+from MDAnalysis.lib import distances
 from MDAnalysis.transformations.base import TransformationBase
 from numpy import typing as npt
 
@@ -65,51 +66,31 @@ class NoJump(TransformationBase):
         return ts
 
 
-class Minimiser(TransformationBase):
+class ClosestImageShift(TransformationBase):
     """
-    Translate AtomGroups to the nearest periodic image relative to a reference.
+    PBC-safe transformation that shifts one or more target AtomGroups
+    so that their COM is in the closest image relative to a reference AtomGroup.
+    Works for any box type (triclinic or orthorhombic).
 
-    This transformation shifts one or more AtomGroups by integer multiples
-    of the simulation box vectors such that their center of mass is as close
-    as possible to the center of mass of a reference AtomGroup.
+    CAVEAT:
+    This Transformation requires the AtomGroups to be unwrapped!
 
-    It is commonly used to keep ligands in the same periodic image as a
-    protein during alchemical or replica-exchange simulations.
-
-    Parameters
-    ----------
-    central_ag : MDAnalysis.AtomGroup
-        Reference AtomGroup whose center of mass defines the target image.
-    *ags : MDAnalysis.AtomGroup
-        One or more AtomGroups to be translated into the closest periodic
-        image relative to ``central_ag``.
-
-    Notes
-    -----
-    - This transformation assumes an orthorhombic simulation box.
-    - Translations are applied independently for each AtomGroup.
-    - Coordinates are modified in-place.
-    - This transformation does not prevent inter-frame jumps by itself
-      and is typically used in combination with :class:`NoJump`.
+    Inspired from:
+    https://github.com/wolberlab/OpenMMDL/blob/main/openmmdl/openmmdl_simulation/scripts/post_md_conversions.py
     """
 
-    central_ag: mda.AtomGroup
-    other_ags: list[mda.AtomGroup]
-
-    def __init__(self, central_ag: mda.AtomGroup, *ags):
+    def __init__(self, reference: mda.AtomGroup, targets: list[mda.AtomGroup]):
         super().__init__()
-        self.central_ag = central_ag
-        self.other_ags = ags
+        self.reference = reference
+        self.targets = targets
 
     def _transform(self, ts):
-        center = self.central_ag.center_of_mass()
-        box = self.central_ag.dimensions[:3]
+        center = self.reference.center_of_mass()
 
-        for ag in self.other_ags:
+        for ag in self.targets:
             vec = ag.center_of_mass() - center
-
-            # this only works for orthogonal boxes
-            ag.positions -= np.rint(vec / box) * box
+            vec_min = distances.minimize_vectors(vec.reshape(1, 3), ts.dimensions)[0]
+            ag.translate(vec_min - vec)
 
         return ts
 
