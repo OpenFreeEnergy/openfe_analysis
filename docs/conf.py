@@ -29,7 +29,7 @@ os.environ["SPHINX"] = "True"
 # -- Project information -----------------------------------------------------
 
 project = "OpenFE Analysis"
-copyright = "2022, The OpenFE Development Team"
+copyright = "2026, The OpenFE Development Team"
 author = "The OpenFE Development Team"
 version = f"{parse(version('openfe_analysis')).major}.{parse(version('openfe_analysis')).minor}"
 
@@ -122,7 +122,7 @@ myst_heading_anchors = 3
 #
 html_theme = "ofe_sphinx_theme"
 html_theme_options = {
-    "logo": {"text": "OpenFE docs"},
+    "logo": {"text": "openfe-analysis docs"},
     "icon_links": [
         {
             "name": "GitHub",
