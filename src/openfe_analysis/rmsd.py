@@ -22,9 +22,8 @@ def _select_protein_and_ligands(
 ) -> tuple[mda.core.groups.AtomGroup, list[mda.core.groups.AtomGroup]]:
     protein = u.select_atoms(protein_selection)
     lig_atoms = u.select_atoms(ligand_selection)
-    # split into individual ligands by residue
-    ligands = [res.atoms for res in lig_atoms.residues]
-
+    # split ligands by fragment
+    ligands = list(lig_atoms.fragments)
     return protein, ligands
 
 
@@ -77,7 +76,10 @@ def make_Universe(
 
     if protein:
         # Unwrap all atoms
-        unwrap_tr = unwrap(protein + ligands)
+        complex = protein
+        for ligand in ligands:
+            complex += ligand
+        unwrap_tr = unwrap(complex)
 
         # Shift chains + ligand
         chains = [seg.atoms for seg in protein.segments]
