@@ -142,7 +142,7 @@ def test_multichain_rmsd_shifting(simulation_skipped_nc, hybrid_system_skipped_p
     u = mda.Universe(
         hybrid_system_skipped_pdb,
         simulation_skipped_nc,
-        state_id=0,
+        index=0,
         format=FEReader,
     )
     prot = u.select_atoms("protein")
