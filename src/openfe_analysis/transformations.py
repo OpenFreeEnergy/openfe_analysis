@@ -16,16 +16,8 @@ from numpy import typing as npt
 class NoJump(TransformationBase):
     """
     Prevent an AtomGroup from jumping between periodic images.
-
-    This on-the-fly trajectory transformation removes large apparent
-    center-of-mass displacements caused by periodic boundary conditions.
-    If the AtomGroup moves by more than half a box length between
-    consecutive frames, it is translated by an integer number of box
-    vectors to keep its motion continuous.
-
-    The transformation operates in-place on the AtomGroup coordinates
-    and is intended to be applied before analyses that rely on smooth
-    time evolution (e.g. RMSD, COM motion).
+    This transformation removes large apparent
+    COM displacements caused by periodic boundary conditions.
 
     Parameters
     ----------
@@ -40,6 +32,8 @@ class NoJump(TransformationBase):
       most appropriate for compact groups (e.g. proteins, ligands).
     - Must be applied before any alignment transformations to avoid
       mixing reference frames.
+    - Is intended to be applied before analyses that rely on smooth
+      time evolution (e.g. RMSD, COM motion).
     """
 
     ag: mda.AtomGroup
@@ -70,12 +64,13 @@ class ClosestImageShift(TransformationBase):
     """
     PBC-safe transformation that shifts one or more target AtomGroups
     so that their COM is in the closest image relative to a reference AtomGroup.
-    Works for any box type (triclinic or orthorhombic).
 
-    CAVEAT:
-    This Transformation requires the AtomGroups to be unwrapped!
+    CAVEAT: This Transformation requires the AtomGroups to be unwrapped!
 
-    Inspired from:
+    Notes
+    -----
+    - Works for any box type (triclinic or orthorhombic).
+    - Inspired from:
     https://github.com/wolberlab/OpenMMDL/blob/main/openmmdl/openmmdl_simulation/scripts/post_md_conversions.py
     """
 
@@ -99,7 +94,9 @@ class Aligner(TransformationBase):
     """
     Align a trajectory to a reference AtomGroup by minimizing RMSD.
 
-    This transformation performs an on-the-fly least-squares alignment
+    Notes
+    -----
+    Performs an on-the-fly least-squares alignment
     of the entire universe to a reference AtomGroup.
     At each frame, the coordinates are translated and rotated to minimize the
     RMSD of the atoms relative to their positions in the reference.

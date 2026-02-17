@@ -16,12 +16,6 @@ def _determine_iteration_dt(dataset) -> float:
     Determine the time increment between successive iterations
     in a MultiStateReporter trajectory.
 
-    The timestep is inferred from the serialized MCMC move stored in the
-    ``mcmc_moves`` group of the NetCDF file. Specifically, this assumes the
-    move defines both a ``timestep`` and ``n_steps`` parameter, such that
-
-        dt_iteration = n_steps * timestep
-
     Parameters
     ----------
     dataset : nc.Dataset
@@ -42,7 +36,8 @@ def _determine_iteration_dt(dataset) -> float:
     -----
     This assumes an MCMC move which serializes in a manner similar
     to `openmmtools.mcmc.LangevinDynamicsMove`, i.e. it must have
-    both a `timestep` and `n_steps` defined.
+    both a `timestep` and `n_steps` defined, such that
+        dt_iteration = n_steps * timestep
     """
     # Deserialize the MCMC move information for the 0th entry.
     mcmc_move_data = yaml.load(

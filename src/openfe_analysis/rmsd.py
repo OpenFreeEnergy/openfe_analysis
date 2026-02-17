@@ -23,6 +23,24 @@ def make_Universe(top: pathlib.Path, trj: nc.Dataset, state: int) -> mda.Univers
     The Universe is created using the custom ``FEReader`` to extract a
     single state from a multistate simulation.
 
+    Parameters
+    ----------
+    top : pathlib.Path or Topology
+        Path to a topology file (e.g. PDB) or an already-loaded MDAnalysis
+        topology object.
+    trj : nc.Dataset
+        Open NetCDF dataset produced by
+        ``openmmtools.multistate.MultiStateReporter``.
+    state : int
+        Thermodynamic state index to extract from the multistate trajectory.
+
+    Returns
+    -------
+    MDAnalysis.Universe
+        A Universe with trajectory transformations applied.
+
+    Notes
+    -----
     Identifies two AtomGroups:
     - protein, defined as having standard amino acid names, then filtered
       down to CA
@@ -40,22 +58,6 @@ def make_Universe(top: pathlib.Path, trj: nc.Dataset, state: int) -> mda.Univers
     If only a ligand is present:
     - prevents the ligand from jumping between periodic images
     - Aligns the ligand to minimize its RMSD
-
-    Parameters
-    ----------
-    top : pathlib.Path or Topology
-        Path to a topology file (e.g. PDB) or an already-loaded MDAnalysis
-        topology object.
-    trj : nc.Dataset
-        Open NetCDF dataset produced by
-        ``openmmtools.multistate.MultiStateReporter``.
-    state : int
-        Thermodynamic state index to extract from the multistate trajectory.
-
-    Returns
-    -------
-    MDAnalysis.Universe
-        A Universe with trajectory transformations applied.
     """
     u = mda.Universe(
         top,
@@ -103,18 +105,6 @@ def gather_rms_data(
     """
     Compute structural RMSD-based metrics for a multistate BFE simulation.
 
-    For each thermodynamic state (lambda), this function:
-      - Loads the trajectory using ``FEReader``
-      - Applies standard PBC-handling and alignment transformations
-      - Computes protein and ligand structural metrics over time
-
-    The following analyses are produced per state:
-      - 1D protein CA RMSD time series
-      - 1D ligand RMSD time series
-      - Ligand center-of-mass displacement from its initial position
-        (``ligand_wander``)
-      - Flattened 2D protein RMSD matrix (pairwise RMSD between frames)
-
     Parameters
     ----------
     pdb_topology : pathlib.Path
@@ -131,6 +121,20 @@ def gather_rms_data(
         Dictionary containing per-state analysis results with keys:
         ``protein_RMSD``, ``ligand_RMSD``, ``ligand_wander``,
         ``protein_2D_RMSD``, and ``time(ps)``.
+
+    Notes
+    -----
+    For each thermodynamic state (lambda), this function:
+      - Loads the trajectory using ``FEReader``
+      - Applies standard PBC-handling and alignment transformations
+      - Computes protein and ligand structural metrics over time
+
+    The following analyses are produced per state:
+      - 1D protein CA RMSD time series
+      - 1D ligand RMSD time series
+      - Ligand center-of-mass displacement from its initial position
+        (``ligand_wander``)
+      - Flattened 2D protein RMSD matrix (pairwise RMSD between frames)
     """
     output = {
         "protein_RMSD": [],
