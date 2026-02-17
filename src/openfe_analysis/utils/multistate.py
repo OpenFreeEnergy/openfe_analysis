@@ -1,6 +1,6 @@
 import warnings
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Literal, Optional, Tuple
 
 import netCDF4 as nc
 import numpy as np
@@ -219,14 +219,12 @@ def _get_unitcell(
 def trajectory_from_multistate(
     input_file: Path,
     output_file: Path,
-    state_number: Optional[int] = None,
-    replica_number: Optional[int] = None,
+    index: int,
+    index_method: Literal["state", "replica"] = "state",
 ) -> None:
     """
-    Extract a state's trajectory (in an AMBER compliant format)
-    from a MultiState sampler generated NetCDF file.
-
-    Either a state or replica index must be supplied, but not both!
+    Extract a 1D trajectory (in an AMBER compliant format) from a MultiState
+    sampler generated NetCDF file.
 
     Parameters
     ----------
@@ -234,54 +232,52 @@ def trajectory_from_multistate(
         Path to the input MultiState sampler generated NetCDF file.
     output_file : path.Pathlib
         Path to the AMBER-style NetCDF trajectory to be written.
-    state_number : int, optional
-        Index of the state to write out to the trajectory.
-    replica_number : int, optional
-        Index of the replica to write out
+    index : int
+        Index of the state or replica to extract. May be negative.
+    index_method : {"state", "replica"}, default "state"
+        Whether `index` refers to a Hamiltonian state or a replica.
     """
-    if not ((state_number is None) ^ (replica_number is None)):
-        raise ValueError(
-            "Supply either state or replica number, "
-            f"got state_number={state_number} "
-            f"and replica_number={replica_number}"
-        )
+    if index_method not in {"state", "replica"}:
+        raise ValueError(f"index_method must be 'state' or 'replica', got {index_method}")
 
     # Open MultiState NC file and get number of atoms and frames
     multistate = nc.Dataset(input_file, "r")
     n_atoms = len(multistate.variables["positions"][0][0])
-    n_replicas = len(multistate.variables["positions"][0])
     frame_list = _determine_position_indices(multistate)
     n_frames = len(frame_list)
 
-    # Sanity check
-    if state_number is not None and (state_number + 1 > n_replicas):
-        # Note this works for now, but when we have more states
-        # than replicas (e.g. SAMS) this won't really work
-        errmsg = "State does not exist"
-        raise ValueError(errmsg)
+    # Normalize index (handles negatives)
+    if index_method == "state":
+        size = multistate.dimensions["state"].size
+    else:
+        size = multistate.dimensions["replica"].size
+
+    index = index % size
 
     # Create output AMBER NetCDF convention file
     traj = _create_new_dataset(
-        output_file, n_atoms, title=f"state {state_number} trajectory from {input_file}"
+        output_file,
+        n_atoms,
+        title=f"{index_method} {index} trajectory from {input_file}",
     )
 
-    replica_id: int = -1
-    if replica_number is not None:
-        replica_id = replica_number
+    replica_id: int = index if index_method == "replica" else -1
 
     # Loopy de loop over n_frames so that the new Dataset
     # is just 0 -> n_frames
     for frame in range(n_frames):
-        if state_number is not None:
-            replica_id = _state_to_replica(multistate, state_number, frame_list[frame])
+        if index_method == "state":
+            replica_id = _state_to_replica(multistate, index, frame_list[frame])
 
-        traj.variables["coordinates"][frame] = (
-            _replica_positions_at_frame(multistate, replica_id, frame_list[frame]).to("angstrom").m
-        )
+        pos = _replica_positions_at_frame(multistate, replica_id, frame_list[frame])
+        if pos is None:
+            raise RuntimeError("Frame without positions encountered")
+
+        traj.variables["coordinates"][frame] = pos.to("angstrom").m
+
         unitcell = _get_unitcell(multistate, replica_id, frame_list[frame])
         traj.variables["cell_lengths"][frame] = unitcell[:3]
         traj.variables["cell_angles"][frame] = unitcell[3:]
 
-    # Make sure to clean up when you are done
     multistate.close()
     traj.close()

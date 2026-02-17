@@ -17,7 +17,7 @@ def universe(hybrid_system_skipped_pdb, simulation_skipped_nc):
         hybrid_system_skipped_pdb,
         simulation_skipped_nc,
         format="MultiStateReporter",
-        state_id=0,
+        index=0,
     )
     yield u
     u.trajectory.close()
@@ -54,7 +54,7 @@ def test_nojump(hybrid_system_pdb, simulation_nc):
         hybrid_system_pdb,
         simulation_nc,
         format="MultiStateReporter",
-        state_id=2,
+        index=2,
     )
     # find frame where protein would teleport across boundary and check it
     prot = universe.select_atoms("protein and name CA")
