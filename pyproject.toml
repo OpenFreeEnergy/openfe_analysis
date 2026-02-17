@@ -1,7 +1,7 @@
 [build-system]
 requires=[
-	"setuptools>=61.0",
-	"versioningit",
+	"setuptools>=64.0",
+	"setuptools-scm>=8",
 ]
 build-backend = "setuptools.build_meta"
 
@@ -9,32 +9,37 @@ build-backend = "setuptools.build_meta"
 name = "openfe_analysis"
 dynamic = ["version"]
 authors=[
-    {name="Irfan Alibay", email="irfan.alibay@gmail.com"},
-    {name="Richard J Gowers", email="richardjgowers@gmail.com"},
+    {name="The OpenFE developers", email="openfe@omsf.io"}
 ]
 dependencies = [
     'click',
-    'MDAnalysis',
+    'MDAnalysis>=2.8.0',
     'numpy',
     'netCDF4',
     'openff-units',
+    'pyyaml',
 ]
-description="Analysis of free energy calculations."
+description="Trajectory analysis of free energy calculations."
 readme="README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
 
 [tool.setuptools]
 zip-safe = false
+include-package-data = true
 license-files = ["LICENSE"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["openfe_analysis"]
+
+[tool.setuptools_scm]
+version_file = "src/openfe_analysis/_version.py"
+fallback_version = "0.0.0"
+
 
 [project.optional-dependencies]
 test = [
@@ -51,18 +56,21 @@ test = [
 [project.scripts]
 openfe_analysis = "openfe_analysis.cli:cli"
 
-[tool.versioningit]
-default-version = "1+unknown"
+[tool.ruff]
+line-length = 100
+exclude = [
+  "*.ipynb", # TODO: auto-format notebooks
+]
+# Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
+lint.select = [
+    "E", # pycodestyle errors
+    "F", # Pyflakes
+    "I", # isort
+    # "C901"  # TODO: mccabe complexity, add this back in
+    # "UP",  # TODO: add this in when we're ready for pyupgrade
+    "W",  # pycodestyle warnings
+]
 
-[tool.versioningit.format]
-distance = "{base_version}+{distance}.{vcs}{rev}"
-dirty = "{base_version}+{distance}.{vcs}{rev}.dirty"
-distance-dirty = "{base_version}+{distance}.{vcs}{rev}.dirty"
-
-[tool.versioningit.vcs]
-method = "git" 
-match = ["*"]
-default-tag = "0.0.0"
-
-[tool.versioningit.write]
-file = "src/openfe_analysis/_version.py"
+lint.ignore = [
+    "F401", # TODO: add this back in when we resolve unused imports
+]

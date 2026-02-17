@@ -22,10 +22,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ["ubuntu-latest", "macos-latest", "macos-13"]
+        os: ["ubuntu-latest", "macos-latest"]
         python-version:
-          - "3.9"
-          - "3.10"
           - "3.11"
           - "3.12"
     steps:
@@ -33,13 +31,19 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Get current date
+        id: date
+        run: echo "date=$(date +%Y-%m-%d)" >> "${GITHUB_OUTPUT}"
+
       - name: "Setup Micromamba"
-        uses: mamba-org/setup-micromamba@v1
+        uses: mamba-org/setup-micromamba@v2
         with:
           environment-file: environment.yml
           environment-name: openfe_analysis_env
           cache-environment: true
           cache-downloads: true
+          cache-environment-key: environment-${{ steps.date.outputs.date }}
+          cache-downloads-key: downloads-${{ steps.date.outputs.date }}
           create-args: >-
             python=${{ matrix.python-version }}
           init-shell: bash
@@ -48,13 +52,32 @@ jobs:
         run: |
           python -m pip install --no-deps .
 
-      - name: "Restore pooch test data cache"
-        id: cache-testdata-restore
-        uses: actions/cache/restore@v3
+      - name: Cache Pooch data
+        uses: actions/cache@v4
         with:
           path: |
-            ~/.cache/openfe_analysis/
-          key: ${{ runner.os }}
+            # Linux cache location
+            ~/.cache/openfe_analysis
+            # macOS cache location
+            ~/Library/Caches/openfe_analysis
+          key: pooch-${{ matrix.os }}-v2
+
+      - name: "Download Zenodo data"
+        run: |
+          python - <<'EOF'
+          import pooch
+          from openfe_analysis.tests.conftest import ZENODO_DOI, ZENODO_FILES
+
+          zenodo = pooch.create(
+              path=pooch.os_cache('openfe_analysis'),
+              base_url=ZENODO_DOI,
+              registry=ZENODO_FILES,
+          )
+
+          for fname in ZENODO_FILES:
+              zenodo.fetch(fname, processor=pooch.Untar())
+
+          EOF
 
       - name: "Test imports"
         run: |
@@ -63,14 +86,6 @@ jobs:
       - name: "Run tests"
         run: |
           pytest -n auto -v --cov=openfe_analysis --cov-report=xml --durations=10
-
-      - name: "Save pooch test data cache"
-        id: cache-testdata-save
-        uses: actions/cache/save@v3
-        with:
-          path: |
-            ~/.cache/openfe_analysis/
-          key: ${{ runner.os }}
 
       - name: codecov
         if: ${{ github.repository == 'OpenFreeEnergy/openfe_analysis'

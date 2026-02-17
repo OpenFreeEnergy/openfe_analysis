@@ -1,11 +1,8 @@
-from ._version import __version__
-
-from . import handle_trajectories
+from ._version import __version__  # isort: skip
+from . import rmsd
 from .reader import FEReader
 from .transformations import (
-    NoJump,
-    Minimiser,
     Aligner,
+    ClosestImageShift,
+    NoJump,
 )
-from . import rmsd
-from . import cli

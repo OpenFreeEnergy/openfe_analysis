@@ -1,67 +1,101 @@
-from MDAnalysis.coordinates.base import ReaderBase, Timestep
+import pathlib
+from typing import Literal, Optional
+
 import netCDF4 as nc
+import numpy as np
+import yaml
+from MDAnalysis.coordinates.base import ReaderBase, Timestep
 from openff.units import unit
-from typing import Optional
+
+from openfe_analysis.utils import multistate, serialization
+from openfe_analysis.utils.multistate import _determine_position_indices
 
 
-from . import handle_trajectories
+def _determine_iteration_dt(dataset) -> float:
+    """
+    Find out the timestep between each frame in the trajectory.
 
+    Parameters
+    ----------
+    dataset : nc.Dataset
+      Dataset holding the MultiStateReporter generated NetCDF file.
 
-def _determine_dt(ds) -> float:
-    # first grab integrator timestep
-    mcmc_move_data = ds.groups['mcmc_moves']['move0'][0].split('\n')
-    in_timestep = False
-    for line in mcmc_move_data:
-        if line.startswith('timestep'):
-            in_timestep = True
-        if in_timestep and line.strip().startswith('value'):
-            timestep = float(line.split()[-1]) / 1000.  # convert to ps
-            break
-    else:
-        raise ValueError("Didn't find timestep")
-    # next get the save interval
-    option_data = ds.variables['options'][0].split('\n')
-    for line in option_data:
-        if line.startswith('online_analysis_interval'):
-            nsteps = float(line.split()[-1])
-            break
-    else:
-        raise ValueError("Didn't find online_analysis_interval")
+    Returns
+    -------
+    float
+      The timestep in units of picoseconds.
 
-    return timestep * nsteps
+    Raises
+    ------
+    KeyError
+      If either `timestep` or `n_steps` cannot be found in the
+      zeroth MCMC move.
+
+    Notes
+    -----
+    This assumes an MCMC move which serializes in a manner similar
+    to `openmmtools.mcmc.LangevinDynamicsMove`, i.e. it must have
+    both a `timestep` and `n_steps` defined.
+    """
+    # Deserialize the MCMC move information for the 0th entry.
+    mcmc_move_data = yaml.load(
+        dataset.groups["mcmc_moves"]["move0"][0],
+        Loader=serialization.UnitedYamlLoader,
+    )
+
+    try:
+        dt = mcmc_move_data["n_steps"] * mcmc_move_data["timestep"]
+    except KeyError:
+        msg = "Either `n_steps` or `timestep` are missing from the MCMC move"
+        raise KeyError(msg)
+
+    return dt.to("picosecond").m
 
 
 class FEReader(ReaderBase):
-    """A MDAnalysis Reader for nc files created by openfe RFE Protocol
-
-    Looks along a multistate .nc file along one of two axes:
-    - constant state/lambda (varying replica)
-    - constant replica (varying lambda)
     """
-    _state_id: Optional[int]
-    _replica_id: Optional[int]
+    MDAnalysis Reader for NetCDF files created by
+    `openmmtools.multistate.MultiStateReporter`
+
+    Provides a 1D trajectory along either:
+
+    - constant Hamiltonian state (`index_method="state"`)
+    - constant replica (`index_method="replica"`)
+
+    selected via the `index` argument.
+    """
+
+    _multistate_index: Optional[int]
+    _index_method: Optional[str]
     _frame_index: int
     _dataset: nc.Dataset
     _dataset_owner: bool
 
-    format = 'openfe RFE'
+    format = "MultiStateReporter"
 
-    def __init__(self, filename, convert_units=True, **kwargs):
+    units = {"time": "ps", "length": "nanometer"}
+
+    def __init__(
+        self,
+        filename: str | pathlib.Path | nc.Dataset,
+        *,
+        index: int,
+        index_method: Literal["state", "replica"] = "state",
+        convert_units: bool = True,
+        **kwargs,
+    ):
         """
         Parameters
         ----------
         filename : pathlike or nc.Dataset
-          path to the .nc file
+            Path to the .nc file or an open Dataset.
+        index : int
+            Index of the state or replica to extract. May be negative.
+        index_method : {"state", "replica"}, default "state"
+            Whether `index` refers to a Hamiltonian state or a replica.
         convert_units : bool
-          convert positions to A
+            Convert positions to Angstrom.
         """
-        self._state_id = kwargs.pop('state_id', None)
-        self._replica_id = kwargs.pop('replica_id', None)
-        if not ((self._state_id is None) ^ (self._replica_id is None)):
-            raise ValueError("Specify one and only one of state or replica, "
-                             f"got state id={self._state_id} "
-                             f"replica_id={self._replica_id}")
-
         super().__init__(filename, convert_units, **kwargs)
 
         if isinstance(filename, nc.Dataset):
@@ -70,9 +104,26 @@ class FEReader(ReaderBase):
         else:
             self._dataset = nc.Dataset(filename)
             self._dataset_owner = True
-        self._n_atoms = self._dataset.dimensions['atom'].size
+
+        if index_method not in {"state", "replica"}:
+            raise ValueError(f"index_method must be 'state' or 'replica', got {index_method}")
+
+        self._index_method = index_method
+
+        # Handle the negative ID case
+        if index_method == "state":
+            size = self._dataset.dimensions["state"].size
+        else:
+            size = self._dataset.dimensions["replica"].size
+
+        self._multistate_index = index % size
+
+        self._n_atoms = self._dataset.dimensions["atom"].size
         self.ts = Timestep(self._n_atoms)
-        self._dt = _determine_dt(self._dataset)
+        self._frames = _determine_position_indices(self._dataset)
+        # The MDAnalysis trajectory "dt" is the iteration dt
+        # multiplied by the number of iterations between frames.
+        self._dt = _determine_iteration_dt(self._dataset) * np.diff(self._frames)[0]
         self._read_frame(0)
 
     @staticmethod
@@ -81,18 +132,25 @@ class FEReader(ReaderBase):
         return isinstance(thing, nc.Dataset)
 
     @property
+    def multistate_index(self) -> int:
+        return self._multistate_index
+
+    @property
     def n_atoms(self) -> int:
         return self._n_atoms
 
     @property
     def n_frames(self) -> int:
-        return self._dataset.dimensions['iteration'].size
+        return len(self._frames)
+
+    @property
+    def index_method(self) -> str:
+        return self._index_method
 
     @staticmethod
     def parse_n_atoms(filename, **kwargs) -> int:
         with nc.Dataset(filename) as ds:
-            n_atoms = ds.dimensions['atom'].size
-
+            n_atoms = ds.dimensions["atom"].size
         return n_atoms
 
     def _read_next_timestep(self, ts=None) -> Timestep:
@@ -103,25 +161,34 @@ class FEReader(ReaderBase):
     def _read_frame(self, frame: int) -> Timestep:
         self._frame_index = frame
 
-        if self._state_id is not None:
-            rep = handle_trajectories._state_to_replica(
+        frame = self._frames[self._frame_index]
+
+        if self._index_method == "state":
+            rep = multistate._state_to_replica(
                 self._dataset,
-                self._state_id,
-                self._frame_index
+                self._multistate_index,
+                frame,
             )
         else:
-            rep = self._replica_id
+            rep = self._multistate_index
 
-        pos = handle_trajectories._replica_positions_at_frame(
-            self._dataset,
-            rep,
-            self._frame_index)
-        dim = handle_trajectories._get_unitcell(
-            self._dataset,
-            rep,
-            self._frame_index)
+        pos = multistate._replica_positions_at_frame(self._dataset, rep, frame)
+        dim = multistate._get_unitcell(self._dataset, rep, frame)
 
-        self.ts.positions = (pos.to(unit.angstrom)).m
+        if pos is None:
+            errmsg = (
+                "NetCDF dataset frame without positions was accessed "
+                "this likely indicates that the reader failed to work out "
+                "the write frequency and there is a deeper issue with how "
+                "this file was written."
+            )
+            raise RuntimeError(errmsg)
+
+        # Convert to base MDAnalysis distance units (Angstrom) if requested
+        if self.convert_units:
+            self.ts.positions = (pos.to(unit.angstrom)).m
+        else:
+            self.ts.positions = pos.m
         self.ts.dimensions = dim
         self.ts.frame = self._frame_index
         self.ts.time = self._frame_index * self._dt
@@ -136,5 +203,7 @@ class FEReader(ReaderBase):
         self._frame_index = -1
 
     def close(self):
-        if self._dataset_owner:
-            self._dataset.close()
+        if self._dataset is not None:
+            if self._dataset_owner:
+                self._dataset.close()
+            self._dataset = None
