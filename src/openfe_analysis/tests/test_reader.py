@@ -44,7 +44,7 @@ def test_determine_position_indices_warns_for_old_nc(tmp_path):
 
 
 def test_universe_creation(simulation_nc, hybrid_system_pdb):
-    u = mda.Universe(hybrid_system_pdb, simulation_nc, format=FEReader, state_id=0)
+    u = mda.Universe(hybrid_system_pdb, simulation_nc, format=FEReader, index=0)
 
     # Check that a Universe exists
     assert u
@@ -92,7 +92,7 @@ def test_universe_creation(simulation_nc, hybrid_system_pdb):
 
 def test_universe_from_nc_file(simulation_skipped_nc, hybrid_system_skipped_pdb):
     with nc.Dataset(simulation_skipped_nc) as ds:
-        u = mda.Universe(hybrid_system_skipped_pdb, ds, format="MultiStateReporter", state_id=0)
+        u = mda.Universe(hybrid_system_skipped_pdb, ds, format="MultiStateReporter", index=0)
 
         assert u
         assert len(u.atoms) == 9178
@@ -105,7 +105,7 @@ def test_universe_creation_noconversion(simulation_skipped_nc, hybrid_system_ski
         hybrid_system_skipped_pdb,
         simulation_skipped_nc,
         format=FEReader,
-        state_id=0,
+        index=0,
         convert_units=False,
     )
     assert u.trajectory.ts.frame == 0
@@ -124,20 +124,23 @@ def test_universe_creation_noconversion(simulation_skipped_nc, hybrid_system_ski
 
 
 def test_fereader_negative_state(simulation_skipped_nc, hybrid_system_skipped_pdb):
-    u = mda.Universe(hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, state_id=-1)
+    u = mda.Universe(hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, index=-1)
 
-    assert u.trajectory._state_id == 10
-    assert u.trajectory._replica_id is None
+    assert u.trajectory._multistate_index == 10
     u.trajectory.close()
 
 
 def test_fereader_negative_replica(simulation_skipped_nc, hybrid_system_skipped_pdb):
     u = mda.Universe(
-        hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, replica_id=-2
+        hybrid_system_skipped_pdb,
+        simulation_skipped_nc,
+        format=FEReader,
+        index=-2,
+        index_method="replica",
     )
 
-    assert u.trajectory._state_id is None
-    assert u.trajectory._replica_id == 9
+    assert u.trajectory._multistate_index == 9
+    assert u.trajectory._index_method == "replica"
     u.trajectory.close()
 
 
@@ -145,13 +148,13 @@ def test_fereader_negative_replica(simulation_skipped_nc, hybrid_system_skipped_
 def test_fereader_replica_state_id_error(
     simulation_skipped_nc, hybrid_system_skipped_pdb, rep_id, state_id
 ):
-    with pytest.raises(ValueError, match="Specify one and only one"):
+    with pytest.raises(ValueError, match="index_method must be 'state'"):
         _ = mda.Universe(
             hybrid_system_skipped_pdb,
             simulation_skipped_nc,
             format=FEReader,
-            state_id=state_id,
-            replica_id=rep_id,
+            index=0,
+            index_method="wrong",
         )
 
 
@@ -162,7 +165,8 @@ def test_simulation_skipped_nc(simulation_skipped_nc, hybrid_system_skipped_pdb)
         hybrid_system_skipped_pdb,
         simulation_skipped_nc,
         format=FEReader,
-        replica_id=0,
+        index=0,
+        index_method="replica",
     )
 
     # Wrap all atoms inside the simulation box

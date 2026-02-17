@@ -1,4 +1,5 @@
-from typing import Optional
+import pathlib
+from typing import Literal, Optional
 
 import netCDF4 as nc
 import numpy as np
@@ -52,16 +53,20 @@ def _determine_iteration_dt(dataset) -> float:
 
 
 class FEReader(ReaderBase):
-    """A MDAnalysis Reader for NetCDF files created by
+    """
+    MDAnalysis Reader for NetCDF files created by
     `openmmtools.multistate.MultiStateReporter`
 
-    Looks along a multistate NetCDF file along one of two axes:
-      - constant state/lambda (varying replica)
-      - constant replica (varying lambda)
+    Provides a 1D trajectory along either:
+
+    - constant Hamiltonian state (`index_method="state"`)
+    - constant replica (`index_method="replica"`)
+
+    selected via the `index` argument.
     """
 
-    _state_id: Optional[int]
-    _replica_id: Optional[int]
+    _multistate_index: Optional[int]
+    _index_method: Optional[str]
     _frame_index: int
     _dataset: nc.Dataset
     _dataset_owner: bool
@@ -70,35 +75,27 @@ class FEReader(ReaderBase):
 
     units = {"time": "ps", "length": "nanometer"}
 
-    def __init__(self, filename, convert_units=True, state_id=None, replica_id=None, **kwargs):
+    def __init__(
+        self,
+        filename: str | pathlib.Path | nc.Dataset,
+        *,
+        index: int,
+        index_method: Literal["state", "replica"] = "state",
+        convert_units: bool = True,
+        **kwargs,
+    ):
         """
         Parameters
         ----------
         filename : pathlike or nc.Dataset
-          path to the .nc file
+            Path to the .nc file or an open Dataset.
+        index : int
+            Index of the state or replica to extract. May be negative.
+        index_method : {"state", "replica"}, default "state"
+            Whether `index` refers to a Hamiltonian state or a replica.
         convert_units : bool
-          convert positions to Angstrom
-        state_id : Optional[int]
-          The Hamiltonian state index to extract. Must be defined if
-          ``replica_id`` is not defined. May be negative (see notes below).
-        replica_id : Optional[int]
-          The replica index to extract. Must be defined if ``state_id``
-          is not defined. May be negative (see notes below).
-
-        Notes
-        -----
-        A negative index may be passed to either ``state_id`` or
-        ``replica_id``. This will be interpreted as indexing in reverse
-        starting from the last state/replica. For example, passing a
-        value of -2 for ``replica_id`` will select the before last replica.
+            Convert positions to Angstrom.
         """
-        if not ((state_id is None) ^ (replica_id is None)):
-            raise ValueError(
-                "Specify one and only one of state or replica, "
-                f"got state id={state_id} "
-                f"replica_id={replica_id}"
-            )
-
         super().__init__(filename, convert_units, **kwargs)
 
         if isinstance(filename, nc.Dataset):
@@ -108,15 +105,18 @@ class FEReader(ReaderBase):
             self._dataset = nc.Dataset(filename)
             self._dataset_owner = True
 
+        if index_method not in {"state", "replica"}:
+            raise ValueError(f"index_method must be 'state' or 'replica', got {index_method}")
+
+        self._index_method = index_method
+
         # Handle the negative ID case
-        if state_id is not None and state_id < 0:
-            state_id = range(self._dataset.dimensions["state"].size)[state_id]
+        if index_method == "state":
+            size = self._dataset.dimensions["state"].size
+        else:
+            size = self._dataset.dimensions["replica"].size
 
-        if replica_id is not None and replica_id < 0:
-            replica_id = range(self._dataset.dimensions["replica"].size)[replica_id]
-
-        self._state_id = state_id
-        self._replica_id = replica_id
+        self._multistate_index = index % size
 
         self._n_atoms = self._dataset.dimensions["atom"].size
         self.ts = Timestep(self._n_atoms)
@@ -132,12 +132,20 @@ class FEReader(ReaderBase):
         return isinstance(thing, nc.Dataset)
 
     @property
+    def multistate_index(self) -> int:
+        return self._multistate_index
+
+    @property
     def n_atoms(self) -> int:
         return self._n_atoms
 
     @property
     def n_frames(self) -> int:
         return len(self._frames)
+
+    @property
+    def index_method(self) -> str:
+        return self._index_method
 
     @staticmethod
     def parse_n_atoms(filename, **kwargs) -> int:
@@ -153,17 +161,19 @@ class FEReader(ReaderBase):
     def _read_frame(self, frame: int) -> Timestep:
         self._frame_index = frame
 
-        if self._state_id is not None:
+        frame = self._frames[self._frame_index]
+
+        if self._index_method == "state":
             rep = multistate._state_to_replica(
-                self._dataset, self._state_id, self._frames[self._frame_index]
+                self._dataset,
+                self._multistate_index,
+                frame,
             )
         else:
-            rep = self._replica_id
+            rep = self._multistate_index
 
-        pos = multistate._replica_positions_at_frame(
-            self._dataset, rep, self._frames[self._frame_index]
-        )
-        dim = multistate._get_unitcell(self._dataset, rep, self._frames[self._frame_index])
+        pos = multistate._replica_positions_at_frame(self._dataset, rep, frame)
+        dim = multistate._get_unitcell(self._dataset, rep, frame)
 
         if pos is None:
             errmsg = (
