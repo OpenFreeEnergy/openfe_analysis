@@ -37,7 +37,7 @@ def make_Universe(top: pathlib.Path, trj: nc.Dataset, state: int) -> mda.Univers
         top,
         trj,
         index=state,
-        view="state",
+        index_method="state",
         format=FEReader,
     )
     prot = u.select_atoms("protein and name CA")
