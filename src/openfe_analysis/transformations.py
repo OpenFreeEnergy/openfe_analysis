@@ -14,11 +14,26 @@ from numpy import typing as npt
 
 
 class NoJump(TransformationBase):
-    """Stops an AtomGroup from moving more than half a box length between frames
+    """
+    Prevent an AtomGroup from jumping between periodic images.
+    This transformation removes large apparent
+    COM displacements caused by periodic boundary conditions.
 
-    This transformation prevents an AtomGroup "teleporting" across the box
-    border between two subsequent frames.  This then simplifies the calculation
-    of motion over time.
+    Parameters
+    ----------
+    ag : MDAnalysis.AtomGroup
+        AtomGroup whose center-of-mass motion should be made continuous.
+
+    Notes
+    -----
+    - This transformation assumes an orthorhombic unit cell.
+    - Only translations are applied; no rotations or scaling.
+    - The correction is based on center-of-mass motion and is therefore
+      most appropriate for compact groups (e.g. proteins, ligands).
+    - Must be applied before any alignment transformations to avoid
+      mixing reference frames.
+    - Is intended to be applied before analyses that rely on smooth
+      time evolution (e.g. RMSD, COM motion).
     """
 
     ag: mda.AtomGroup
@@ -49,12 +64,13 @@ class ClosestImageShift(TransformationBase):
     """
     PBC-safe transformation that shifts one or more target AtomGroups
     so that their COM is in the closest image relative to a reference AtomGroup.
-    Works for any box type (triclinic or orthorhombic).
 
-    CAVEAT:
-    This Transformation requires the AtomGroups to be unwrapped!
+    CAVEAT: This Transformation requires the AtomGroups to be unwrapped!
 
-    Inspired from:
+    Notes
+    -----
+    - Works for any box type (triclinic or orthorhombic).
+    - Inspired from:
     https://github.com/wolberlab/OpenMMDL/blob/main/openmmdl/openmmdl_simulation/scripts/post_md_conversions.py
     """
 
@@ -75,10 +91,15 @@ class ClosestImageShift(TransformationBase):
 
 
 class Aligner(TransformationBase):
-    """On-the-fly transformation to align a trajectory to minimise RMSD
+    """
+    Align a trajectory to a reference AtomGroup by minimizing RMSD.
 
-    centers all coordinates onto origin
-    rotates **entire universe** to minimise rmsd relative to **ref_ag**
+    Notes
+    -----
+    Performs an on-the-fly least-squares alignment
+    of the entire universe to a reference AtomGroup.
+    At each frame, the coordinates are translated and rotated to minimize the
+    RMSD of the atoms relative to their positions in the reference.
     """
 
     ref_pos: npt.NDArray
