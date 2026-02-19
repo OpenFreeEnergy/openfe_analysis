@@ -58,12 +58,14 @@ def make_Universe(
     Notes
     -----
     If a protein is present:
-    - prevents the protein from jumping between periodic images
-    - moves the ligand to the image closest to the protein
-    - aligns the entire system to minimise the protein RMSD
+    - Unwraps protein and ligand atom to be made whole
+    - Shifts protein chains and the ligand to the image closest to the first
+      protein chain (:class:`ClosestImageShift`)
+    - Aligns the entire system to minimise the protein RMSD (:class:`Aligner`)
 
     If only a ligand is present:
-    - prevents the ligand from jumping between periodic images
+    - Prevents the ligand from jumping between periodic images
+    - Aligns the ligand to minimize its RMSD
     """
     u = mda.Universe(
         top,
@@ -104,19 +106,25 @@ def make_Universe(
 
 
 def twoD_RMSD(positions: np.ndarray, w: Optional[npt.NDArray]) -> list[float]:
-    """2 dimensions RMSD
+    """
+    Compute a flattened 2D RMSD matrix from a trajectory.
+
+    For all unique frame pairs ``(i, j)`` with ``i < j``, this function
+    computes the RMSD between atomic coordinates after optimal alignment.
 
     Parameters
     ----------
     positions : np.ndarray
-      the protein positions for the entire trajectory
+      Atomic coordinates for all frames in the trajectory.
     w : np.ndarray, optional
-      weights array
+      Per-atom weights to use in the RMSD calculation. If ``None``,
+      all atoms are weighted equally.
 
     Returns
     -------
-    rmsd_matrix : list
-      Flattened list of RMSD values between all frame pairs.
+    list of float
+      Flattened list of RMSD values corresponding to all frame pairs
+      ``(i, j)`` with ``i < j``.
     """
     nframes, _, _ = positions.shape
 
@@ -224,17 +232,18 @@ def gather_rms_data(
     ligand_selection: str = "resname UNK",
     protein_selection: str = "protein and name CA",
 ) -> dict[str, list[float]]:
-    """Generate structural analysis of RBFE simulation
+    """
+    Compute structural RMSD-based metrics for a multistate BFE simulation.
 
     Parameters
     ----------
     pdb_topology : pathlib.Path
-      path to pdb topology
+      Path to the PDB file defining system topology.
     dataset : pathlib.Path
-      path to nc trajectory
+      Path to the NetCDF trajectory file produced by a multistate simulation.
     skip : int, optional
-      step at which to progress through the trajectory.  by default, selects a
-      step that produces roughly 500 frames of analysis per replicate
+      Frame stride for analysis. If ``None``, a stride is chosen such that
+      approximately 500 frames are analyzed per state.
     ligand_selection : str, optional
         MDAnalysis selection string for ligands (default "resname UNK").
     protein_selection : str, optional
@@ -248,6 +257,20 @@ def gather_rms_data(
         - 'protein_2D_RMSD': list of 2D RMSD per state
         - 'ligand_RMSD': list of ligand RMSD per state
         - 'ligand_COM_drift': list of ligand COM drift per state
+
+    Notes
+    -----
+    For each thermodynamic state (lambda), this function:
+      - Loads the trajectory using ``FEReader``
+      - Applies standard PBC-handling and alignment transformations
+      - Computes protein and ligand structural metrics over time
+
+    The following analyses are produced per state:
+      - 1D protein CA RMSD time series
+      - 1D ligand RMSD time series
+      - Ligand center-of-mass displacement from its initial position
+        (``ligand_wander``)
+      - Flattened 2D protein RMSD matrix (pairwise RMSD between frames)
     """
     output = {
         "protein_RMSD": [],

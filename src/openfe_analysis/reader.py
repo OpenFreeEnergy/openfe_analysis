@@ -13,17 +13,18 @@ from openfe_analysis.utils.multistate import _determine_position_indices
 
 def _determine_iteration_dt(dataset) -> float:
     """
-    Find out the timestep between each frame in the trajectory.
+    Determine the time increment between successive iterations
+    in a MultiStateReporter trajectory.
 
     Parameters
     ----------
     dataset : nc.Dataset
-      Dataset holding the MultiStateReporter generated NetCDF file.
+      NetCDF dataset produced by ``openmmtools.multistate.MultiStateReporter``.
 
     Returns
     -------
     float
-      The timestep in units of picoseconds.
+      The time between successive iterations, in picoseconds.
 
     Raises
     ------
@@ -35,7 +36,8 @@ def _determine_iteration_dt(dataset) -> float:
     -----
     This assumes an MCMC move which serializes in a manner similar
     to `openmmtools.mcmc.LangevinDynamicsMove`, i.e. it must have
-    both a `timestep` and `n_steps` defined.
+    both a `timestep` and `n_steps` defined, such that
+        dt_iteration = n_steps * timestep
     """
     # Deserialize the MCMC move information for the 0th entry.
     mcmc_move_data = yaml.load(
@@ -149,16 +151,31 @@ class FEReader(ReaderBase):
 
     @staticmethod
     def parse_n_atoms(filename, **kwargs) -> int:
+        """
+        Determine the number of atoms stored in a MultiStateReporter NetCDF file.
+
+        Parameters
+        ----------
+        filename : path-like
+            Path to the NetCDF file.
+
+        Returns
+        -------
+        int
+            Number of atoms in the system.
+        """
         with nc.Dataset(filename) as ds:
             n_atoms = ds.dimensions["atom"].size
         return n_atoms
 
     def _read_next_timestep(self, ts=None) -> Timestep:
+        # Advance the trajectory by one frame.
         if (self._frame_index + 1) >= len(self):
             raise EOFError
         return self._read_frame(self._frame_index + 1)
 
     def _read_frame(self, frame: int) -> Timestep:
+        # Read a single trajectory frame.
         self._frame_index = frame
 
         frame = self._frames[self._frame_index]
@@ -197,6 +214,7 @@ class FEReader(ReaderBase):
 
     @property
     def dt(self) -> float:
+        # Time difference between successive trajectory frames.
         return self._dt
 
     def _reopen(self):
