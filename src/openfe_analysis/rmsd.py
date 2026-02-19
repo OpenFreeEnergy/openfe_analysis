@@ -42,9 +42,8 @@ def make_Universe(top: pathlib.Path, trj: nc.Dataset, state: int) -> mda.Univers
     Notes
     -----
     Identifies two AtomGroups:
-    - protein, defined as having standard amino acid names, then filtered
-      down to CA
-    - ligand, defined as resname UNK
+    - Protein, defined as having standard amino acid names, then filtered down to CA
+    - Ligand, defined as resname UNK
 
     Depending on whether a protein is present, a sequence of trajectory
     transformations is applied:
