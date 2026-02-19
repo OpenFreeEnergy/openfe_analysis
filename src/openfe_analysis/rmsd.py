@@ -50,13 +50,13 @@ def make_Universe(top: pathlib.Path, trj: nc.Dataset, state: int) -> mda.Univers
     transformations is applied:
 
     If a protein is present:
-    - prevents the protein from jumping between periodic images
-      (class:`NoJump`)
-    - moves the ligand to the image closest to the protein (:class:`Minimiser`)
-    - aligns the entire system to minimise the protein RMSD (:class:`Aligner`)
+    - Unwraps protein and ligand atom to be made whole
+    - Shifts protein chains and the ligand to the image closest to the first
+      protein chain (:class:`ClosestImageShift`)
+    - Aligns the entire system to minimise the protein RMSD (:class:`Aligner`)
 
     If only a ligand is present:
-    - prevents the ligand from jumping between periodic images
+    - Prevents the ligand from jumping between periodic images
     - Aligns the ligand to minimize its RMSD
     """
     u = mda.Universe(
