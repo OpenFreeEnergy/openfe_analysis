@@ -14,9 +14,11 @@ This package provides a MDAnalysis Reader to start to explore your trajectory da
 import MDAnalysis as mda
 from openfe_analysis import FEReader
 
-# a "simulation.nc" file contains multiple replicas, so we must choose which of these we load
-# provide either a state (following a single lambda state) or replica (following a particular replica) id (typically 0-10)
-u = mda.Universe('hybrid_system.pdb', 'simulation.nc', format=FEReader, state_id=0)
+# A "simulation.nc" file contains multiple replicas, so we must choose which of these we load.
+# Provide an index for the state or replica to extract.
+# The `index_method` then determines whether `index` refers to a Hamiltonian state (following a single lambda state)
+# or a replica state (following a particular replica).
+u = mda.Universe('hybrid_system.pdb', 'simulation.nc', format=FEReader, index=0, index_method='state')
 ```
 
 For example to convert your trajectory to a different format for visualisation:
