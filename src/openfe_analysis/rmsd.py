@@ -97,34 +97,6 @@ def make_Universe(top: pathlib.Path, trj: nc.Dataset, state: int) -> mda.Univers
     return u
 
 
-class ProteinRMSD(AnalysisBase):
-    """Calculate the 1D protein RMSD"""
-
-    def __init__(self, atomgroup, **kwargs):
-        super(ProteinRMSD, self).__init__(atomgroup.universe.trajectory, **kwargs)
-
-        self._ag = atomgroup
-
-    def _prepare(self):
-        """
-        Set the first frame as the reference
-        """
-        self.results.rmsd = []
-        self._reference = self._ag.positions
-
-    def _single_frame(self):
-        rmsd = rms.rmsd(
-            self._ag.positions,
-            self._reference,
-            center=False,
-            superposition=False,
-        )
-        self.results.rmsd.append(rmsd)
-
-    def _conclude(self):
-        self.results.rmsd = np.asarray(self.results.rmsd)
-
-
 class Protein2DRMSD(AnalysisBase):
     """
     Flattened 2D RMSD matrix
@@ -174,20 +146,32 @@ class Protein2DRMSD(AnalysisBase):
         self.results.rmsd2d = np.asarray(output)
 
 
-class LigandRMSD(AnalysisBase):
+class RMSDAnalysis(AnalysisBase):
     """
-    1D RMSD time series for a ligand AtomGroup.
+    1D RMSD time series for an AtomGroup.
+
+    Parameters
+    ----------
+    atomgroup : MDAnalysis.AtomGroup
+      Atoms to compute RMSD for.
+    mass_weighted : bool, optional
+      If True, compute mass-weighted RMSD.
     """
 
-    def __init__(self, atomgroup, **kwargs):
-        super(LigandRMSD, self).__init__(atomgroup.universe.trajectory, **kwargs)
+    def __init__(self, atomgroup, mass_weighted=False, **kwargs):
+        super(RMSDAnalysis, self).__init__(atomgroup.universe.trajectory, **kwargs)
 
         self._ag = atomgroup
+        self._mass_weighted = mass_weighted
 
     def _prepare(self):
         self.results.rmsd = []
         self._reference = self._ag.positions
-        self._weights = self._ag.masses / np.mean(self._ag.masses)
+
+        if self._mass_weighted:
+            self._weights = self._ag.masses / np.mean(self._ag.masses)
+        else:
+            self._weights = None
 
     def _single_frame(self):
         rmsd = rms.rmsd(
@@ -301,14 +285,19 @@ def gather_rms_data(
             ligand = u.select_atoms("resname UNK")
 
             if prot:
-                prot_rmsd = ProteinRMSD(prot).run(step=skip)
+                prot_rmsd = RMSDAnalysis(prot).run(step=skip)
                 output["protein_RMSD"].append(prot_rmsd.results.rmsd)
+                # prot_rmsd = rms.RMSD(prot).run(step=skip)
+                # output["protein_RMSD"].append(prot_rmsd.results.rmsd.T[2])
                 prot_rmsd2d = Protein2DRMSD(prot).run(step=skip)
                 output["protein_2D_RMSD"].append(prot_rmsd2d.results.rmsd2d)
 
             if ligand:
-                lig_rmsd = LigandRMSD(ligand).run(step=skip)
+                lig_rmsd = RMSDAnalysis(ligand, mass_weighted=True).run(step=skip)
                 output["ligand_RMSD"].append(lig_rmsd.results.rmsd)
+                # weight = ligand.masses / np.mean(ligand.masses)
+                # lig_rmsd = rms.RMSD(ligand, weights=weight).run(step=skip)
+                # output["ligand_RMSD"].append(lig_rmsd.results.rmsd.T[2])
                 lig_com_drift = LigandCOMDrift(ligand).run(step=skip)
                 output["ligand_wander"].append(lig_com_drift.results.com_drift)
 
