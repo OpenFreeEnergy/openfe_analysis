@@ -16,8 +16,8 @@ from openfe_analysis import FEReader
 
 # A "simulation.nc" file contains multiple replicas, so we must choose which of these we load.
 # Provide an index for the state or replica to extract.
-# The `index_method` then determines whether `index` refers to a Hamiltonian state (following a single lambda state)
-# or a replica state (following a particular replica).
+# The `index_method` then determines whether `index` refers to a Hamiltonian ``state`` (following a single lambda state)
+# or a ``replica`` (following a particular replica).
 u = mda.Universe('hybrid_system.pdb', 'simulation.nc', format=FEReader, index=0, index_method='state')
 ```
 
