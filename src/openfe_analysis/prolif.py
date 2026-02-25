@@ -55,7 +55,6 @@ class ProLIFAnalysis(AnalysisBase):
 
         super().__init__(universe.trajectory, **kwargs)
 
-
         # --- Guess bonds once on stable selections so RDKit/ProLIF can detect HBonds ---
         if guess_bonds:
             if vdwradii is None:
@@ -184,14 +183,16 @@ class ProLIFAnalysis(AnalysisBase):
         _slice = slice(start, stop, step)
         traj = self.universe.trajectory[_slice]
 
-
         try:
             n_total = len(self.universe.trajectory)
             s0, s1, s2 = _slice.indices(n_total)
             self.frames = np.arange(s0, s1, s2, dtype=int)
             self.n_frames = len(traj)
 
-            if hasattr(self.universe.trajectory, "times") and self.universe.trajectory.times is not None:
+            if (
+                hasattr(self.universe.trajectory, "times")
+                and self.universe.trajectory.times is not None
+            ):
                 self.times = np.asarray(self.universe.trajectory.times)[self.frames]
             elif getattr(self.universe.trajectory, "dt", None) is not None:
                 self.times = self.frames * self.universe.trajectory.dt
