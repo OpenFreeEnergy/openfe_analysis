@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+import numpy as np
 from typing import Any, Dict, Optional, Sequence, Tuple
 
 import MDAnalysis as mda
+from MDAnalysis.analysis.base import AnalysisBase
 
 import prolif as plf
 
 
-class ProLIFAnalysis:
+class ProLIFAnalysis(AnalysisBase):
     """
     ProLIF interaction fingerprint analysis for an OpenFEReader Universe.
     """
@@ -20,6 +22,7 @@ class ProLIFAnalysis:
         interactions: Optional[Sequence[str] | str] = None,
         guess_bonds: bool = True,
         vdwradii: Optional[Dict[str, float]] = None,
+        **kwargs,
     ) -> None:
         """
         Initialize the ProLIF analysis.
@@ -49,6 +52,9 @@ class ProLIFAnalysis:
         self.universe = universe
         self.ligand_ag = ligand_ag
         self.water_order = water_order
+
+        super().__init__(universe.trajectory, **kwargs)
+
 
         # --- Guess bonds once on stable selections so RDKit/ProLIF can detect HBonds ---
         if guess_bonds:
@@ -105,7 +111,7 @@ class ProLIFAnalysis:
                 )
             fp_interactions = list(interactions)
 
-        parameters = None
+        self._parameters = None
         if (
             fp_interactions is not None
             and fp_interactions != "all"
@@ -113,7 +119,7 @@ class ProLIFAnalysis:
         ):
             if self.water_ag.n_atoms == 0:
                 raise ValueError("WaterBridge selected but water selection is empty.")
-            parameters = {
+            self._parameters = {
                 "WaterBridge": {"water": self.water_ag, "order": self.water_order}
             }
 
@@ -121,6 +127,13 @@ class ProLIFAnalysis:
             self.fp = plf.Fingerprint()
         else:
             self.fp = plf.Fingerprint(interactions=fp_interactions)
+
+    def _prepare(self):
+        self.results.ifp = None
+        self.results.ifp_df = None
+
+    def _conclude(self):
+        self.results.ifp = getattr(self.fp, "ifp", None)
 
     def run(
         self,
@@ -167,7 +180,27 @@ class ProLIFAnalysis:
         if parallel_strategy is None:
             # avoid ProLIF trying to pickle FEReader/netCDF trajectory to auto-pick strategy
             parallel_strategy = "chunk" if (n_jobs is None or n_jobs == 1) else "queue"
-        traj = self.universe.trajectory[slice(start, stop, step)]
+
+        _slice = slice(start, stop, step)
+        traj = self.universe.trajectory[_slice]
+
+
+        try:
+            n_total = len(self.universe.trajectory)
+            s0, s1, s2 = _slice.indices(n_total)
+            self.frames = np.arange(s0, s1, s2, dtype=int)
+            self.n_frames = len(traj)
+
+            if hasattr(self.universe.trajectory, "times") and self.universe.trajectory.times is not None:
+                self.times = np.asarray(self.universe.trajectory.times)[self.frames]
+            elif getattr(self.universe.trajectory, "dt", None) is not None:
+                self.times = self.frames * self.universe.trajectory.dt
+            else:
+                self.times = None
+        except Exception:
+            self.frames = None
+            self.times = None
+            self.n_frames = None
 
         if converter_kwargs is None:
             # Avoid Valence errors
@@ -187,6 +220,7 @@ class ProLIFAnalysis:
             parallel_strategy=parallel_strategy,
         )
 
+        self._conclude()
         return self
 
     # For now, depending on what we do withe the data
@@ -194,4 +228,6 @@ class ProLIFAnalysis:
         """
         Transform fingerprint results to pd.DataFrame.
         """
-        return self.fp.to_dataframe(**kwargs)
+        df = self.fp.to_dataframe(**kwargs)
+        self.results.ifp_df = df
+        return df
