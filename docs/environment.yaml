@@ -1,36 +1,12 @@
 name: openfe_analysis-docs
 channels:
-- https://conda.anaconda.org/conda-forge
-
-# explicit pins to speed up build:
+  - https://conda.anaconda.org/jaimergp/label/unsupported-cudatoolkit-shim
+  - https://conda.anaconda.org/conda-forge
 dependencies:
-- autodoc-pydantic >= 2.1
-- docutils == 0.20
-- gitpython
-- libsass
-- myst-parser
-- nbsphinx
-- nbsphinx-link
-- openff-toolkit-base == 0.17.0
-- openff-units == 0.3.1
-- packaging
-- pip
-- plugcli >= 0.2.1
-- python
-- pydantic >=2.0.0, <2.12.0  # https://github.com/openforcefield/openff-interchange/issues/1346
-- sphinx ==7.2.6 # TODO: debug "duplicate object" warning with later versions
-- sphinx-click
-- sphinx-design
-- sphinx-toolbox
-- threadpoolctl
-- tqdm
-- pip:
-  - git+https://github.com/OpenFreeEnergy/ofe-sphinx-theme@v0.3.1
-  # pip install these so that we can make sure docs build on main while these packages' docs are under development
-
-# These are added automatically by RTD, so we include them here
-# for a consistent environment.
-- mock
-- pillow
-# - sphinx
-# - sphinx_rtd_theme
+- autodoc-pydantic
+- openff-units
+- python=3.10
+- sphinx
+- openmm
+- networkx
+- furo
