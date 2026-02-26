@@ -27,6 +27,15 @@ def test_prolifanalysis_runs_vdwcontact(
     assert df.shape[0] == 5
     assert hasattr(analysis.fp, "ifp")
     assert len(analysis.fp.ifp) == 5
+
+    # Check AnalysisBase
+    assert hasattr(analysis, "results")
+    assert hasattr(analysis.results, "ifp")
+    assert analysis.results.ifp is analysis.fp.ifp
+    assert len(analysis.results.ifp) == 5
+
+    assert analysis.results.ifp_df is df
+
     # Ensure there is at least one detected interaction across all processed frames
     assert sum(len(v) for v in analysis.fp.ifp.values()) > 0
 
