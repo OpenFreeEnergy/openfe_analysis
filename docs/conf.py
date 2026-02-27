@@ -70,21 +70,3 @@ autodoc_mock_imports = [
 #
 html_theme = "furo"
 
-# replace macros
-rst_prolog = """
-.. |rdkit.mol| replace:: :class:`rdkit.Chem.rdchem.Mol`
-"""
-
-# Add any paths that contain custom static files (such as style sheets) here,
-# relative to this directory. They are copied after the builtin static files,
-# so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ["_static"]
-html_css_files = [
-    "css/custom.css",
-    "css/custom-api.css",
-    "css/deflist-flowchart.css",
-]
-
-# custom-api.css is compiled from custom-api.scss
-sass_src_dir = "_sass"
-sass_out_dir = "_static/css"
