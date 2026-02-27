@@ -5,9 +5,11 @@ from typing import Optional
 import MDAnalysis as mda
 import netCDF4 as nc
 import numpy as np
+import spyrmsd.rmsd as srmsd
 from MDAnalysis.analysis import rms
 from MDAnalysis.analysis.base import AnalysisBase
 from MDAnalysis.transformations import unwrap
+from rdkit.Chem import rdmolops
 
 from .reader import FEReader
 from .transformations import Aligner, ClosestImageShift, NoJump
@@ -187,6 +189,69 @@ class RMSDAnalysis(AnalysisBase):
         self.results.rmsd = np.asarray(self.results.rmsd)
 
 
+class SymmetryCorrectedLigandRMSD(AnalysisBase):
+    """
+    1D RMSD time series for an AtomGroup.
+
+    Parameters
+    ----------
+    atomgroup : MDAnalysis.AtomGroup
+      Atoms to compute RMSD for.
+    mass_weighted : bool, optional
+      If True, compute mass-weighted RMSD.
+    """
+
+    def __init__(self, atomgroup, mass_weighted=False, **kwargs):
+        super(SymmetryCorrectedLigandRMSD, self).__init__(atomgroup.universe.trajectory, **kwargs)
+
+        self._ag = atomgroup
+        self._mass_weighted = mass_weighted
+        self._isomorphisms = None
+        vdwradii = {
+            "Cl": 1.75,
+            "CL": 1.75,
+            "Br": 1.85,
+            "BR": 1.85,
+            "Na": 2.27,
+            "NA": 2.27,
+        }
+        atomgroup.guess_bonds(vdwradii)
+        self._mol = atomgroup.convert_to("RDKIT")
+        self._aprops = np.array([atom.GetAtomicNum() for atom in self._mol.GetAtoms()])
+        self._am = rdmolops.GetAdjacencyMatrix(self._mol)
+
+    def _prepare(self):
+        self.results.rmsd = []
+        self._reference = self._ag.positions
+        self._ref_aprops = self._aprops
+        self._ref_am = self._am
+
+        if self._mass_weighted:
+            self._weights = self._ag.masses / np.mean(self._ag.masses)
+        else:
+            self._weights = None
+
+    def _single_frame(self):
+        coords = self._ag.positions.copy()
+        rmsd, isomorphisms, _ = srmsd._rmsd_isomorphic_core(
+            coords1=coords,
+            coords2=self._reference,
+            aprops1=self._aprops,
+            aprops2=self._ref_aprops,
+            am1=self._am,
+            am2=self._ref_am,
+            center=False,
+            minimize=False,
+            isomorphisms=self._isomorphisms,
+        )
+        self.results.rmsd.append(rmsd)
+        if self._isomorphisms is None:
+            self._isomorphisms = isomorphisms
+
+    def _conclude(self):
+        self.results.rmsd = np.asarray(self.results.rmsd)
+
+
 class LigandCOMDrift(AnalysisBase):
     """
     Ligand center-of-mass displacement from initial position.
@@ -280,9 +345,13 @@ def gather_rms_data(
             # cheeky, but we can read the PDB topology once and reuse per universe
             # this then only hits the PDB file once for all replicas
             u = make_Universe(u_top._topology, ds, state=i)
+            bfactor = 0.25
+            state_atoms = np.array([atom.ix for atom in u.atoms if atom.bfactor in (bfactor, 0.5)])
+            state = u.atoms[state_atoms]
 
             prot = u.select_atoms("protein and name CA")
             ligand = u.select_atoms("resname UNK")
+            state_lig = state.select_atoms("resname UNK")
 
             if prot:
                 prot_rmsd = RMSDAnalysis(prot).run(step=skip)
@@ -293,7 +362,8 @@ def gather_rms_data(
                 output["protein_2D_RMSD"].append(prot_rmsd2d.results.rmsd2d)
 
             if ligand:
-                lig_rmsd = RMSDAnalysis(ligand, mass_weighted=True).run(step=skip)
+                # lig_rmsd = RMSDAnalysis(ligand, mass_weighted=True).run(step=skip)
+                lig_rmsd = SymmetryCorrectedLigandRMSD(state_lig, mass_weighted=True).run(step=skip)
                 output["ligand_RMSD"].append(lig_rmsd.results.rmsd)
                 # weight = ligand.masses / np.mean(ligand.masses)
                 # lig_rmsd = rms.RMSD(ligand, weights=weight).run(step=skip)
