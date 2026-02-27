@@ -1,22 +1,9 @@
-import pathlib
 from typing import Optional
 
 import MDAnalysis as mda
-import netCDF4 as nc
 from MDAnalysis.transformations import unwrap
 
-from ..reader import FEReader
 from ..transformations import Aligner, ClosestImageShift, NoJump
-
-
-def create_universe(top, trj, state):
-    return mda.Universe(
-        top,
-        trj,
-        index=state,
-        index_method="state",
-        format=FEReader,
-    )
 
 
 def apply_transformations(

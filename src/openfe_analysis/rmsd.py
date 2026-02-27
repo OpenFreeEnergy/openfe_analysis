@@ -8,8 +8,8 @@ import numpy as np
 from MDAnalysis.analysis import rms
 from MDAnalysis.analysis.base import AnalysisBase
 
-from .reader import FEReader
-from .utils.universe_transformations import apply_transformations, create_universe
+from .reader import _create_universe_single_state
+from .utils.apply_transformations import apply_transformations
 
 
 class Protein2DRMSD(AnalysisBase):
@@ -194,7 +194,7 @@ def gather_rms_data(
         for i in range(n_lambda):
             # cheeky, but we can read the PDB topology once and reuse per universe
             # this then only hits the PDB file once for all replicas
-            u = create_universe(u_top._topology, ds, i)
+            u = _create_universe_single_state(u_top._topology, ds, i)
             prot = u.select_atoms("protein and name CA")
             ligand = u.select_atoms("resname UNK")
 
