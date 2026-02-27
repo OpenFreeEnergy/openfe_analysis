@@ -64,4 +64,3 @@ autodoc_mock_imports = [
 # a list of builtin themes.
 #
 html_theme = "furo"
-
