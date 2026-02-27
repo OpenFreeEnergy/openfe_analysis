@@ -10,8 +10,9 @@ from MDAnalysis.transformations import unwrap
 from numpy.testing import assert_allclose
 
 from openfe_analysis.reader import FEReader
-from openfe_analysis.rmsd import gather_rms_data, make_Universe
+from openfe_analysis.rmsd import gather_rms_data
 from openfe_analysis.transformations import Aligner
+from openfe_analysis.utils import universe_transformations
 
 
 @pytest.fixture
@@ -22,11 +23,12 @@ def mda_universe(hybrid_system_skipped_pdb, simulation_skipped_nc):
     Guarantees:
     - NetCDF file is opened exactly once
     """
-    u = make_Universe(
-        hybrid_system_skipped_pdb,
-        simulation_skipped_nc,
-        state=0,
+    u = universe_transformations.create_universe(
+        hybrid_system_skipped_pdb, simulation_skipped_nc, 0
     )
+    protein = u.select_atoms("protein and name CA")
+    ligand = u.select_atoms("resname UNK")
+    universe_transformations.apply_transformations(u, protein, ligand)
     yield u
     u.trajectory.close()
 
@@ -108,13 +110,10 @@ def test_gather_rms_data_regression_skippednc(simulation_skipped_nc, hybrid_syst
 
 
 def test_multichain_rmsd_shifting(simulation_skipped_nc, hybrid_system_skipped_pdb):
-    u = mda.Universe(
-        hybrid_system_skipped_pdb,
-        simulation_skipped_nc,
-        index=0,
-        format=FEReader,
+    u = universe_transformations.create_universe(
+        hybrid_system_skipped_pdb, simulation_skipped_nc, 0
     )
-    prot = u.select_atoms("protein")
+    prot = u.select_atoms("protein and name CA")
     # Do other transformations, but no shifting
     unwrap_tr = unwrap(prot)
     for frag in prot.fragments:
@@ -132,8 +131,13 @@ def test_multichain_rmsd_shifting(simulation_skipped_nc, hybrid_system_skipped_p
     u.trajectory.close()
 
     # RMSD with shifting
-    u2 = make_Universe(hybrid_system_skipped_pdb, simulation_skipped_nc, state=0)
-    prot2 = u2.select_atoms("protein")
+    u2 = universe_transformations.create_universe(
+        hybrid_system_skipped_pdb, simulation_skipped_nc, 0
+    )
+    prot2 = u2.select_atoms("protein and name CA")
+
+    universe_transformations.apply_transformations(u2, protein=prot2)
+
     R2 = rms.RMSD(prot2)
     R2.run()
     rmsd_shift = R2.rmsd[:, 2]
@@ -142,9 +146,12 @@ def test_multichain_rmsd_shifting(simulation_skipped_nc, hybrid_system_skipped_p
 
 
 def test_chain_radius_of_gyration_stable(simulation_skipped_nc, hybrid_system_skipped_pdb):
-    u = make_Universe(hybrid_system_skipped_pdb, simulation_skipped_nc, state=0)
+    u = universe_transformations.create_universe(
+        hybrid_system_skipped_pdb, simulation_skipped_nc, 0
+    )
+    protein = u.select_atoms("protein and name CA")
+    universe_transformations.apply_transformations(u, protein)
 
-    protein = u.select_atoms("protein")
     chain = protein.segments[0].atoms
 
     rgs = []
@@ -158,7 +165,7 @@ def test_chain_radius_of_gyration_stable(simulation_skipped_nc, hybrid_system_sk
 
 def test_rmsd_reference_is_first_frame(mda_universe):
     u = mda_universe
-    prot = u.select_atoms("protein")
+    prot = u.select_atoms("protein and name CA")
 
     _ = next(iter(u.trajectory))  # SAFE
     ref = prot.positions.copy()

@@ -7,94 +7,9 @@ import netCDF4 as nc
 import numpy as np
 from MDAnalysis.analysis import rms
 from MDAnalysis.analysis.base import AnalysisBase
-from MDAnalysis.transformations import unwrap
 
 from .reader import FEReader
-from .transformations import Aligner, ClosestImageShift, NoJump
-
-
-def make_Universe(top: pathlib.Path, trj: nc.Dataset, state: int) -> mda.Universe:
-    """
-    Construct an MDAnalysis Universe from a MultiState NetCDF trajectory
-    and apply standard analysis transformations.
-
-    The Universe is created using the custom ``FEReader`` to extract a
-    single state from a multistate simulation.
-
-    Parameters
-    ----------
-    top : pathlib.Path or Topology
-        Path to a topology file (e.g. PDB) or an already-loaded MDAnalysis
-        topology object.
-    trj : nc.Dataset
-        Open NetCDF dataset produced by
-        ``openmmtools.multistate.MultiStateReporter``.
-    state : int
-        Thermodynamic state index to extract from the multistate trajectory.
-
-    Returns
-    -------
-    MDAnalysis.Universe
-        A Universe with trajectory transformations applied.
-
-    Notes
-    -----
-    Identifies two AtomGroups:
-    - protein, defined as having standard amino acid names, then filtered
-      down to CA
-    - ligand, defined as resname UNK
-
-    Depending on whether a protein is present, a sequence of trajectory
-    transformations is applied:
-
-    If a protein is present:
-    - Unwraps protein and ligand atom to be made whole
-    - Shifts protein chains and the ligand to the image closest to the first
-      protein chain (:class:`ClosestImageShift`)
-    - Aligns the entire system to minimise the protein RMSD (:class:`Aligner`)
-
-    If only a ligand is present:
-    - Prevents the ligand from jumping between periodic images
-    - Aligns the ligand to minimize its RMSD
-    """
-    u = mda.Universe(
-        top,
-        trj,
-        index=state,
-        index_method="state",
-        format=FEReader,
-    )
-    prot = u.select_atoms("protein and name CA")
-    ligand = u.select_atoms("resname UNK")
-
-    if prot:
-        # Unwrap all atoms
-        unwrap_tr = unwrap(prot + ligand)
-
-        # Shift chains + ligand
-        chains = [seg.atoms for seg in prot.segments]
-        shift = ClosestImageShift(chains[0], [*chains[1:], ligand])
-
-        align = Aligner(prot)
-
-        u.trajectory.add_transformations(
-            unwrap_tr,
-            shift,
-            align,
-        )
-    else:
-        # if there's no protein
-        # - make the ligand not jump periodic images between frames
-        # - align the ligand to minimise its RMSD
-        nope = NoJump(ligand)
-        align = Aligner(ligand)
-
-        u.trajectory.add_transformations(
-            nope,
-            align,
-        )
-
-    return u
+from .utils.universe_transformations import apply_transformations, create_universe
 
 
 class Protein2DRMSD(AnalysisBase):
@@ -279,10 +194,11 @@ def gather_rms_data(
         for i in range(n_lambda):
             # cheeky, but we can read the PDB topology once and reuse per universe
             # this then only hits the PDB file once for all replicas
-            u = make_Universe(u_top._topology, ds, state=i)
-
+            u = create_universe(u_top._topology, ds, i)
             prot = u.select_atoms("protein and name CA")
             ligand = u.select_atoms("resname UNK")
+
+            apply_transformations(u, prot, ligand)
 
             if prot:
                 prot_rmsd = RMSDAnalysis(prot).run(step=skip)
