@@ -31,8 +31,6 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
     "sphinx.ext.napoleon",
-    "sphinxcontrib.autodoc_pydantic",
-    "sphinx.ext.intersphinx",
 ]
 
 autoclass_content = "both"
