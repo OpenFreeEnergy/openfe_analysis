@@ -40,9 +40,6 @@ autodoc_default_options = {
     "member-order": "bysource",
     "undoc-members": True,
 }
-# TODO: temporary workaround to get docs to build until defaults can be validated in pydantic v2.12
-autodoc_pydantic_model_show_json_error_strategy = "coerce"
-
 autosummary_generate = True
 
 # Add any paths that contain templates here, relative to this directory.
