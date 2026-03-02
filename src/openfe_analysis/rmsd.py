@@ -155,7 +155,7 @@ class RMSDAnalysis(AnalysisBase):
     atomgroup : MDAnalysis.AtomGroup
       Atoms to compute RMSD for.
     reference: Optional[MDAnalysis.AtomGroup]
-      Reference AtomGroup. If None, the first
+      Reference AtomGroup. If None, the first frame of the trajectory will be used.
     mass_weighted : bool, optional
       If True, compute mass-weighted RMSD.
     """
