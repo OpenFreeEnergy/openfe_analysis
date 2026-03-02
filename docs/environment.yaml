@@ -1,0 +1,9 @@
+name: openfe_analysis-docs
+channels:
+  - https://conda.anaconda.org/jaimergp/label/unsupported-cudatoolkit-shim
+  - https://conda.anaconda.org/conda-forge
+dependencies:
+- openff-units
+- python=3.12
+- sphinx
+- furo
