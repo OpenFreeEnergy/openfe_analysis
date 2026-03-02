@@ -11,6 +11,5 @@ The **OpenFE Analysis** toolkit provides a free and open-source framework for an
 
 .. toctree::
    :maxdepth: 2
-   :hidden:
 
    api
