@@ -7,7 +7,6 @@ import netCDF4 as nc
 import numpy as np
 import tqdm
 from MDAnalysis.analysis import rms
-from MDAnalysis.lib.mdamath import make_whole
 from MDAnalysis.transformations import unwrap
 from numpy import typing as npt
 
@@ -42,19 +41,22 @@ def make_Universe(top: pathlib.Path, trj: nc.Dataset, state: int) -> mda.Univers
     Notes
     -----
     Identifies two AtomGroups:
+
     - Protein, defined as having standard amino acid names, then filtered down to CA
-    - Ligand, defined as resname UNK
+    - Ligand, defined as "resname UNK"
 
     Depending on whether a protein is present, a sequence of trajectory
     transformations is applied:
 
     If a protein is present:
+
     - Unwraps protein and ligand atom to be made whole
     - Shifts protein chains and the ligand to the image closest to the first
       protein chain (:class:`ClosestImageShift`)
     - Aligns the entire system to minimise the protein RMSD (:class:`Aligner`)
 
     If only a ligand is present:
+
     - Prevents the ligand from jumping between periodic images
     - Aligns the ligand to minimize its RMSD
     """
@@ -124,16 +126,17 @@ def gather_rms_data(
     Notes
     -----
     For each thermodynamic state (lambda), this function:
-      - Loads the trajectory using ``FEReader``
-      - Applies standard PBC-handling and alignment transformations
-      - Computes protein and ligand structural metrics over time
+
+    - Loads the trajectory using ``FEReader``
+    - Applies standard PBC-handling and alignment transformations
+    - Computes protein and ligand structural metrics over time
 
     The following analyses are produced per state:
-      - 1D protein CA RMSD time series
-      - 1D ligand RMSD time series
-      - Ligand center-of-mass displacement from its initial position
-        (``ligand_wander``)
-      - Flattened 2D protein RMSD matrix (pairwise RMSD between frames)
+
+    - 1D protein CA RMSD time series
+    - 1D ligand RMSD time series
+    - Ligand center-of-mass displacement from its initial position (``ligand_wander``)
+    - Flattened 2D protein RMSD matrix (pairwise RMSD between frames)
     """
     output = {
         "protein_RMSD": [],
