@@ -70,9 +70,7 @@ class ClosestImageShift(TransformationBase):
     Notes
     -----
     - Works for any box type (triclinic or orthorhombic).
-    - Inspired from:
-    https://github.com/wolberlab/OpenMMDL/blob/main/openmmdl/openmmdl_simulation/scripts/post_md_conversions.py
-
+    - Inspired from: https://github.com/wolberlab/OpenMMDL/blob/main/openmmdl/openmmdl_simulation/scripts/post_md_conversions.py
     """
 
     def __init__(self, reference: mda.AtomGroup, targets: list[mda.AtomGroup]):
