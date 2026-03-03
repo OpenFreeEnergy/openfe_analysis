@@ -1,6 +1,7 @@
 import pathlib
 from typing import Literal, Optional
 
+import MDAnalysis as mda
 import netCDF4 as nc
 import numpy as np
 import yaml
@@ -9,6 +10,16 @@ from openff.units import unit
 
 from openfe_analysis.utils import multistate, serialization
 from openfe_analysis.utils.multistate import _determine_position_indices
+
+
+def _create_universe_single_state(top, trj, state):
+    return mda.Universe(
+        top,
+        trj,
+        index=state,
+        index_method="state",
+        format=FEReader,
+    )
 
 
 def _determine_iteration_dt(dataset) -> float:
