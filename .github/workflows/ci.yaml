@@ -89,7 +89,7 @@ jobs:
 
       - name: codecov
         if: ${{ github.repository == 'OpenFreeEnergy/openfe_analysis'
-               && github.event_name == 'pull_request' }}
+               && github.event_name != 'schedule' }}
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
