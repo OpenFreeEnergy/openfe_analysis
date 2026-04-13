@@ -5,7 +5,7 @@ from typing import Optional
 import MDAnalysis as mda
 import netCDF4 as nc
 import numpy as np
-from MDAnalysis.analysis import rms
+from MDAnalysis.analysis import diffusionmap, rms
 from MDAnalysis.analysis.base import AnalysisBase
 
 from .reader import _create_universe_single_state
@@ -212,7 +212,7 @@ def gather_rms_data(
                 prot_rmsd = RMSDAnalysis(prot).run(step=skip)
                 output["protein_RMSD"].append(prot_rmsd.results.rmsd)
                 # # Using the MDAnalysis RMSD class instead
-                # gs = ["protein and name CA", "protein"]
+                # gs = ["protein and name CA"]
                 # prot_rmsd = rms.RMSD(
                 #    u, select="protein and name CA", groupselections=gs, weights="mass")
                 # prot_rmsd.run(step=skip)
@@ -222,8 +222,16 @@ def gather_rms_data(
                 # # - RMSD based on select (after superimposing)
                 # # - RMSD based on groupselections, one array per selection
                 # output["protein_RMSD"].append(prot_rmsd.results.rmsd.T[3])
+
                 prot_rmsd2d = Protein2DRMSD(prot).run(step=skip)
                 output["protein_2D_RMSD"].append(prot_rmsd2d.results.rmsd2d)
+                # # Using the MDAnalysis DistanceMatrix class
+                # prot_rmsd2d = diffusionmap.DistanceMatrix(u, select="protein and name CA")
+                # prot_rmsd2d.run(step=skip)
+                # dist_mat = prot_rmsd2d.results.dist_matrix
+                # i, j = np.triu_indices_from(dist_mat, k=1)
+                # flattened = dist_mat[i, j]
+                # output["protein_2D_RMSD"].append(flattened)
 
             if ligand:
                 lig_rmsd = RMSDAnalysis(ligand, mass_weighted=True).run(step=skip)
