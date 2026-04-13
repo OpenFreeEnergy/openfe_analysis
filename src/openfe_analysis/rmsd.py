@@ -5,7 +5,7 @@ from typing import Optional
 import MDAnalysis as mda
 import netCDF4 as nc
 import numpy as np
-from MDAnalysis.analysis import rms
+from MDAnalysis.analysis import diffusionmap, rms
 from MDAnalysis.analysis.base import AnalysisBase
 from MDAnalysis.transformations import unwrap
 
@@ -310,6 +310,9 @@ def gather_rms_data(
                 # output["protein_RMSD"].append(prot_rmsd.results.rmsd.T[3])
                 prot_rmsd2d = Protein2DRMSD(prot).run(step=skip)
                 output["protein_2D_RMSD"].append(prot_rmsd2d.results.rmsd2d)
+                prot_rmsd2d = diffusionmap.DistanceMatrix(u, select="protein")
+                prot_rmsd2d.run(step=skip)
+                output["protein_2D_RMSD"].append(prot_rmsd2d.results.dist_matrix)
 
             if ligand:
                 lig_rmsd = RMSDAnalysis(ligand, mass_weighted=True).run(step=skip)
