@@ -29,12 +29,14 @@ def apply_transformations(
     transformations is applied:
 
     If a protein is present:
+
     - Unwraps protein and ligand atom to be made whole
     - Shifts protein chains and the ligand to the image closest to the first
       protein chain (:class:`ClosestImageShift`)
     - Aligns the entire system to minimise the protein RMSD (:class:`Aligner`)
 
     If only a ligand is present:
+
     - Prevents the ligand from jumping between periodic images
     - Aligns the ligand to minimize its RMSD
     """
