@@ -42,34 +42,46 @@ def apply_transformations(
     has_ligand = ligand is not None and ligand.n_atoms > 0
 
     if has_protein:
-        group = protein
-        if has_ligand:
-            group = protein + ligand
-        # Unwrap all atoms
-        unwrap_tr = unwrap(group)
-
-        # Shift chains + ligand
-        chains = [seg.atoms for seg in protein.segments]
-        shift_targets = [*chains[1:]]
-        if has_ligand:
-            shift_targets.append(ligand)
-        shift = ClosestImageShift(chains[0], shift_targets)
-
-        align = Aligner(protein)
-
-        u.trajectory.add_transformations(
-            unwrap_tr,
-            shift,
-            align,
-        )
+        lig = ligand if has_ligand else None
+        transforms = _apply_transformations_complex(protein, lig)
     elif has_ligand:
-        # if there's no protein
-        # - make the ligand not jump periodic images between frames
-        # - align the ligand to minimise its RMSD
-        nope = NoJump(ligand)
-        align = Aligner(ligand)
+        transforms = _apply_transformations_ligand_only(ligand)
+    else:
+        return
 
-        u.trajectory.add_transformations(
-            nope,
-            align,
-        )
+    u.trajectory.add_transformations(*transforms)
+
+
+def _apply_transformations_complex(protein, ligand=None):
+    """
+    Build transformations for systems containing a protein
+    and optionally a ligand.
+    """
+    transforms = []
+    # 1. Make molecules whole (protein + optional ligand)
+    group = protein if ligand is None else protein + ligand
+    transforms.append(unwrap(group))
+
+    # 2. Closest image shift for protein chains + ligand (if present)
+    chains = [seg.atoms for seg in protein.segments]
+    shift_targets = chains[1:]
+    if ligand is not None:
+        shift_targets.append(ligand)
+    transforms.append(ClosestImageShift(chains[0], shift_targets))
+
+    # 3. Align on protein backbone/atoms
+    transforms.append(Aligner(protein))
+
+    return transforms
+
+
+def _apply_transformations_ligand_only(ligand):
+    """
+    Build transformations for ligand-only systems.
+      - make the ligand not jump periodic images between frames
+      - align the ligand to minimize its RMSD
+    """
+    return [
+        NoJump(ligand),
+        Aligner(ligand),
+    ]
