@@ -21,6 +21,8 @@ class ProLIFAnalysis(AnalysisBase):
         universe: mda.Universe,
         ligand_ag: mda.AtomGroup,
         water_order: int = 3,
+        protein_cutoff: int = 12,
+        water_cutoff: int = 8,
         interactions: Optional[Sequence[str] | str] = None,
         guess_bonds: bool = True,
         vdwradii: Optional[Dict[str, float]] = None,
@@ -38,6 +40,12 @@ class ProLIFAnalysis(AnalysisBase):
         water_order
             Maximum WaterBridge interaction order (water-water interaction).
             Only used if "WaterBridge" is tracked.
+        protein_cutoff
+            Distance cutoff in angstrom used to define the protein pocket
+            around the ligand.
+        water_cutoff
+            Distance cutoff in angstrom used to define waters considered
+            around the ligand/protein pocket.
         interactions
             Which interactions to track:
               - None: ProLIF defaults
@@ -81,14 +89,13 @@ class ProLIFAnalysis(AnalysisBase):
                 if wat_all.n_atoms:
                     wat_all.guess_bonds(vdwradii=vdwradii)
 
-        # Currently adding here but maybe as args?
         self.protein_ag = self.universe.select_atoms(
-            "protein and byres around 12 group ligand",
+            f"protein and byres around {protein_cutoff} group ligand",
             ligand=self.ligand_ag,
             updating=True,
         )
         self.water_ag = self.universe.select_atoms(
-            "water and byres around 8 (group ligand or group pocket)",
+            f"water and byres around {water_cutoff} (group ligand or group pocket)",
             ligand=self.ligand_ag,
             pocket=self.protein_ag,
             updating=True,
