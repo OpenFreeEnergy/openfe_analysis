@@ -252,7 +252,6 @@ class ProLIFAnalysis(AnalysisBase):
         self.results.ifp_df = df
         return df
 
-
     def plot_lignetwork(
         self,
         ligand_mol=None,
