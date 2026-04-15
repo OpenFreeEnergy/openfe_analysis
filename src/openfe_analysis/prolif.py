@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import numpy as np
 from typing import Any, Dict, Optional, Sequence, Tuple
+import warnings
 
 import MDAnalysis as mda
 from MDAnalysis.analysis.base import AnalysisBase
+from MDAnalysis.guesser.tables import vdwradii as MDA_VDWRADII
 
 import prolif as plf
 
@@ -58,15 +60,14 @@ class ProLIFAnalysis(AnalysisBase):
         # --- Guess bonds once on stable selections so RDKit/ProLIF can detect HBonds ---
         if guess_bonds:
             if vdwradii is None:
-                # minimal overrides needed for your system (atom types include Cl/Na)
-                vdwradii = {
-                    "Cl": 1.75,
-                    "CL": 1.75,
-                    "Br": 1.85,
-                    "BR": 1.85,
-                    "Na": 2.27,
-                    "NA": 2.27,
-                }
+                vdwradii = dict(MDA_VDWRADII)
+                vdwradii.update(
+                    {
+                        "Cl": vdwradii["CL"],
+                        "Br": vdwradii["BR"],
+                        "Na": vdwradii["NA"],
+                    }
+                )
 
             # Protein: guess on the full protein so any pocket residue later has bonds
             universe.select_atoms("protein").guess_bonds(vdwradii=vdwradii)
@@ -117,10 +118,21 @@ class ProLIFAnalysis(AnalysisBase):
             and "WaterBridge" in fp_interactions
         ):
             if self.water_ag.n_atoms == 0:
-                raise ValueError("WaterBridge selected but water selection is empty.")
-            self._parameters = {
-                "WaterBridge": {"water": self.water_ag, "order": self.water_order}
-            }
+                warnings.warn(
+                    "WaterBridge selected but water selection is empty at the initial "
+                    "frame; removing WaterBridge from the requested interactions.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+                fp_interactions = [
+                    interaction
+                    for interaction in fp_interactions
+                    if interaction != "WaterBridge"
+                ]
+            else:
+                self._parameters = {
+                    "WaterBridge": {"water": self.water_ag, "order": self.water_order}
+                }
 
         if fp_interactions is None:
             self.fp = plf.Fingerprint()
@@ -232,3 +244,75 @@ class ProLIFAnalysis(AnalysisBase):
         df = self.fp.to_dataframe(**kwargs)
         self.results.ifp_df = df
         return df
+
+
+    def plot_lignetwork(
+        self,
+        ligand_mol=None,
+        *,
+        frame: Optional[int] = None,
+        kind: Literal["aggregate", "frame"] = "frame",
+        display_all: bool = False,
+        threshold: float = 0.3,
+        use_coordinates: bool = True,
+        flatten_coordinates: bool = True,
+        kekulize: bool = False,
+        molsize: int = 35,
+        rotation: float = 0,
+        carbon: float = 0.16,
+        width: str = "100%",
+        height: str = "500px",
+        fontsize: int = 20,
+        show_interaction_data: bool = False,
+    ):
+        """
+        2D ProLIF ligand-network visualization.
+        """
+        if not hasattr(self.fp, "ifp") or not self.fp.ifp:
+            raise RuntimeError(
+                "No ProLIF fingerprint data found. Run `analysis.run(...)` first."
+            )
+
+        available_frames = list(self.fp.ifp.keys())
+
+        if frame is None:
+            frame = available_frames[0]
+
+        if kind == "frame" and frame not in self.fp.ifp:
+            preview = available_frames[:10]
+            suffix = " ..." if len(available_frames) > 10 else ""
+            raise ValueError(
+                f"frame={frame} not present in fingerprint results. "
+                f"Available frames: {preview}{suffix}"
+            )
+
+        if frame is not None:
+            self.universe.trajectory[frame]
+
+        if ligand_mol is None:
+            ligand_mol = plf.Molecule.from_mda(
+                self.ligand_ag,
+                inferrer=None,
+                implicit_hydrogens=False,
+                use_segid=self.fp.use_segid,
+            )
+
+        return self.fp.plot_lignetwork(
+            ligand_mol,
+            kind=kind,
+            frame=frame,
+            display_all=display_all,
+            threshold=threshold,
+            use_coordinates=use_coordinates,
+            flatten_coordinates=flatten_coordinates,
+            kekulize=kekulize,
+            molsize=molsize,
+            rotation=rotation,
+            carbon=carbon,
+            width=width,
+            height=height,
+            fontsize=fontsize,
+            show_interaction_data=show_interaction_data,
+        )
+
+    plot_2d = plot_lignetwork
