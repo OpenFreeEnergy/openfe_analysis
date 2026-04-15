@@ -64,3 +64,99 @@ def test_guess_bonds_enables_protein_chemistry(
     # ensure the protein donors/acceptors exist
     prot_mol = analysis.protein_ag.convert_to("RDKIT", implicit_hydrogens=False)
     assert Lipinski.NumHDonors(prot_mol) + Lipinski.NumHAcceptors(prot_mol) > 0
+
+
+def test_prolifanalysis_accepts_all_keyword(
+    simulation_skipped_nc, hybrid_system_skipped_pdb
+):
+    """
+    The string "all" should be accepted as the special keyword for
+    all available ProLIF interactions.
+    """
+    u = mda.Universe(
+        hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, index=0
+    )
+    ligand_ag = u.select_atoms("resname UNK")
+
+    analysis = ProLIFAnalysis(u, ligand_ag, interactions="all", guess_bonds=True)
+
+    assert analysis.fp is not None
+
+
+def test_waterbridge_empty_selection_warns_and_skips_parameters(
+    simulation_skipped_nc, hybrid_system_skipped_pdb, monkeypatch
+):
+    """
+    Requesting WaterBridge with an empty water selection should warn
+    instead of raising, and should not configure WaterBridge parameters.
+    """
+    u = mda.Universe(
+        hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, index=0
+    )
+    ligand_ag = u.select_atoms("resname UNK")
+
+    original_select_atoms = u.select_atoms
+
+    def patched_select_atoms(selection, *args, **kwargs):
+        if selection == "water and byres around 8 (group ligand or group pocket)":
+            return u.atoms[[]]
+        return original_select_atoms(selection, *args, **kwargs)
+
+    monkeypatch.setattr(u, "select_atoms", patched_select_atoms)
+
+    with pytest.warns(UserWarning, match="WaterBridge selected"):
+        analysis = ProLIFAnalysis(
+            u,
+            ligand_ag,
+            interactions=["WaterBridge"],
+            guess_bonds=True,
+        )
+
+    assert analysis._parameters is None
+
+
+def test_plot_2d_builds_ligand_mol_and_delegates(
+    simulation_skipped_nc, hybrid_system_skipped_pdb, monkeypatch
+):
+    """
+    plot_2d should build a ligand molecule internally when one is not
+    provided and delegate to ProLIF's plot_lignetwork.
+    """
+    u = mda.Universe(
+        hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, index=0
+    )
+    ligand_ag = u.select_atoms("resname UNK")
+
+    analysis = ProLIFAnalysis(
+        u, ligand_ag, interactions=["VdWContact"], guess_bonds=True
+    )
+
+    analysis.fp.ifp = {0: {"dummy": []}}
+
+    fake_ligand_mol = object()
+    calls = {}
+
+    def fake_from_mda(atomgroup, **kwargs):
+        calls["from_mda"] = (atomgroup, kwargs)
+        return fake_ligand_mol
+
+    def fake_plot_lignetwork(ligand_mol, **kwargs):
+        calls["plot_lignetwork"] = (ligand_mol, kwargs)
+        return "fake-view"
+
+    monkeypatch.setattr(
+        "openfe_analysis.prolif.plf.Molecule.from_mda",
+        fake_from_mda,
+    )
+    monkeypatch.setattr(analysis.fp, "plot_lignetwork", fake_plot_lignetwork)
+
+    view = analysis.plot_2d(frame=0, kind="frame")
+
+    assert view == "fake-view"
+    assert calls["from_mda"][0] is ligand_ag
+    assert calls["from_mda"][1]["inferrer"] is None
+    assert calls["from_mda"][1]["implicit_hydrogens"] is False
+    assert calls["from_mda"][1]["use_segid"] == analysis.fp.use_segid
+    assert calls["plot_lignetwork"][0] is fake_ligand_mol
+    assert calls["plot_lignetwork"][1]["frame"] == 0
+    assert calls["plot_lignetwork"][1]["kind"] == "frame"
