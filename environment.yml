@@ -8,6 +8,7 @@ dependencies:
   - openff-units
   - pip
   - tqdm
+  - prolif
   - pyyaml
   # for testing
   - coverage
