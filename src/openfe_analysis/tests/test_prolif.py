@@ -115,40 +115,50 @@ def test_waterbridge_empty_selection_warns_and_skips_parameters(
     assert analysis._parameters is None
 
 
-def test_plot_2d_builds_ligand_mol_and_delegates(
-    simulation_skipped_nc, hybrid_system_skipped_pdb, monkeypatch
-):
+def test_plot_2d_builds_ligand_mol_and_delegates(monkeypatch):
     """
     plot_2d should build a ligand molecule internally when one is not
     provided and delegate to ProLIF's plot_lignetwork.
     """
-    u = mda.Universe(
-        hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, index=0
-    )
-    ligand_ag = u.select_atoms("resname UNK")
 
-    analysis = ProLIFAnalysis(
-        u, ligand_ag, interactions=["VdWContact"], guess_bonds=True
-    )
+    class DummyTrajectory:
+        def __init__(self):
+            self.last_frame = None
 
-    analysis.fp.ifp = {0: {"dummy": []}}
+        def __getitem__(self, frame):
+            self.last_frame = frame
+            return None
+
+    class DummyFP:
+        def __init__(self):
+            self.ifp = {0: {"dummy": []}}
+            self.use_segid = False
+
+        def plot_lignetwork(self, ligand_mol, **kwargs):
+            calls["plot_lignetwork"] = (ligand_mol, kwargs)
+            return "fake-view"
+
+    ligand_ag = object()
+    calls = {}
+    analysis = object.__new__(ProLIFAnalysis)
+    analysis.ligand_ag = ligand_ag
+    analysis.universe = type(
+        "DummyUniverse",
+        (),
+        {"trajectory": DummyTrajectory()},
+    )()
+    analysis.fp = DummyFP()
 
     fake_ligand_mol = object()
-    calls = {}
 
     def fake_from_mda(atomgroup, **kwargs):
         calls["from_mda"] = (atomgroup, kwargs)
         return fake_ligand_mol
 
-    def fake_plot_lignetwork(ligand_mol, **kwargs):
-        calls["plot_lignetwork"] = (ligand_mol, kwargs)
-        return "fake-view"
-
     monkeypatch.setattr(
         "openfe_analysis.prolif.plf.Molecule.from_mda",
         fake_from_mda,
     )
-    monkeypatch.setattr(analysis.fp, "plot_lignetwork", fake_plot_lignetwork)
 
     view = analysis.plot_2d(frame=0, kind="frame")
 
@@ -160,3 +170,4 @@ def test_plot_2d_builds_ligand_mol_and_delegates(
     assert calls["plot_lignetwork"][0] is fake_ligand_mol
     assert calls["plot_lignetwork"][1]["frame"] == 0
     assert calls["plot_lignetwork"][1]["kind"] == "frame"
+    assert analysis.universe.trajectory.last_frame == 0
