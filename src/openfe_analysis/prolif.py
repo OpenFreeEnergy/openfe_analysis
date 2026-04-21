@@ -101,7 +101,7 @@ class ProLIFAnalysis(AnalysisBase):
             updating=True,
         )
 
-        available = plf.Fingerprint.list_available()
+        available = plf.Fingerprint.list_available(show_bridged=True)
 
         if interactions is None:
             fp_interactions = None
@@ -142,9 +142,14 @@ class ProLIFAnalysis(AnalysisBase):
                 }
 
         if fp_interactions is None:
-            self.fp = plf.Fingerprint()
+            self.fp = plf.Fingerprint(parameters=self._parameters)
+        elif len(fp_interactions) == 0:
+            self.fp = plf.Fingerprint(parameters=self._parameters)
         else:
-            self.fp = plf.Fingerprint(interactions=fp_interactions)
+            self.fp = plf.Fingerprint(
+                interactions=fp_interactions,
+                parameters=self._parameters,
+            )
 
     def _prepare(self):
         self.results.ifp = None
