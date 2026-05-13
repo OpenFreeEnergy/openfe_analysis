@@ -1,17 +1,16 @@
 from __future__ import annotations
 
 import numpy as np
-from typing import Any, Dict, Optional, Sequence, Tuple
+from typing import Any, Dict, Optional, Sequence, Tuple, Literal
 import warnings
 
 import MDAnalysis as mda
-from MDAnalysis.analysis.base import AnalysisBase
 from MDAnalysis.guesser.tables import vdwradii as MDA_VDWRADII
 
 import prolif as plf
 
 
-class ProLIFAnalysis(AnalysisBase):
+class ProLIFAnalysis:
     """
     ProLIF interaction fingerprint analysis for an OpenFEReader Universe.
     """
@@ -21,12 +20,11 @@ class ProLIFAnalysis(AnalysisBase):
         universe: mda.Universe,
         ligand_ag: mda.AtomGroup,
         water_order: int = 3,
-        protein_cutoff: int = 12,
-        water_cutoff: int = 8,
+        protein_cutoff: float = 12.0,
+        water_cutoff: float = 8.0,
         interactions: Optional[Sequence[str] | str] = None,
         guess_bonds: bool = True,
         vdwradii: Optional[Dict[str, float]] = None,
-        **kwargs,
     ) -> None:
         """
         Initialize the ProLIF analysis.
@@ -63,7 +61,10 @@ class ProLIFAnalysis(AnalysisBase):
         self.ligand_ag = ligand_ag
         self.water_order = water_order
 
-        super().__init__(universe.trajectory, **kwargs)
+        self.frames = None
+        self.times = None
+        self.n_frames = None
+        self.ifp_df = None
 
         # --- Guess bonds once on stable selections so RDKit/ProLIF can detect HBonds ---
         if guess_bonds:
@@ -84,10 +85,9 @@ class ProLIFAnalysis(AnalysisBase):
             self.ligand_ag.guess_bonds(vdwradii=vdwradii)
 
             # Water: only if you care about water-mediated interactions
-            if guess_bonds:
-                wat_all = universe.select_atoms("water")
-                if wat_all.n_atoms:
-                    wat_all.guess_bonds(vdwradii=vdwradii)
+            wat_all = universe.select_atoms("water")
+            if wat_all.n_atoms:
+                wat_all.guess_bonds(vdwradii=vdwradii)
 
         self.protein_ag = self.universe.select_atoms(
             f"protein and byres around {protein_cutoff} group ligand",
@@ -141,22 +141,13 @@ class ProLIFAnalysis(AnalysisBase):
                     "WaterBridge": {"water": self.water_ag, "order": self.water_order}
                 }
 
-        if fp_interactions is None:
-            self.fp = plf.Fingerprint(parameters=self._parameters)
-        elif len(fp_interactions) == 0:
+        if not fp_interactions:
             self.fp = plf.Fingerprint(parameters=self._parameters)
         else:
             self.fp = plf.Fingerprint(
                 interactions=fp_interactions,
                 parameters=self._parameters,
             )
-
-    def _prepare(self):
-        self.results.ifp = None
-        self.results.ifp_df = None
-
-    def _conclude(self):
-        self.results.ifp = getattr(self.fp, "ifp", None)
 
     def run(
         self,
@@ -245,8 +236,14 @@ class ProLIFAnalysis(AnalysisBase):
             parallel_strategy=parallel_strategy,
         )
 
-        self._conclude()
         return self
+
+    @property
+    def ifp(self):
+        """
+        Convenience accessor for underlying ProLIF fingerprint results.
+        """
+        return getattr(self.fp, "ifp", None)
 
     # For now, depending on what we do withe the data
     def to_dataframe(self, **kwargs):
@@ -254,7 +251,7 @@ class ProLIFAnalysis(AnalysisBase):
         Transform fingerprint results to pd.DataFrame.
         """
         df = self.fp.to_dataframe(**kwargs)
-        self.results.ifp_df = df
+        self.ifp_df = df
         return df
 
     def plot_lignetwork(
@@ -279,7 +276,7 @@ class ProLIFAnalysis(AnalysisBase):
         """
         2D ProLIF ligand-network visualization.
         """
-        if not hasattr(self.fp, "ifp") or not self.fp.ifp:
+        if not self.ifp:
             raise RuntimeError(
                 "No ProLIF fingerprint data found. Run `analysis.run(...)` first."
             )
@@ -327,3 +324,92 @@ class ProLIFAnalysis(AnalysisBase):
         )
 
     plot_2d = plot_lignetwork
+
+    def plot_barcode(
+        self,
+        *,
+        figsize: tuple[int, int] = (8, 10),
+        dpi: int = 100,
+        interactive: bool = True,
+        n_frame_ticks: int = 10,
+        residues_tick_location: Literal["top", "bottom"] = "top",
+        xlabel: str = "Frame",
+        subplots_kwargs: Optional[dict] = None,
+        tight_layout_kwargs: Optional[dict] = None,
+    ):
+        """
+        Barcode plot of interactions across frames.
+        """
+        if not self.ifp:
+            raise RuntimeError(
+                "No ProLIF fingerprint data found. Run `analysis.run(...)` first."
+            )
+
+        return self.fp.plot_barcode(
+            figsize=figsize,
+            dpi=dpi,
+            interactive=interactive,
+            n_frame_ticks=n_frame_ticks,
+            residues_tick_location=residues_tick_location,
+            xlabel=xlabel,
+            subplots_kwargs=subplots_kwargs,
+            tight_layout_kwargs=tight_layout_kwargs,
+        )
+
+    def plot_3d(
+        self,
+        ligand_mol=None,
+        protein_mol=None,
+        water_mol=None,
+        *,
+        frame: int = 0,
+        size: tuple[int, int] = (650, 600),
+        display_all: bool = False,
+        only_interacting: bool = True,
+        remove_hydrogens: bool | Literal["ligand", "protein", "water"] = True,
+    ):
+        """
+        3D ProLIF interaction visualization using py3Dmol.
+        """
+        if not self.ifp:
+            raise RuntimeError(
+                "No ProLIF fingerprint data found. Run `analysis.run(...)` first."
+            )
+
+        if frame not in self.fp.ifp:
+            raise ValueError(f"frame={frame} not present in fingerprint results.")
+
+        self.universe.trajectory[frame]
+
+        if ligand_mol is None:
+            ligand_mol = plf.Molecule.from_mda(
+                self.ligand_ag,
+                inferrer=None,
+                implicit_hydrogens=False,
+                use_segid=self.fp.use_segid,
+            )
+
+        if protein_mol is None:
+            protein_mol = plf.Molecule.from_mda(
+                self.protein_ag,
+                implicit_hydrogens=False,
+                use_segid=self.fp.use_segid,
+            )
+
+        if water_mol is None and self.water_ag.n_atoms:
+            water_mol = plf.Molecule.from_mda(
+                self.water_ag,
+                implicit_hydrogens=False,
+                use_segid=self.fp.use_segid,
+            )
+
+        return self.fp.plot_3d(
+            ligand_mol,
+            protein_mol,
+            water_mol=water_mol,
+            frame=frame,
+            size=size,
+            display_all=display_all,
+            only_interacting=only_interacting,
+            remove_hydrogens=remove_hydrogens,
+        )
