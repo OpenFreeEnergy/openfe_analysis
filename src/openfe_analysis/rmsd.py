@@ -124,8 +124,7 @@ class Protein2DRMSD(AnalysisBase):
           Per-atom weights to use in the RMSD calculation. If ``None``,
           all atoms are weighted equally.
         """
-        super(Protein2DRMSD, self).__init__(atomgroup.universe.trajectory, **kwargs)
-
+        super().__init__(atomgroup.universe.trajectory, **kwargs)
         self._weights = weights
         self._ag = atomgroup
 
@@ -138,19 +137,19 @@ class Protein2DRMSD(AnalysisBase):
 
     def _conclude(self):
         positions = np.asarray(self._coords)
-        nframes, _, _ = positions.shape
+        nframes = positions.shape[0]
 
         output = []
         for i, j in itertools.combinations(range(nframes), 2):
             posi, posj = positions[i], positions[j]
-            rmsd = rms.rmsd(
+            pair_rmsd = rms.rmsd(
                 posi,
                 posj,
                 self._weights,
                 center=True,
                 superposition=True,
             )
-            output.append(rmsd)
+            output.append(pair_rmsd)
 
         self.results.rmsd2d = np.asarray(output)
 
@@ -164,15 +163,24 @@ class RMSDAnalysis(AnalysisBase):
     atomgroup : MDAnalysis.AtomGroup
       Atoms to compute RMSD for.
     reference: Optional[MDAnalysis.AtomGroup]
-      Reference AtomGroup. If None, the first frame of the trajectory will be used.
+      Reference AtomGroup. If ``None``, the reference positions are captured
+      from the mobile AtomGroup at the start of the run (i.e. whatever frame
+      the trajectory is on when ``.run()`` is called).
     mass_weighted : bool, optional
       If True, compute mass-weighted RMSD.
+    superposition : bool, optional
+      If ``True``, perform rotational superposition before computing RMSD.
     """
 
     def __init__(
-        self, atomgroup, reference=None, mass_weighted=False, superposition=False, **kwargs
+        self,
+        atomgroup,
+        reference=None,
+        mass_weighted=False,
+        superposition=False,
+        **kwargs,
     ):
-        super(RMSDAnalysis, self).__init__(atomgroup.universe.trajectory, **kwargs)
+        super().__init__(atomgroup.universe.trajectory, **kwargs)
 
         self._ag = atomgroup
         self._reference = reference if reference is not None else self._ag
@@ -190,14 +198,14 @@ class RMSDAnalysis(AnalysisBase):
             self._weights = None
 
     def _single_frame(self):
-        rmsd = rms.rmsd(
+        frame_rmsd = rms.rmsd(
             self._ag.positions,
             self._reference_pos,
             self._weights,
             center=False,
             superposition=self._superposition,
         )
-        self.results.rmsd.append(rmsd)
+        self.results.rmsd.append(frame_rmsd)
 
     def _conclude(self):
         self.results.rmsd = np.asarray(self.results.rmsd)
@@ -270,8 +278,7 @@ class LigandCOMDrift(AnalysisBase):
     """
 
     def __init__(self, atomgroup, **kwargs):
-        super(LigandCOMDrift, self).__init__(atomgroup.universe.trajectory, **kwargs)
-
+        super().__init__(atomgroup.universe.trajectory, **kwargs)
         self._ag = atomgroup
 
     def _prepare(self):
@@ -313,7 +320,9 @@ def _select_state_ligand(u: mda.Universe) -> mda.AtomGroup:
 
 
 def gather_rms_data(
-    pdb_topology: pathlib.Path, dataset: pathlib.Path, skip: Optional[int] = None
+    pdb_topology: pathlib.Path,
+    dataset: pathlib.Path,
+    skip: Optional[int] = None,
 ) -> dict[str, list[float]]:
     """
     Compute structural RMSD-based metrics for a multistate BFE simulation.
