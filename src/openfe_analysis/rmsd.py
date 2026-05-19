@@ -42,20 +42,22 @@ def make_Universe(top: pathlib.Path, trj: nc.Dataset, state: int) -> mda.Univers
     Notes
     -----
     Identifies two AtomGroups:
-    - protein, defined as having standard amino acid names, then filtered
-      down to CA
-    - ligand, defined as resname UNK
+
+    - Protein, defined as having standard amino acid names, then filtered down to CA
+    - Ligand, defined as "resname UNK"
 
     Depending on whether a protein is present, a sequence of trajectory
     transformations is applied:
 
     If a protein is present:
+
     - Unwraps protein and ligand atom to be made whole
     - Shifts protein chains and the ligand to the image closest to the first
       protein chain (:class:`ClosestImageShift`)
     - Aligns the entire system to minimise the protein RMSD (:class:`Aligner`)
 
     If only a ligand is present:
+
     - Prevents the ligand from jumping between periodic images
     - Aligns the ligand to minimize its RMSD
     """
@@ -127,7 +129,7 @@ class Protein2DRMSD(AnalysisBase):
         self.results.rmsd2d = []
 
     def _single_frame(self):
-        self._coords.append(self._ag.positions)
+        self._coords.append(self._ag.positions.copy())
 
     def _conclude(self):
         positions = np.asarray(self._coords)
@@ -156,19 +158,26 @@ class RMSDAnalysis(AnalysisBase):
     ----------
     atomgroup : MDAnalysis.AtomGroup
       Atoms to compute RMSD for.
+    reference: Optional[MDAnalysis.AtomGroup]
+      Reference AtomGroup. If None, the first frame of the trajectory will be used.
     mass_weighted : bool, optional
       If True, compute mass-weighted RMSD.
     """
 
-    def __init__(self, atomgroup, mass_weighted=False, **kwargs):
+    def __init__(
+        self, atomgroup, reference=None, mass_weighted=False, superposition=False, **kwargs
+    ):
         super(RMSDAnalysis, self).__init__(atomgroup.universe.trajectory, **kwargs)
 
         self._ag = atomgroup
+        self._reference = reference if reference is not None else self._ag
         self._mass_weighted = mass_weighted
+        self._superposition = superposition
 
     def _prepare(self):
         self.results.rmsd = []
-        self._reference = self._ag.positions
+
+        self._reference_pos = self._reference.positions.copy()
 
         if self._mass_weighted:
             self._weights = self._ag.masses / np.mean(self._ag.masses)
@@ -178,10 +187,10 @@ class RMSDAnalysis(AnalysisBase):
     def _single_frame(self):
         rmsd = rms.rmsd(
             self._ag.positions,
-            self._reference,
+            self._reference_pos,
             self._weights,
             center=False,
-            superposition=False,
+            superposition=self._superposition,
         )
         self.results.rmsd.append(rmsd)
 
@@ -305,16 +314,17 @@ def gather_rms_data(
     Notes
     -----
     For each thermodynamic state (lambda), this function:
-      - Loads the trajectory using ``FEReader``
-      - Applies standard PBC-handling and alignment transformations
-      - Computes protein and ligand structural metrics over time
+
+    - Loads the trajectory using ``FEReader``
+    - Applies standard PBC-handling and alignment transformations
+    - Computes protein and ligand structural metrics over time
 
     The following analyses are produced per state:
-      - 1D protein CA RMSD time series
-      - 1D ligand RMSD time series
-      - Ligand center-of-mass displacement from its initial position
-        (``ligand_wander``)
-      - Flattened 2D protein RMSD matrix (pairwise RMSD between frames)
+
+    - 1D protein CA RMSD time series
+    - 1D ligand RMSD time series
+    - Ligand center-of-mass displacement from its initial position (``ligand_wander``)
+    - Flattened 2D protein RMSD matrix (pairwise RMSD between frames)
     """
     output = {
         "protein_RMSD": [],
@@ -356,21 +366,45 @@ def gather_rms_data(
             if prot:
                 prot_rmsd = RMSDAnalysis(prot).run(step=skip)
                 output["protein_RMSD"].append(prot_rmsd.results.rmsd)
-                # prot_rmsd = rms.RMSD(prot).run(step=skip)
-                # output["protein_RMSD"].append(prot_rmsd.results.rmsd.T[2])
+                # # Using the MDAnalysis RMSD class instead
+                # gs = ["protein and name CA"]
+                # prot_rmsd = rms.RMSD(
+                #    u, select="protein and name CA", groupselections=gs, weights="mass")
+                # prot_rmsd.run(step=skip)
+                # # The results contain:
+                # # - frame number
+                # # - time
+                # # - RMSD based on select (after superimposing)
+                # # - RMSD based on groupselections, one array per selection
+                # output["protein_RMSD"].append(prot_rmsd.results.rmsd.T[3])
+
                 prot_rmsd2d = Protein2DRMSD(prot).run(step=skip)
                 output["protein_2D_RMSD"].append(prot_rmsd2d.results.rmsd2d)
+                # # Using the MDAnalysis DistanceMatrix class
+                # prot_rmsd2d = diffusionmap.DistanceMatrix(u, select="protein and name CA")
+                # prot_rmsd2d.run(step=skip)
+                # dist_mat = prot_rmsd2d.results.dist_matrix
+                # i, j = np.triu_indices_from(dist_mat, k=1)
+                # flattened = dist_mat[i, j]
+                # output["protein_2D_RMSD"].append(flattened)
 
             if ligand:
                 # lig_rmsd = RMSDAnalysis(ligand, mass_weighted=True).run(step=skip)
                 lig_rmsd = SymmetryCorrectedLigandRMSD(state_lig, mass_weighted=True).run(step=skip)
                 output["ligand_RMSD"].append(lig_rmsd.results.rmsd)
-                # weight = ligand.masses / np.mean(ligand.masses)
-                # lig_rmsd = rms.RMSD(ligand, weights=weight).run(step=skip)
-                # output["ligand_RMSD"].append(lig_rmsd.results.rmsd.T[2])
+                # # Using the MDAnalysis RMSD class instead
+                # groupselections = ["resname UNK"]
+                # lig_rmsd = rms.RMSD(
+                #     u,
+                #     select="protein and name CA",
+                #     groupselections=groupselections,
+                #     weights="mass",
+                # )
+                # lig_rmsd.run(step=skip)
+                # output["ligand_RMSD"].append(lig_rmsd.results.rmsd.T[3])
                 lig_com_drift = LigandCOMDrift(ligand).run(step=skip)
                 output["ligand_wander"].append(lig_com_drift.results.com_drift)
 
-            output["time(ps)"] = np.arange(len(u.trajectory))[::skip] * u.trajectory.dt
+        output["time(ps)"] = np.arange(len(u.trajectory))[::skip] * u.trajectory.dt
 
     return output
