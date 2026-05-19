@@ -4,13 +4,21 @@ import MDAnalysis as mda
 import netCDF4 as nc
 import numpy as np
 import pytest
+import spyrmsd.rmsd as srmsd
 from MDAnalysis.analysis import rms
 from MDAnalysis.lib.mdamath import make_whole
 from MDAnalysis.transformations import unwrap
 from numpy.testing import assert_allclose
+from rdkit.Chem import rdmolops
 
 from openfe_analysis.reader import FEReader
-from openfe_analysis.rmsd import gather_rms_data, make_Universe
+from openfe_analysis.rmsd import (
+    RMSDAnalysis,
+    SymmetryCorrectedLigandRMSD,
+    _select_state_ligand,
+    gather_rms_data,
+    make_Universe,
+)
 from openfe_analysis.transformations import Aligner
 
 
@@ -177,3 +185,77 @@ def test_ligand_com_continuity(mda_universe):
 
     assert max(jumps) < 5.0
     u.trajectory.close()
+
+
+def test_symmetry_corrected_ligand_rmsd_nonnegative(mda_universe):
+    """RMSD values must be non-negative for all frames."""
+    u = mda_universe
+    state_lig = _select_state_ligand(u)
+
+    result = SymmetryCorrectedLigandRMSD(state_lig).run()
+
+    assert np.all(result.results.rmsd >= 0.0)
+
+
+def test_symmetry_corrected_ligand_rmsd_zero_for_valid_swap():
+    """
+    For a water-like symmetric molecule, swapping the two equivalent H atoms
+    gives naive RMSD > 0 but SymmetryCorrectedLigandRMSD = 0.
+    """
+    # Build a minimal universe with two frames: reference and swapped
+    coords_ref = np.array(
+        [
+            [0.0, 0.0, 0.0],  # O
+            [1.0, 0.0, 0.0],  # H1
+            [0.0, 1.0, 0.0],  # H2
+        ]
+    )
+    coords_swapped = np.array(
+        [
+            [0.0, 0.0, 0.0],  # O
+            [0.0, 1.0, 0.0],  # H2 in H1's slot
+            [1.0, 0.0, 0.0],  # H1 in H2's slot
+        ]
+    )
+
+    u = mda.Universe.empty(3, trajectory=True)
+    u.add_TopologyAttr("elements", ["O", "H", "H"])
+    u.add_TopologyAttr("names", ["O", "H1", "H2"])
+    u.add_TopologyAttr("resnames", ["UNK"])
+    u.add_TopologyAttr("resids", [1])
+    u.load_new(
+        np.array([coords_ref, coords_swapped]),
+        order="fac",
+    )
+
+    ag = u.select_atoms("all")
+
+    corrected = SymmetryCorrectedLigandRMSD(ag).run()
+    naive = RMSDAnalysis(ag).run()
+
+    # Frame 0 is reference — both should be 0
+    assert corrected.results.rmsd[0] == pytest.approx(0.0, abs=1e-5)
+    assert naive.results.rmsd[0] == pytest.approx(0.0, abs=1e-5)
+
+    # Frame 1 is the swap — naive sees displacement, corrected sees zero
+    assert naive.results.rmsd[1] > 0.0
+    assert corrected.results.rmsd[1] == pytest.approx(0.0, abs=1e-5)
+
+
+def test_ligand_rmsd_mass_weighting_effect(simulation_skipped_nc, hybrid_system_skipped_pdb):
+    with nc.Dataset(simulation_skipped_nc) as ds:
+        u_top = mda.Universe(hybrid_system_skipped_pdb)
+        u = make_Universe(u_top._topology, ds, state=0)
+        ligand = u.select_atoms("resname UNK")
+        state_lig = _select_state_ligand(u)
+
+        rmsd_full_mw = RMSDAnalysis(ligand, mass_weighted=True).run()
+        rmsd_full_no_mw = RMSDAnalysis(ligand, mass_weighted=False).run()
+        rmsd_state_mw = RMSDAnalysis(state_lig, mass_weighted=True).run()
+        rmsd_state_no_mw = RMSDAnalysis(state_lig, mass_weighted=False).run()
+
+        print(f"Full  ligand, mass weighted:     {rmsd_full_mw.results.rmsd[:6]}")
+        print(f"Full  ligand, no mass weighting: {rmsd_full_no_mw.results.rmsd[:6]}")
+        print(f"State ligand, mass weighted:     {rmsd_state_mw.results.rmsd[:6]}")
+        print(f"State ligand, no mass weighting: {rmsd_state_no_mw.results.rmsd[:6]}")
+        print("Old expected: [0.0, 1.092039, 0.839234, 1.228383, 1.533331, 1.276798]")
