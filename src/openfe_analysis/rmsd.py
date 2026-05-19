@@ -40,7 +40,7 @@ class Protein2DRMSD(AnalysisBase):
         self.results.rmsd2d = []
 
     def _single_frame(self):
-        self._coords.append(self._ag.positions)
+        self._coords.append(self._ag.positions.copy())
 
     def _conclude(self):
         positions = np.asarray(self._coords)
@@ -88,7 +88,7 @@ class RMSDAnalysis(AnalysisBase):
     def _prepare(self):
         self.results.rmsd = []
 
-        self._reference_pos = self._reference.positions
+        self._reference_pos = self._reference.positions.copy()
 
         if self._mass_weighted:
             self._weights = self._ag.masses / np.mean(self._ag.masses)
@@ -249,6 +249,6 @@ def gather_rms_data(
                 lig_com_drift = LigandCOMDrift(ligand).run(step=skip)
                 output["ligand_wander"].append(lig_com_drift.results.com_drift)
 
-            output["time(ps)"] = np.arange(len(u.trajectory))[::skip] * u.trajectory.dt
+        output["time(ps)"] = np.arange(len(u.trajectory))[::skip] * u.trajectory.dt
 
     return output
