@@ -8,11 +8,16 @@ import numpy as np
 import spyrmsd.rmsd as srmsd
 from MDAnalysis.analysis import rms
 from MDAnalysis.analysis.base import AnalysisBase
+from MDAnalysis.guesser.tables import vdwradii as MDA_VDWRADII
 from MDAnalysis.transformations import unwrap
 from rdkit.Chem import rdmolops
 
 from .reader import FEReader
 from .transformations import Aligner, ClosestImageShift, NoJump
+
+# B-factor values used to identify atoms present at a given lambda state.
+# 0.25 marks atoms unique to one end state, 0.5 marks atoms shared by both.
+_BFACTOR_STATE_VALUES = (0.25, 0.5)
 
 
 def make_Universe(top: pathlib.Path, trj: nc.Dataset, state: int) -> mda.Universe:
@@ -202,19 +207,20 @@ class SymmetryCorrectedLigandRMSD(AnalysisBase):
     """
 
     def __init__(self, atomgroup, mass_weighted=False, **kwargs):
-        super(SymmetryCorrectedLigandRMSD, self).__init__(atomgroup.universe.trajectory, **kwargs)
-
+        super().__init__(atomgroup.universe.trajectory, **kwargs)
         self._ag = atomgroup
         self._mass_weighted = mass_weighted
         self._isomorphisms = None
-        vdwradii = {
-            "Cl": 1.75,
-            "CL": 1.75,
-            "Br": 1.85,
-            "BR": 1.85,
-            "Na": 2.27,
-            "NA": 2.27,
-        }
+
+        vdwradii = dict(MDA_VDWRADII)
+        vdwradii.update(
+            {
+                "Cl": vdwradii["CL"],
+                "Br": vdwradii["BR"],
+                "Na": vdwradii["NA"],
+            }
+        )
+
         atomgroup.guess_bonds(vdwradii)
         self._mol = atomgroup.convert_to("RDKIT")
         self._aprops = np.array([atom.GetAtomicNum() for atom in self._mol.GetAtoms()])
@@ -222,9 +228,7 @@ class SymmetryCorrectedLigandRMSD(AnalysisBase):
 
     def _prepare(self):
         self.results.rmsd = []
-        self._reference = self._ag.positions
-        self._ref_aprops = self._aprops
-        self._ref_am = self._am
+        self._reference = self._ag.positions.copy()
 
         if self._mass_weighted:
             self._weights = self._ag.masses / np.mean(self._ag.masses)
@@ -232,19 +236,18 @@ class SymmetryCorrectedLigandRMSD(AnalysisBase):
             self._weights = None
 
     def _single_frame(self):
-        coords = self._ag.positions.copy()
-        rmsd, isomorphisms, _ = srmsd._rmsd_isomorphic_core(
-            coords1=coords,
+        frame_rmsd, isomorphisms, _ = srmsd._rmsd_isomorphic_core(
+            coords1=self._ag.positions.copy(),
             coords2=self._reference,
             aprops1=self._aprops,
-            aprops2=self._ref_aprops,
+            aprops2=self._aprops,
             am1=self._am,
-            am2=self._ref_am,
+            am2=self._am,
             center=False,
             minimize=False,
             isomorphisms=self._isomorphisms,
         )
-        self.results.rmsd.append(rmsd)
+        self.results.rmsd.append(frame_rmsd)
         if self._isomorphisms is None:
             self._isomorphisms = isomorphisms
 
@@ -277,6 +280,27 @@ class LigandCOMDrift(AnalysisBase):
 
     def _conclude(self):
         self.results.com_drift = np.asarray(self.results.com_drift)
+
+
+def _select_state_ligand(u: mda.Universe) -> mda.AtomGroup:
+    """
+    Select ligand atoms that are present at the current lambda state.
+
+    Atoms are identified by their b-factor values: ``0.25`` marks atoms
+    unique to one end state and ``0.5`` marks atoms shared by both end
+    states. Only atoms with these b-factor values and residue name "UNK"
+    are included.
+
+    Parameters
+    ----------
+    u : mda.Universe
+
+    Returns
+    -------
+    MDAnalysis.AtomGroup
+    """
+    state_indices = np.array([atom.ix for atom in u.atoms if atom.bfactor in _BFACTOR_STATE_VALUES])
+    return u.atoms[state_indices].select_atoms("resname UNK")
 
 
 def gather_rms_data(
@@ -341,17 +365,13 @@ def gather_rms_data(
 
         u_top = mda.Universe(pdb_topology)
 
-        for i in range(n_lambda):
+        for state_idx in range(n_lambda):
             # cheeky, but we can read the PDB topology once and reuse per universe
             # this then only hits the PDB file once for all replicas
-            u = make_Universe(u_top._topology, ds, state=i)
-            bfactor = 0.25
-            state_atoms = np.array([atom.ix for atom in u.atoms if atom.bfactor in (bfactor, 0.5)])
-            state = u.atoms[state_atoms]
-
+            u = make_Universe(u_top._topology, ds, state=state_idx)
             prot = u.select_atoms("protein and name CA")
             ligand = u.select_atoms("resname UNK")
-            state_lig = state.select_atoms("resname UNK")
+            state_lig = _select_state_ligand(u)
 
             if prot:
                 prot_rmsd = RMSDAnalysis(prot).run(step=skip)
@@ -361,7 +381,7 @@ def gather_rms_data(
                 prot_rmsd2d = Protein2DRMSD(prot).run(step=skip)
                 output["protein_2D_RMSD"].append(prot_rmsd2d.results.rmsd2d)
 
-            if ligand:
+            if state_lig.n_atoms > 0:
                 # lig_rmsd = RMSDAnalysis(ligand, mass_weighted=True).run(step=skip)
                 lig_rmsd = SymmetryCorrectedLigandRMSD(state_lig, mass_weighted=True).run(step=skip)
                 output["ligand_RMSD"].append(lig_rmsd.results.rmsd)
