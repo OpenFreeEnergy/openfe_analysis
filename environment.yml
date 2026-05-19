@@ -4,6 +4,7 @@ channels:
 dependencies:
   - click
   - MDAnalysis
+  - MDAnalysisTests
   - netCDF4
   - openff-units
   - pip
