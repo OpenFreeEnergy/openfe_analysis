@@ -13,3 +13,4 @@ The **OpenFE Analysis** toolkit provides a free and open-source framework for an
    :maxdepth: 2
 
    api
+   CHANGELOG
