@@ -2,6 +2,17 @@
 Changelog
 =========
 
+.. current developments
+
+v0.3.1
+====================
+
+**Fixed:**
+
+* Fixed ``n_frames`` reading in netcdf reader (`PR #48 <https://github.com/OpenFreeEnergy/openfe_analysis/pull/48>`_).
+
+
+
 v0.3.0
 ======
 
