@@ -4,6 +4,23 @@ Changelog
 
 .. current developments
 
+v0.4.0
+====================
+
+**Changed:**
+
+* Changed ``openfe_analysis.FEReader`` to use parameters ``index`` and ``state`` instead of ``state_id`` (`PR #77 <https://github.com/OpenFreeEnergy/openfe_analysis/pull/77>`_).
+
+**Removed:**
+
+* Removed ``openfe-analysis`` CLI (`PR #86 <https://github.com/OpenFreeEnergy/openfe_analysis/pull/86>`_).
+
+**Fixed:**
+
+* Fixed periodic boundary condition bug in multi-chain RMSD analysis (`Issue #30 <https://github.com/OpenFreeEnergy/openfe_analysis/issues/30>`_).
+
+
+
 v0.3.1
 ====================
 
