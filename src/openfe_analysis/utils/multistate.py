@@ -277,6 +277,8 @@ def trajectory_from_multistate(
         traj.variables["coordinates"][frame] = pos.to("angstrom").m
 
         unitcell = _get_unitcell(multistate, replica_id, frame_list[frame])
+        if unitcell is None:
+            raise RuntimeError("Frame without unit cell encountered")
         traj.variables["cell_lengths"][frame] = unitcell[:3]
         traj.variables["cell_angles"][frame] = unitcell[3:]
 
