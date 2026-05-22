@@ -9,8 +9,9 @@ from MDAnalysis.guesser.tables import vdwradii as MDA_VDWRADII
 from rdkit import Chem
 
 # B-factor values used to identify atoms present at a given lambda state.
-# 0.25 marks atoms unique to state A, 0.75 marks atoms unique to state B,
-# and 0.5 marks atoms shared by both end states.
+# 0.25 : atoms unique to state A
+# 0.75 : atoms unique to state B
+# 0.5 : atoms shared by both end states.
 _BFACTOR_STATE_A = (0.25, 0.5)
 _BFACTOR_STATE_B = (0.75, 0.5)
 
@@ -22,8 +23,7 @@ def select_state_atoms(
     """
     Select all atoms present at a given end state.
 
-    Atoms are identified by their b-factor values, following the OpenFE
-    PDB convention:
+    Atoms are identified by their b-factor values:
 
     - ``0.25`` — unique to state A
     - ``0.75`` — unique to state B
@@ -45,13 +45,6 @@ def select_state_atoms(
     ------
     ValueError
         If ``end_state`` is not ``"A"`` or ``"B"``.
-
-    Examples
-    --------
-    Select all state A atoms, then further filter to just the ligand::
-
-        state_a = select_state_atoms(universe, end_state="A")
-        ligand_a = state_a.select_atoms("resname UNK")
     """
     if end_state == "A":
         bfactor_values = _BFACTOR_STATE_A
@@ -77,9 +70,8 @@ def guess_ligand_bonds(
         Ligand atoms for which bonds will be guessed.
     delete_existing : bool, optional
         If ``True``, delete existing bonds on the atomgroup before guessing.
-        This ensures a clean re-guess from scratch, removing any
-        bonds (e.g. cross-state bonds in hybrid topologies). Default is
-        ``False``.
+        This may be necessary to avoid cross-state bonds in hybrid topologies.
+        Default is ``False``.
     """
     if delete_existing:
         atomgroup.universe.delete_bonds(atomgroup.bonds)
@@ -102,38 +94,36 @@ def correct_elements(
     atom_mapping: dict[int, int] | None = None,
 ) -> None:
     """
-    Correct element and atom name assignments in an AtomGroup in-place
+    Correct element and atom names in an AtomGroup in-place
     using an RDKit molecule as the source of truth.
 
-    This is particularly useful for hybrid topologies where mapped atoms
-    undergoing element changes carry state A's element types, even when
-    state B's ligand is selected. Correcting elements ensures accurate
-    bond guessing and subsequent analyses.
+    This is needed for hybrid topologies where mapped atoms that
+    undergo element changes carry state A's element types, even when
+    state B's ligand is selected.
 
     Parameters
     ----------
     atomgroup : mda.AtomGroup
-        Ligand atoms whose elements and names will be corrected. Modified
-        in-place.
+        Ligand atoms whose elements and names will be corrected.
     rdmol : Chem.Mol
-        RDKit molecule providing the correct element and atom name
-        information.
+        RDKit molecule with the correct element and atom name information.
     atom_mapping : dict[int, int], optional
         A mapping of ``{atomgroup_index: rdmol_index}`` defining the
         correspondence between atoms in ``atomgroup`` and ``rdmol``. If
-        ``None``, atoms are matched by position — the i-th atom in
-        ``atomgroup`` corresponds to the i-th atom in ``rdmol``. A
-        warning is issued in this case since positional correspondence
-        is not guaranteed when the RDKit molecule comes from an external
-        source such as an SDF file.
+        ``None``, atoms are matched by position which gives wrong results if
+        the atom order was not the same.
 
     Raises
     ------
     ValueError
-        If the number of atoms in ``atomgroup`` and ``rdmol`` do not match
-        and no ``atom_mapping`` is provided.
+        If the number of atoms in ``atomgroup`` and ``rdmol`` do not match.
     """
     periodic_table = Chem.GetPeriodicTable()
+
+    if len(atomgroup) != rdmol.GetNumAtoms():
+        raise ValueError(
+            f"atomgroup has {len(atomgroup)} atoms but rdmol has {rdmol.GetNumAtoms()} atoms."
+        )
 
     if atom_mapping is not None:
         for ag_idx, rd_idx in atom_mapping.items():
@@ -144,14 +134,10 @@ def correct_elements(
                 mda_atom.element = element
                 mda_atom.name = rd_atom.GetSymbol()
     else:
-        if len(atomgroup) != rdmol.GetNumAtoms():
-            raise ValueError(
-                f"atomgroup has {len(atomgroup)} atoms but rdmol has {rdmol.GetNumAtoms()} atoms."
-            )
         warnings.warn(
-            "No atom_mapping provided to correct_elements — assuming positional "
-            "correspondence between atomgroup and rdmol. This may give incorrect "
-            "results if the atom ordering differs between the two.",
+            "No atom_mapping provided to correct_elements. Assuming that "
+            "atom ordering is the same between atomgroup and rdmol. This may "
+            "give incorrect results if the atom ordering differs between the two.",
             UserWarning,
         )
         for mda_atom, rd_atom in zip(atomgroup, rdmol.GetAtoms()):
