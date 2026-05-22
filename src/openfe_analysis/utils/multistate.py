@@ -5,12 +5,12 @@ from typing import Literal, Optional, Tuple
 import netCDF4 as nc
 import numpy as np
 from numpy.typing import NDArray
-from openff.units import unit
+from openff.units import Quantity, unit
 
 from openfe_analysis import __version__
 
 
-def _determine_position_indices(dataset: nc.Dataset) -> NDArray:
+def _determine_position_indices(dataset: nc.Dataset) -> NDArray[np.int64]:
     """
     Determine which iteration indices hold positions.
 
@@ -35,9 +35,10 @@ def _determine_position_indices(dataset: nc.Dataset) -> NDArray:
     value.
     """
     if hasattr(dataset, "PositionInterval"):
-        indices = [
-            i for i in range(0, dataset.dimensions["iteration"].size, dataset.PositionInterval)
-        ]
+        indices = np.array(
+            list(range(0, dataset.dimensions["iteration"].size, dataset.PositionInterval)),
+            dtype=np.int64,
+        )
     else:
         wmsg = (
             "This is an older NetCDF file that does not yet contain "
@@ -46,7 +47,7 @@ def _determine_position_indices(dataset: nc.Dataset) -> NDArray:
             "were written out at every iteration. "
         )
         warnings.warn(wmsg)
-        indices = [i for i in range(0, dataset.dimensions["iteration"].size)]
+        indices = np.arange(dataset.dimensions["iteration"].size, dtype=np.int64)
 
     indices = np.array(indices)
 
@@ -85,7 +86,7 @@ def _state_to_replica(dataset: nc.Dataset, state_num: int, frame_num: int) -> in
 
 def _replica_positions_at_frame(
     dataset: nc.Dataset, replica_index: int, frame_num: int
-) -> Optional[unit.Quantity]:
+) -> Optional[Quantity]:
     """
     Helper method to extract atom positions of a state at a given
     Dataset frame.
@@ -101,7 +102,7 @@ def _replica_positions_at_frame(
 
     Returns
     -------
-    Optional[unit.Quantity]
+    Optional[Quantity]
         A n_atoms * 3 position Quantity array. Returns ``None``
         if all the values are masked (i.e. no positions were stored
         for that frame).
@@ -112,7 +113,7 @@ def _replica_positions_at_frame(
 
     pos = dataset.variables["positions"][frame_num][replica_index].data
     pos_units = dataset.variables["positions"].units
-    return pos * unit(pos_units)
+    return pos * unit.Unit(pos_units)
 
 
 def _create_new_dataset(filename: Path, n_atoms: int, title: str) -> nc.Dataset:
@@ -174,7 +175,7 @@ def _create_new_dataset(filename: Path, n_atoms: int, title: str) -> nc.Dataset:
 
 def _get_unitcell(
     dataset: nc.Dataset, replica_index: int, frame_num: int
-) -> Optional[Tuple[unit.Quantity]]:
+) -> Optional[Tuple[float, float, float, float, float, float]]:
     """
     Helper method to extract unit cell dimensions from the stored
     box vectors in a MultiState reporter generated NetCDF file
@@ -202,18 +203,18 @@ def _get_unitcell(
 
     vecs = dataset.variables["box_vectors"][frame_num][replica_index].data
     vecs_units = dataset.variables["box_vectors"].units
-    x, y, z = (vecs * unit(vecs_units)).to("angstrom").m
-    lx = np.linalg.norm(x)
-    ly = np.linalg.norm(y)
-    lz = np.linalg.norm(z)
+    x, y, z = (vecs * unit.Unit(vecs_units)).to("angstrom").m
+    lx = float(np.linalg.norm(x))
+    ly = float(np.linalg.norm(y))
+    lz = float(np.linalg.norm(z))
     # angle between y and z
-    alpha = np.arccos(np.dot(y, z) / (ly * lz))
+    alpha = float(np.arccos(np.dot(y, z) / (ly * lz)))
     # angle between x and z
-    beta = np.arccos(np.dot(x, z) / (lx * lz))
+    beta = float(np.arccos(np.dot(x, z) / (lx * lz)))
     # angle between x and y
-    gamma = np.arccos(np.dot(x, y) / (lx * ly))
+    gamma = float(np.arccos(np.dot(x, y) / (lx * ly)))
 
-    return lx, ly, lz, np.rad2deg(alpha), np.rad2deg(beta), np.rad2deg(gamma)
+    return lx, ly, lz, float(np.rad2deg(alpha)), float(np.rad2deg(beta)), float(np.rad2deg(gamma))
 
 
 def trajectory_from_multistate(
@@ -276,6 +277,8 @@ def trajectory_from_multistate(
         traj.variables["coordinates"][frame] = pos.to("angstrom").m
 
         unitcell = _get_unitcell(multistate, replica_id, frame_list[frame])
+        if unitcell is None:
+            raise RuntimeError("Frame without unit cell encountered")
         traj.variables["cell_lengths"][frame] = unitcell[:3]
         traj.variables["cell_angles"][frame] = unitcell[3:]
 
