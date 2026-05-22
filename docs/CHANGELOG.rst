@@ -9,7 +9,7 @@ v0.4.0
 
 **Changed:**
 
-* Changed ``openfe_analysis.FEReader`` to use parameters ``index`` and ``state`` instead of ``state_id`` (`PR #77 <https://github.com/OpenFreeEnergy/openfe_analysis/pull/77>`_).
+* Changed ``openfe_analysis.FEReader`` to use parameters ``index`` and ``index_method`` instead of ``state_id`` and ``replica_id`` (`PR #77 <https://github.com/OpenFreeEnergy/openfe_analysis/pull/77>`_).
 
 **Removed:**
 
