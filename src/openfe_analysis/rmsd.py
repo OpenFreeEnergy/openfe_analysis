@@ -102,7 +102,7 @@ def make_Universe(top: pathlib.Path, trj: nc.Dataset, state: int) -> mda.Univers
 
 def gather_rms_data(
     pdb_topology: pathlib.Path, dataset: pathlib.Path, skip: Optional[int] = None
-) -> dict[str, list[float]]:
+) -> dict[str, list[np.ndarray] | np.ndarray]:
     """
     Compute structural RMSD-based metrics for a multistate BFE simulation.
 
@@ -138,7 +138,7 @@ def gather_rms_data(
     - Ligand center-of-mass displacement from its initial position (``ligand_wander``)
     - Flattened 2D protein RMSD matrix (pairwise RMSD between frames)
     """
-    output: dict[str, list[np.ndarray]] = {
+    output: dict[str, list[np.ndarray] | np.ndarray] = {
         "protein_RMSD": [],
         "ligand_RMSD": [],
         "ligand_wander": [],
