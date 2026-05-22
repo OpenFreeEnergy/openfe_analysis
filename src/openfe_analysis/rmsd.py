@@ -328,7 +328,7 @@ def gather_rms_data(
                 # flattened = dist_mat[i, j]
                 # output["protein_2D_RMSD"].append(flattened)
 
-            if ligand.n_atoms > 0:
+            if ligand:
                 lig_rmsd = RMSDAnalysis(ligand, mass_weighted=True).run(step=skip)
                 output["ligand_RMSD"].append(lig_rmsd.results.rmsd)
                 # # Using the MDAnalysis RMSD class instead
