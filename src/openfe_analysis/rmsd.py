@@ -8,16 +8,12 @@ import numpy as np
 import spyrmsd.rmsd as srmsd
 from MDAnalysis.analysis import rms
 from MDAnalysis.analysis.base import AnalysisBase
-from MDAnalysis.guesser.tables import vdwradii as MDA_VDWRADII
 from MDAnalysis.transformations import unwrap
-from rdkit.Chem import rdmolops
+from rdkit import Chem
 
 from .reader import FEReader
 from .transformations import Aligner, ClosestImageShift, NoJump
-
-# B-factor values used to identify atoms present at a given lambda state.
-# 0.25 marks atoms unique to one end state, 0.5 marks atoms shared by both.
-_BFACTOR_STATE_VALUES = (0.25, 0.5)
+from .utils.universe_utils import guess_ligand_bonds, select_state_atoms
 
 
 def make_Universe(top: pathlib.Path, trj: nc.Dataset, state: int) -> mda.Universe:
@@ -225,46 +221,42 @@ class RMSDAnalysis(AnalysisBase):
 
 class SymmetryCorrectedLigandRMSD(AnalysisBase):
     """
-    1D RMSD time series for an AtomGroup.
+    Symmetry-corrected 1D RMSD time series for a ligand AtomGroup.
 
     Parameters
     ----------
-    atomgroup : MDAnalysis.AtomGroup
-      Atoms to compute RMSD for.
-    mass_weighted : bool, optional
-      If True, compute mass-weighted RMSD.
+    atomgroup : mda.AtomGroup
+        Ligand atoms to compute RMSD for. If ``rdmol`` is not provided,
+        bonds must be guessed on the atomgroup before instantiating this
+        class; use :func:`guess_ligand_bonds` for this purpose.
+    rdmol : Chem.Mol, optional
+        RDKit molecule corresponding to ``atomgroup``. If provided, it is
+        used directly and ``guess_ligand_bonds`` does not need to be called.
+        If ``None``, the RDKit molecule is derived from ``atomgroup`` via
+        ``convert_to("RDKIT")``.
     """
 
-    def __init__(self, atomgroup, mass_weighted=False, **kwargs):
+    _analysis_algorithm_is_parallelizable = False
+
+    def __init__(
+        self,
+        atomgroup: mda.AtomGroup,
+        rdmol: Optional[Chem.Mol] = None,
+        **kwargs,
+    ):
         super().__init__(atomgroup.universe.trajectory, **kwargs)
         self._ag = atomgroup
-        self._mass_weighted = mass_weighted
-        self._isomorphisms = None
-
-        vdwradii = dict(MDA_VDWRADII)
-        vdwradii.update(
-            {
-                "Cl": vdwradii["CL"],
-                "Br": vdwradii["BR"],
-                "Na": vdwradii["NA"],
-            }
-        )
-
-        atomgroup.guess_bonds(vdwradii)
-        self._mol = atomgroup.convert_to("RDKIT")
+        self._mol = rdmol if rdmol is not None else atomgroup.convert_to("RDKIT")
         self._aprops = np.array([atom.GetAtomicNum() for atom in self._mol.GetAtoms()])
-        self._am = rdmolops.GetAdjacencyMatrix(self._mol)
+        self._am = Chem.rdmolops.GetAdjacencyMatrix(self._mol)
 
     def _prepare(self):
-        self.results.rmsd = []
+        self.results.rmsd = np.zeros(self.n_frames, dtype=np.float64)
+        # reference is taken from the first analyzed frame, not necessarily frame 0
         self._reference = self._ag.positions.copy()
+        self._isomorphisms: list | None = None
 
-        if self._mass_weighted:
-            self._weights = self._ag.masses / np.mean(self._ag.masses)
-        else:
-            self._weights = None
-
-    def _single_frame(self):
+    def _single_frame(self) -> None:
         frame_rmsd, isomorphisms, _ = srmsd._rmsd_isomorphic_core(
             coords1=self._ag.positions.copy(),
             coords2=self._reference,
@@ -276,12 +268,10 @@ class SymmetryCorrectedLigandRMSD(AnalysisBase):
             minimize=False,
             isomorphisms=self._isomorphisms,
         )
-        self.results.rmsd.append(frame_rmsd)
+        self.results.rmsd[self._frame_index] = frame_rmsd
+        # cache isomorphisms after first frame to avoid redundant graph matching
         if self._isomorphisms is None:
             self._isomorphisms = isomorphisms
-
-    def _conclude(self):
-        self.results.rmsd = np.asarray(self.results.rmsd)
 
 
 class LigandCOMDrift(AnalysisBase):
@@ -323,27 +313,6 @@ class LigandCOMDrift(AnalysisBase):
             self._ag.center_of_mass(),
             self._initial_com,
         )
-
-
-def _select_state_ligand(u: mda.Universe) -> mda.AtomGroup:
-    """
-    Select ligand atoms that are present at the current lambda state.
-
-    Atoms are identified by their b-factor values: ``0.25`` marks atoms
-    unique to one end state and ``0.5`` marks atoms shared by both end
-    states. Only atoms with these b-factor values and residue name "UNK"
-    are included.
-
-    Parameters
-    ----------
-    u : mda.Universe
-
-    Returns
-    -------
-    MDAnalysis.AtomGroup
-    """
-    state_indices = np.array([atom.ix for atom in u.atoms if atom.bfactor in _BFACTOR_STATE_VALUES])
-    return u.atoms[state_indices].select_atoms("resname UNK")
 
 
 def gather_rms_data(
@@ -417,7 +386,7 @@ def gather_rms_data(
             u = make_Universe(u_top._topology, ds, state=state_idx)
             prot = u.select_atoms("protein and name CA")
             ligand = u.select_atoms("resname UNK")
-            state_lig = _select_state_ligand(u)
+            state_lig = select_state_atoms(u, end_state="A").select_atoms("resname UNK")
 
             if prot:
                 prot_rmsd = RMSDAnalysis(prot).run(step=skip)
@@ -425,16 +394,10 @@ def gather_rms_data(
 
                 prot_rmsd2d = Protein2DRMSD(prot).run(step=skip)
                 output["protein_2D_RMSD"].append(prot_rmsd2d.results.rmsd2d)
-                # # Using the MDAnalysis DistanceMatrix class
-                # prot_rmsd2d = diffusionmap.DistanceMatrix(u, select="protein and name CA")
-                # prot_rmsd2d.run(step=skip)
-                # dist_mat = prot_rmsd2d.results.dist_matrix
-                # i, j = np.triu_indices_from(dist_mat, k=1)
-                # flattened = dist_mat[i, j]
-                # output["protein_2D_RMSD"].append(flattened)
 
             if ligand:
                 # lig_rmsd = RMSDAnalysis(ligand, mass_weighted=True).run(step=skip)
+                guess_ligand_bonds(state_lig, delete_existing=True)
                 lig_rmsd = SymmetryCorrectedLigandRMSD(state_lig, mass_weighted=True).run(step=skip)
                 output["ligand_RMSD"].append(lig_rmsd.results.rmsd)
 
