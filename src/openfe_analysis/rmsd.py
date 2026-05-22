@@ -59,7 +59,7 @@ def make_Universe(top: pathlib.Path, trj: nc.Dataset, state: int) -> mda.Univers
     - Unwraps protein and ligand atom to be made whole
     - Shifts protein chains and the ligand to the image closest to the first
       protein chain (:class:`ClosestImageShift`)
-    - Aligns the entire system to minimise the protein RMSD (:class:`Aligner`)
+    - Aligns the entire system to minimize the protein RMSD (:class:`Aligner`)
 
     If only a ligand is present:
 
@@ -94,7 +94,7 @@ def make_Universe(top: pathlib.Path, trj: nc.Dataset, state: int) -> mda.Univers
     else:
         # if there's no protein
         # - make the ligand not jump periodic images between frames
-        # - align the ligand to minimise its RMSD
+        # - align the ligand to minimize its RMSD
         nope = NoJump(ligand)
         align = Aligner(ligand)
 
@@ -112,46 +112,54 @@ class Protein2DRMSD(AnalysisBase):
 
     For all unique frame pairs ``(i, j)`` with ``i < j``, this function
     computes the RMSD between atomic coordinates after optimal alignment.
+    Alignment is performed by centering each frame on its center of geometry,
+    followed by rotational and translational superposition using the QCP method.
+
+    Parameters
+    ----------
+    atomgroup: mda.AtomGroup
+      Protein atoms (e.g. CA selection)
+    weights: np.ndarray, optional
+      Per-atom weights to use in the RMSD calculation. If ``None``,
+      all atoms are weighted equally.
+
+    Notes
+    -----
+    All atom positions are accumulated in memory during the trajectory
+    iteration. For long trajectories or large systems this may result in
+    significant memory usage. Consider using the ``step`` argument to
+    ``run()`` to reduce the number of frames analyzed.
     """
 
-    def __init__(self, atomgroup, weights=None, **kwargs):
-        """
-        Parameters
-        ----------
-        atomgroup: AtomGroup
-          Protein atoms (e.g. CA selection)
-        weights: np.ndarray, optional
-          Per-atom weights to use in the RMSD calculation. If ``None``,
-          all atoms are weighted equally.
-        """
+    _analysis_algorithm_is_parallelizable = False
+
+    def __init__(self, atomgroup: mda.AtomGroup, weights: Optional[np.ndarray] = None, **kwargs):
         super().__init__(atomgroup.universe.trajectory, **kwargs)
         self._weights = weights
         self._ag = atomgroup
 
-    def _prepare(self):
-        self._coords = []
-        self.results.rmsd2d = []
+    def _prepare(self) -> None:
+        self._coords = np.zeros((self.n_frames, self._ag.n_atoms, 3), dtype=np.float64)
 
-    def _single_frame(self):
-        self._coords.append(self._ag.positions.copy())
+    def _single_frame(self) -> None:
+        self._coords[self._frame_index] = self._ag.positions
 
-    def _conclude(self):
-        positions = np.asarray(self._coords)
-        nframes = positions.shape[0]
+    def _conclude(self) -> None:
+        nframes = self._coords.shape[0]
 
-        output = []
-        for i, j in itertools.combinations(range(nframes), 2):
-            posi, posj = positions[i], positions[j]
-            pair_rmsd = rms.rmsd(
+        # Pre-allocate numpy arrays
+        n_pairs = nframes * (nframes - 1) // 2
+        self.results.rmsd2d = np.empty(n_pairs)
+
+        for idx, (i, j) in enumerate(itertools.combinations(range(nframes), 2)):
+            posi, posj = self._coords[i], self._coords[j]
+            self.results.rmsd2d[idx] = rms.rmsd(
                 posi,
                 posj,
                 self._weights,
                 center=True,
                 superposition=True,
             )
-            output.append(pair_rmsd)
-
-        self.results.rmsd2d = np.asarray(output)
 
 
 class RMSDAnalysis(AnalysisBase):
@@ -163,21 +171,28 @@ class RMSDAnalysis(AnalysisBase):
     atomgroup : MDAnalysis.AtomGroup
       Atoms to compute RMSD for.
     reference: Optional[MDAnalysis.AtomGroup]
-      Reference AtomGroup. If ``None``, the reference positions are captured
-      from the mobile AtomGroup at the start of the run (i.e. whatever frame
-      the trajectory is on when ``.run()`` is called).
+      Reference AtomGroup. If ``None``, the reference positions are taken
+      from the first analyzed frame, so ``run(start=10)`` measures RMSD
+      relative to frame 10, not frame 0.
     mass_weighted : bool, optional
       If True, compute mass-weighted RMSD.
+    center : bool, optional
+      If ``True``, subtract the center of geometry before computing RMSD.
+      Defaults to ``False`` as the trajectory is assumed to be pre-centered.
     superposition : bool, optional
       If ``True``, perform rotational superposition before computing RMSD.
+      Defaults to ``False`` as the trajectory is assumed to be pre-superposed.
     """
+
+    _analysis_algorithm_is_parallelizable = False
 
     def __init__(
         self,
-        atomgroup,
-        reference=None,
-        mass_weighted=False,
-        superposition=False,
+        atomgroup: mda.AtomGroup,
+        reference: Optional[mda.AtomGroup] = None,
+        mass_weighted: bool = False,
+        center: bool = False,
+        superposition: bool = False,
         **kwargs,
     ):
         super().__init__(atomgroup.universe.trajectory, **kwargs)
@@ -185,11 +200,12 @@ class RMSDAnalysis(AnalysisBase):
         self._ag = atomgroup
         self._reference = reference if reference is not None else self._ag
         self._mass_weighted = mass_weighted
+        self._center = center
         self._superposition = superposition
 
-    def _prepare(self):
-        self.results.rmsd = []
-
+    def _prepare(self) -> None:
+        self.results.rmsd = np.zeros(self.n_frames, dtype=np.float64)
+        # reference is taken from the first analyzed frame, not necessarily frame 0
         self._reference_pos = self._reference.positions.copy()
 
         if self._mass_weighted:
@@ -197,18 +213,14 @@ class RMSDAnalysis(AnalysisBase):
         else:
             self._weights = None
 
-    def _single_frame(self):
-        frame_rmsd = rms.rmsd(
+    def _single_frame(self) -> None:
+        self.results.rmsd[self._frame_index] = rms.rmsd(
             self._ag.positions,
             self._reference_pos,
             self._weights,
-            center=False,
+            center=self._center,
             superposition=self._superposition,
         )
-        self.results.rmsd.append(frame_rmsd)
-
-    def _conclude(self):
-        self.results.rmsd = np.asarray(self.results.rmsd)
 
 
 class SymmetryCorrectedLigandRMSD(AnalysisBase):
@@ -275,27 +287,42 @@ class SymmetryCorrectedLigandRMSD(AnalysisBase):
 class LigandCOMDrift(AnalysisBase):
     """
     Ligand center-of-mass displacement from initial position.
+
+    Parameters
+    ----------
+    atomgroup : mda.AtomGroup
+        Ligand atoms for which the center-of-mass drift is calculated.
+
+    Notes
+    -----
+    The initial position is taken from the first analyzed frame, so
+    ``run(start=10)`` measures drift relative to frame 10, not frame 0.
+
+    PBC are not applied as the trajectory is assumed to have been
+    pre-processed, ensuring the ligand does not jump between periodic images.
+    Passing a box to apply the minimum image convention would give
+    incorrect results for ligands that have drifted more than half a box
+    length from their starting position.
     """
 
-    def __init__(self, atomgroup, **kwargs):
+    _analysis_algorithm_is_parallelizable = False
+
+    def __init__(self, atomgroup: mda.AtomGroup, **kwargs):
         super().__init__(atomgroup.universe.trajectory, **kwargs)
         self._ag = atomgroup
 
-    def _prepare(self):
-        self.results.com_drift = []
+    def _prepare(self) -> None:
+        self.results.com_drift = np.zeros(self.n_frames, dtype=np.float64)
+        # initial COM is taken from the first analyzed frame, not necessarily frame 0
         self._initial_com = self._ag.center_of_mass()
 
-    def _single_frame(self):
-        # distance between start and current ligand position
-        # ignores PBC, but we've already centered the traj
-        drift = mda.lib.distances.calc_bonds(
+    def _single_frame(self) -> None:
+        # no box argument, assumes the ligand stays in a consistent image;
+        # applying the minimum image convention could mask large drifts > half a box length
+        self.results.com_drift[self._frame_index] = mda.lib.distances.calc_bonds(
             self._ag.center_of_mass(),
             self._initial_com,
         )
-        self.results.com_drift.append(drift)
-
-    def _conclude(self):
-        self.results.com_drift = np.asarray(self.results.com_drift)
 
 
 def _select_state_ligand(u: mda.Universe) -> mda.AtomGroup:
@@ -395,17 +422,6 @@ def gather_rms_data(
             if prot:
                 prot_rmsd = RMSDAnalysis(prot).run(step=skip)
                 output["protein_RMSD"].append(prot_rmsd.results.rmsd)
-                # # Using the MDAnalysis RMSD class instead
-                # gs = ["protein and name CA"]
-                # prot_rmsd = rms.RMSD(
-                #    u, select="protein and name CA", groupselections=gs, weights="mass")
-                # prot_rmsd.run(step=skip)
-                # # The results contain:
-                # # - frame number
-                # # - time
-                # # - RMSD based on select (after superimposing)
-                # # - RMSD based on groupselections, one array per selection
-                # output["protein_RMSD"].append(prot_rmsd.results.rmsd.T[3])
 
                 prot_rmsd2d = Protein2DRMSD(prot).run(step=skip)
                 output["protein_2D_RMSD"].append(prot_rmsd2d.results.rmsd2d)
@@ -417,20 +433,11 @@ def gather_rms_data(
                 # flattened = dist_mat[i, j]
                 # output["protein_2D_RMSD"].append(flattened)
 
-            if state_lig.n_atoms > 0:
+            if ligand:
                 # lig_rmsd = RMSDAnalysis(ligand, mass_weighted=True).run(step=skip)
                 lig_rmsd = SymmetryCorrectedLigandRMSD(state_lig, mass_weighted=True).run(step=skip)
                 output["ligand_RMSD"].append(lig_rmsd.results.rmsd)
-                # # Using the MDAnalysis RMSD class instead
-                # groupselections = ["resname UNK"]
-                # lig_rmsd = rms.RMSD(
-                #     u,
-                #     select="protein and name CA",
-                #     groupselections=groupselections,
-                #     weights="mass",
-                # )
-                # lig_rmsd.run(step=skip)
-                # output["ligand_RMSD"].append(lig_rmsd.results.rmsd.T[3])
+
                 lig_com_drift = LigandCOMDrift(ligand).run(step=skip)
                 output["ligand_wander"].append(lig_com_drift.results.com_drift)
 
