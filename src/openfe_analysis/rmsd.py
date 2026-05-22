@@ -1,6 +1,6 @@
 import itertools
 import pathlib
-from typing import Any, Optional
+from typing import Optional
 
 import MDAnalysis as mda
 import netCDF4 as nc
@@ -138,7 +138,7 @@ def gather_rms_data(
     - Ligand center-of-mass displacement from its initial position (``ligand_wander``)
     - Flattened 2D protein RMSD matrix (pairwise RMSD between frames)
     """
-    output: dict[str, list[Any]] = {
+    output: dict[str, list[np.ndarray]] = {
         "protein_RMSD": [],
         "ligand_RMSD": [],
         "ligand_wander": [],
