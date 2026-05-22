@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import MDAnalysis as mda
 from MDAnalysis.transformations import unwrap
 
