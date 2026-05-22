@@ -68,8 +68,8 @@ class FEReader(ReaderBase):
     selected via the `index` argument.
     """
 
-    _multistate_index: Optional[int]
-    _index_method: Optional[str]
+    _multistate_index: int
+    _index_method: str
     _frame_index: int
     _dataset: nc.Dataset
     _dataset_owner: bool

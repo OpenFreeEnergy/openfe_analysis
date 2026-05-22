@@ -11,9 +11,9 @@ from openfe_analysis.utils.serialization import (
 @pytest.mark.parametrize(
     "expression, expected",
     [
-        ["/ picosecond", 1 / unit("picosecond")],
-        ["5 kilocalorie / mole", 5 * unit("kilocalorie_per_mole")],
-        ["4 femtosecond", 4 * unit("femtosecond")],
+        ["/ picosecond", 1 / unit.picosecond],
+        ["5 kilocalorie / mole", 5 * unit.kilocalorie_per_mole],
+        ["4 femtosecond", 4 * unit.femtosecond],
     ],
 )
 def test_quantity_string_to_offunit(expression, expected):

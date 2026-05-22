@@ -181,3 +181,23 @@ def test_trajectory_success(tmp_path):
     assert out_ds.variables["cell_lengths"].shape == (2, 3)
     assert out_ds.variables["cell_angles"].shape == (2, 3)
     out_ds.close()
+
+
+def test_trajectory_from_multistate_raises_on_missing_unitcell(
+    tmp_path, simulation_skipped_nc, hybrid_system_skipped_pdb
+):
+    """RuntimeError should be raised if a frame has no unit cell."""
+    from unittest.mock import patch
+
+    output_file = tmp_path / "output.nc"
+
+    with patch(
+        "openfe_analysis.utils.multistate._get_unitcell",
+        return_value=None,
+    ):
+        with pytest.raises(RuntimeError, match="Frame without unit cell encountered"):
+            trajectory_from_multistate(
+                simulation_skipped_nc,
+                output_file,
+                index=0,
+            )

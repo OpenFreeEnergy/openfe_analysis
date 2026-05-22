@@ -48,6 +48,7 @@ test = [
     "pytest-xdist",
     "pytest-cov",
     "pooch",
+    "MDAnalysisTests",
 ]
 
 [project.urls]
@@ -74,3 +75,8 @@ lint.select = [
 lint.ignore = [
     "F401", # TODO: add this back in when we resolve unused imports
 ]
+
+[tool.mypy]
+files = "src/openfe_analysis"
+ignore_missing_imports = true
+warn_unused_ignores = true
