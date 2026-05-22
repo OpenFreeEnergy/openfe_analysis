@@ -116,12 +116,12 @@ class Protein2DRMSD(AnalysisBase):
       Per-atom weights to use in the RMSD calculation. If ``None``,
       all atoms are weighted equally.
 
-    .. note::
-
-       All atom positions are accumulated in memory during the trajectory
-       iteration. For long trajectories or large systems this may result in
-       significant memory usage. Consider using the ``step`` argument to
-       ``run()`` to reduce the number of frames analyzed.
+    Notes
+    -----
+    All atom positions are accumulated in memory during the trajectory
+    iteration. For long trajectories or large systems this may result in
+    significant memory usage. Consider using the ``step`` argument to
+    ``run()`` to reduce the number of frames analyzed.
     """
 
     _analysis_algorithm_is_parallelizable = False
@@ -175,7 +175,6 @@ class RMSDAnalysis(AnalysisBase):
     superposition : bool, optional
       If ``True``, perform rotational superposition before computing RMSD.
       Defaults to ``False`` as the trajectory is assumed to be pre-superposed.
-
     """
 
     _analysis_algorithm_is_parallelizable = False
@@ -226,16 +225,16 @@ class LigandCOMDrift(AnalysisBase):
     atomgroup : mda.AtomGroup
         Ligand atoms for which the center-of-mass drift is calculated.
 
-    .. note::
-       The initial position is taken from the first analyzed frame, so
-       ``run(start=10)`` measures drift relative to frame 10, not frame 0.
+    Notes
+    -----
+    The initial position is taken from the first analyzed frame, so
+    ``run(start=10)`` measures drift relative to frame 10, not frame 0.
 
-    .. note::
-       PBC are not applied as the trajectory is assumed to have been
-       pre-processed, ensuring the ligand does not jump between periodic images.
-        Passing a box to apply the minimum image convention would give
-       incorrect results for ligands that have drifted more than half a box
-       length from their starting position.
+    PBC are not applied as the trajectory is assumed to have been
+    pre-processed, ensuring the ligand does not jump between periodic images.
+    Passing a box to apply the minimum image convention would give
+    incorrect results for ligands that have drifted more than half a box
+    length from their starting position.
     """
 
     _analysis_algorithm_is_parallelizable = False
