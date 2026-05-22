@@ -8,8 +8,8 @@ import numpy as np
 from MDAnalysis.analysis import diffusionmap, rms
 from MDAnalysis.analysis.base import AnalysisBase
 
-from .reader import _create_universe_single_state
-from .utils.apply_transformations import apply_transformations
+from .utils.apply_transformations import apply_alignment_transformations
+from .utils.universe_utils import _create_universe_single_state
 
 
 class Protein2DRMSD(AnalysisBase):
@@ -243,7 +243,7 @@ def gather_rms_data(
             prot = u.select_atoms("protein and name CA")
             ligand = u.select_atoms("resname UNK")
 
-            apply_transformations(u, prot, ligand)
+            apply_alignment_transformations(u, prot, ligand)
 
             if prot:
                 prot_rmsd = RMSDAnalysis(prot).run(step=skip)

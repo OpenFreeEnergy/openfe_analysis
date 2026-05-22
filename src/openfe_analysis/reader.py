@@ -12,16 +12,6 @@ from openfe_analysis.utils import multistate, serialization
 from openfe_analysis.utils.multistate import _determine_position_indices
 
 
-def _create_universe_single_state(top, trj, state):
-    return mda.Universe(
-        top,
-        trj,
-        index=state,
-        index_method="state",
-        format=FEReader,
-    )
-
-
 def _determine_iteration_dt(dataset) -> float:
     """
     Determine the time increment between successive iterations
