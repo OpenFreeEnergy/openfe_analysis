@@ -203,18 +203,18 @@ def _get_unitcell(
 
     vecs = dataset.variables["box_vectors"][frame_num][replica_index].data
     vecs_units = dataset.variables["box_vectors"].units
-    x, y, z = (vecs * unit(vecs_units)).to("angstrom").m
-    lx = np.linalg.norm(x)
-    ly = np.linalg.norm(y)
-    lz = np.linalg.norm(z)
+    x, y, z = (vecs * unit.Unit(vecs_units)).to("angstrom").m
+    lx = float(np.linalg.norm(x))
+    ly = float(np.linalg.norm(y))
+    lz = float(np.linalg.norm(z))
     # angle between y and z
-    alpha = np.arccos(np.dot(y, z) / (ly * lz))
+    alpha = float(np.arccos(np.dot(y, z) / (ly * lz)))
     # angle between x and z
-    beta = np.arccos(np.dot(x, z) / (lx * lz))
+    beta = float(np.arccos(np.dot(x, z) / (lx * lz)))
     # angle between x and y
-    gamma = np.arccos(np.dot(x, y) / (lx * ly))
+    gamma = float(np.arccos(np.dot(x, y) / (lx * ly)))
 
-    return lx, ly, lz, np.rad2deg(alpha), np.rad2deg(beta), np.rad2deg(gamma)
+    return lx, ly, lz, float(np.rad2deg(alpha)), float(np.rad2deg(beta)), float(np.rad2deg(gamma))
 
 
 def trajectory_from_multistate(
