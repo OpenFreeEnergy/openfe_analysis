@@ -52,7 +52,7 @@ def select_state_atoms(
         raise ValueError(f"end_state must be 'A' or 'B', got '{end_state}'")
 
     state = sum([universe.atoms[universe.atoms.tempfactors == i] for i in bfactor_values])
-    return universe.atoms[state_indices]
+    return universe.atoms[state]
 
 
 def guess_ligand_bonds(
