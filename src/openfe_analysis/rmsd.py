@@ -174,6 +174,8 @@ def gather_rms_data(
     pdb_topology: pathlib.Path,
     dataset: pathlib.Path,
     skip: Optional[int] = None,
+    protein_selection: str = "protein and name CA",
+    ligand_selection: str = "resname UNK",
 ) -> dict[str, list[float]]:
     """
     Compute structural RMSD-based metrics for a multistate BFE simulation.
@@ -187,6 +189,12 @@ def gather_rms_data(
     skip : int, optional
       Frame stride for analysis. If ``None``, a stride is chosen such that
       approximately 500 frames are analyzed per state.
+    protein_selection : str
+      MDAnalysis selection string for the protein atoms used in RMSD
+      calculations. Default is ``"protein and name CA"``.
+    ligand_selection : str
+      MDAnalysis selection string for the ligand atoms. Default is
+      ``"resname UNK"``.
 
     Returns
     -------
@@ -240,8 +248,8 @@ def gather_rms_data(
             # this then only hits the PDB file once for all replicas
             u = _create_universe_single_state(u_top._topology, ds, state_idx)
 
-            prot = u.select_atoms("protein and name CA")
-            ligand = u.select_atoms("resname UNK")
+            prot = u.select_atoms(protein_selection)
+            ligand = u.select_atoms(ligand_selection)
 
             apply_alignment_transformations(u, prot, ligand)
 
