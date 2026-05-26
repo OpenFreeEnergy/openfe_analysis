@@ -127,8 +127,7 @@ def plot_ligand_RMSD(time: list[float], data: list[np.ndarray]) -> plt.Figure:
     time : list[float]
         Time values in picoseconds.
     data : list[np.ndarray]
-        Per-state ligand RMSD as returned by
-        :class:`SymmetryCorrectedLigandRMSD` or :class:`RMSDAnalysis`.
+        Per-state ligand RMSD.
 
     Returns
     -------
