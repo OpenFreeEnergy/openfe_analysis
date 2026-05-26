@@ -104,7 +104,7 @@ def plot_ligand_COM_drift(time: list[float], data: list[np.ndarray]) -> plt.Figu
     time : list[float]
         Time values in picoseconds.
     data : list[np.ndarray]
-        Per-state ligand COM drift as returned by :class:`LigandCOMDrift`.
+        Per-state ligand COM drift.
 
     Returns
     -------
