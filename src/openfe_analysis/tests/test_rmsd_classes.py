@@ -189,3 +189,18 @@ class TestSymmetryCorrectedLigandRMSD:
         # Frame 1 is the swap — naive sees displacement, corrected sees zero
         assert naive.results.rmsd[1] > 0.0
         assert corrected.results.rmsd[1] == pytest.approx(0.0, abs=1e-5)
+
+    def test_raises_on_missing_bonds(self):
+        """Should raise ValueError if atomgroup has no bonds and no rdmol is provided."""
+        u = mda.Universe.empty(3, n_residues=1, trajectory=True)
+        u.add_TopologyAttr("elements", ["O", "H", "H"])
+        u.add_TopologyAttr("names", ["O", "H1", "H2"])
+        u.add_TopologyAttr("resnames", ["UNK"])
+        u.add_TopologyAttr("resids", [1])
+        u.load_new(
+            np.array([[[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]]),
+            order="fac",
+        )
+        ag = u.select_atoms("all")
+        with pytest.raises(ValueError, match="No bonds found"):
+            SymmetryCorrectedLigandRMSD(ag)
