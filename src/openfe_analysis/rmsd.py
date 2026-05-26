@@ -246,6 +246,12 @@ class SymmetryCorrectedLigandRMSD(AnalysisBase):
     ):
         super().__init__(atomgroup.universe.trajectory, **kwargs)
         self._ag = atomgroup
+        if rdmol is None and len(atomgroup.bonds) == 0:
+            raise ValueError(
+                "No bonds found on atomgroup. Call guess_ligand_bonds() "
+                "before instantiating SymmetryCorrectedLigandRMSD, or "
+                "pass an rdmol directly."
+            )
         self._mol = rdmol if rdmol is not None else atomgroup.convert_to("RDKIT")
         self._aprops = np.array([atom.GetAtomicNum() for atom in self._mol.GetAtoms()])
         self._am = Chem.rdmolops.GetAdjacencyMatrix(self._mol)
@@ -388,7 +394,6 @@ def gather_rms_data(
             u = make_Universe(u_top._topology, ds, state=state_idx)
             prot = u.select_atoms("protein and name CA")
             ligand = u.select_atoms("resname UNK")
-            state_lig = select_state_atoms(u, end_state="A").select_atoms("resname UNK")
 
             if prot:
                 prot_rmsd = RMSDAnalysis(prot).run(step=skip)
@@ -398,9 +403,11 @@ def gather_rms_data(
                 output["protein_2D_RMSD"].append(prot_rmsd2d.results.rmsd2d)
 
             if ligand:
-                # lig_rmsd = RMSDAnalysis(ligand, mass_weighted=True).run(step=skip)
-                guess_ligand_bonds(state_lig, delete_existing=True)
-                lig_rmsd = SymmetryCorrectedLigandRMSD(state_lig, mass_weighted=True).run(step=skip)
+                # For now, leave it at the normal RMSD
+                lig_rmsd = RMSDAnalysis(ligand, mass_weighted=True).run(step=skip)
+                # state_lig = select_state_atoms(u, end_state="A").select_atoms("resname UNK")
+                # guess_ligand_bonds(state_lig, delete_existing=True)
+                # lig_rmsd = SymmetryCorrectedLigandRMSD(state_lig).run(step=skip)
                 output["ligand_RMSD"].append(lig_rmsd.results.rmsd)
 
                 lig_com_drift = LigandCOMDrift(ligand).run(step=skip)

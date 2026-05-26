@@ -7,12 +7,27 @@ from MDAnalysis.analysis import diffusionmap, rms
 from MDAnalysisTests.datafiles import DCD, PSF
 from numpy.testing import assert_allclose, assert_almost_equal
 
-from openfe_analysis.rmsd import LigandCOMDrift, Protein2DRMSD, RMSDAnalysis, make_Universe
+from openfe_analysis.rmsd import (
+    LigandCOMDrift,
+    Protein2DRMSD,
+    RMSDAnalysis,
+    SymmetryCorrectedLigandRMSD,
+    gather_rms_data,
+    make_Universe,
+)
+from openfe_analysis.utils import universe_utils
 
 
 @pytest.fixture
 def mda_universe():
     return mda.Universe(PSF, DCD)
+
+
+@pytest.fixture
+def ligand(hybrid_system_skipped_pdb, simulation_skipped_nc):
+    u = make_Universe(hybrid_system_skipped_pdb, simulation_skipped_nc, state=0)
+    yield u.select_atoms("resname UNK")
+    u.trajectory.close()
 
 
 @pytest.fixture()
@@ -80,23 +95,8 @@ class TestRMSDAnalysis:
 
 
 class TestProtein2DRMSD:
-    def test_output_shape(self, mda_universe):
-        """Output should have n*(n-1)//2 entries for n frames."""
-        prot = mda_universe.select_atoms("name CA")
-        result = Protein2DRMSD(prot).run(step=10)
-        n_frames = len(mda_universe.trajectory[::10])
-        expected_pairs = n_frames * (n_frames - 1) // 2
-        assert len(result.results.rmsd2d) == expected_pairs
-
-    def test_values_nonnegative(self, mda_universe):
-        """All RMSD values should be non-negative."""
-        prot = mda_universe.select_atoms("name CA")
-        result = Protein2DRMSD(prot).run(step=10)
-        assert np.all(result.results.rmsd2d >= 0)
-
     def test_symmetric_diagonal_zero(self, mda_universe):
-        """When reconstructed into a full matrix, diagonal should be zero
-        and matrix should be symmetric."""
+        """Diagonal should be zero and matrix should be symmetric."""
         prot = mda_universe.select_atoms("name CA")
         result = Protein2DRMSD(prot).run(step=10)
 
@@ -113,6 +113,13 @@ class TestProtein2DRMSD:
         prot = mda_universe.select_atoms("name CA")
         result = Protein2DRMSD(prot).run(step=10)
 
+        # Check the output shape
+        n_frames = len(mda_universe.trajectory[::10])
+        expected_pairs = n_frames * (n_frames - 1) // 2
+        assert len(result.results.rmsd2d) == expected_pairs
+        assert np.all(result.results.rmsd2d >= 0)
+
+        # Distancematrix doesn't do centering and superposition by default
         metric = partial(rms.rmsd, center=True, superposition=True)
         ref = diffusionmap.DistanceMatrix(prot, metric=metric)
         ref.run(step=10)
@@ -123,25 +130,77 @@ class TestProtein2DRMSD:
         assert_allclose(result.results.rmsd2d, expected, atol=1e-4)
 
 
-class TestLigandCOMDrift:
-    @pytest.fixture
-    def ligand(self, hybrid_system_skipped_pdb, simulation_skipped_nc):
-        u = make_Universe(hybrid_system_skipped_pdb, simulation_skipped_nc, state=0)
-        yield u.select_atoms("resname UNK")
-        u.trajectory.close()
+def test_ligand_com_drift(ligand):
+    result = LigandCOMDrift(ligand).run(step=10)
+    expected = [0.0, 0.38549, 0.61483, 0.54140, 1.26861, 0.92772]
+    assert len(result.results.com_drift) == len(ligand.universe.trajectory[::10])
+    assert_allclose(result.results.com_drift[:6], expected, rtol=1e-3)
 
-    def test_first_frame_is_zero(self, ligand):
-        """COM drift at the first frame should always be zero."""
-        result = LigandCOMDrift(ligand).run(step=10)
-        assert result.results.com_drift[0] == pytest.approx(0.0, abs=1e-5)
 
-    def test_output_shape(self, ligand):
-        """Output should have one entry per analyzed frame."""
-        result = LigandCOMDrift(ligand).run(step=10)
-        n_frames = len(ligand.universe.trajectory[::10])
-        assert len(result.results.com_drift) == n_frames
+class TestSymmetryCorrectedLigandRMSD:
+    def test_regression(self, ligand):
+        state_lig = universe_utils.select_state_atoms(ligand.universe, end_state="A").select_atoms(
+            "resname UNK"
+        )
+        result = SymmetryCorrectedLigandRMSD(state_lig).run(step=10)
+        expected = [0.0, 0.75138, 2.09003, 0.95125, 1.54566, 2.00029]
+        assert_allclose(result.results.rmsd[:6], expected, rtol=1e-3)
 
-    def test_values_nonnegative(self, ligand):
-        """COM drift values should be non-negative distances."""
-        result = LigandCOMDrift(ligand).run(step=10)
-        assert np.all(result.results.com_drift >= 0)
+    def test_zero_for_valid_swap(self):
+        """
+        For a water-like symmetric molecule, swapping the two equivalent H atoms
+        gives naive RMSD > 0 but SymmetryCorrectedLigandRMSD = 0.
+        """
+        # Build a minimal universe with two frames: reference and swapped
+        coords_ref = np.array(
+            [
+                [0.0, 0.0, 0.0],  # O
+                [1.0, 0.0, 0.0],  # H1
+                [0.0, 1.0, 0.0],  # H2
+            ]
+        )
+        coords_swapped = np.array(
+            [
+                [0.0, 0.0, 0.0],  # O
+                [0.0, 1.0, 0.0],  # H2 in H1's slot
+                [1.0, 0.0, 0.0],  # H1 in H2's slot
+            ]
+        )
+
+        u = mda.Universe.empty(3, trajectory=True)
+        u.add_TopologyAttr("elements", ["O", "H", "H"])
+        u.add_TopologyAttr("names", ["O", "H1", "H2"])
+        u.add_TopologyAttr("resnames", ["UNK"])
+        u.add_TopologyAttr("resids", [1])
+        u.load_new(
+            np.array([coords_ref, coords_swapped]),
+            order="fac",
+        )
+
+        ag = u.select_atoms("all")
+
+        corrected = SymmetryCorrectedLigandRMSD(ag).run()
+        naive = RMSDAnalysis(ag).run()
+
+        # Frame 0 is reference — both should be 0
+        assert corrected.results.rmsd[0] == pytest.approx(0.0, abs=1e-5)
+        assert naive.results.rmsd[0] == pytest.approx(0.0, abs=1e-5)
+
+        # Frame 1 is the swap — naive sees displacement, corrected sees zero
+        assert naive.results.rmsd[1] > 0.0
+        assert corrected.results.rmsd[1] == pytest.approx(0.0, abs=1e-5)
+
+    def test_raises_on_missing_bonds(self):
+        """Should raise ValueError if atomgroup has no bonds and no rdmol is provided."""
+        u = mda.Universe.empty(3, n_residues=1, trajectory=True)
+        u.add_TopologyAttr("elements", ["O", "H", "H"])
+        u.add_TopologyAttr("names", ["O", "H1", "H2"])
+        u.add_TopologyAttr("resnames", ["UNK"])
+        u.add_TopologyAttr("resids", [1])
+        u.load_new(
+            np.array([[[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]]),
+            order="fac",
+        )
+        ag = u.select_atoms("all")
+        with pytest.raises(ValueError, match="No bonds found"):
+            SymmetryCorrectedLigandRMSD(ag)

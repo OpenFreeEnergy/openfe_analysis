@@ -53,8 +53,8 @@ def select_state_atoms(
     else:
         raise ValueError(f"end_state must be 'A' or 'B', got '{end_state}'")
 
-    state_indices = np.array([atom.ix for atom in universe.atoms if atom.bfactor in bfactor_values])
-    return universe.atoms[state_indices]
+    state = sum([universe.atoms[universe.atoms.tempfactors == i] for i in bfactor_values])
+    return universe.atoms[state]
 
 
 def guess_ligand_bonds(
