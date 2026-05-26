@@ -15,6 +15,13 @@ def mda_universe():
     return mda.Universe(PSF, DCD)
 
 
+@pytest.fixture
+def ligand(hybrid_system_skipped_pdb, simulation_skipped_nc):
+    u = make_Universe(hybrid_system_skipped_pdb, simulation_skipped_nc, state=0)
+    yield u.select_atoms("resname UNK")
+    u.trajectory.close()
+
+
 @pytest.fixture()
 def correct_values():
     return [0, 4.68953]
@@ -80,23 +87,8 @@ class TestRMSDAnalysis:
 
 
 class TestProtein2DRMSD:
-    def test_output_shape(self, mda_universe):
-        """Output should have n*(n-1)//2 entries for n frames."""
-        prot = mda_universe.select_atoms("name CA")
-        result = Protein2DRMSD(prot).run(step=10)
-        n_frames = len(mda_universe.trajectory[::10])
-        expected_pairs = n_frames * (n_frames - 1) // 2
-        assert len(result.results.rmsd2d) == expected_pairs
-
-    def test_values_nonnegative(self, mda_universe):
-        """All RMSD values should be non-negative."""
-        prot = mda_universe.select_atoms("name CA")
-        result = Protein2DRMSD(prot).run(step=10)
-        assert np.all(result.results.rmsd2d >= 0)
-
     def test_symmetric_diagonal_zero(self, mda_universe):
-        """When reconstructed into a full matrix, diagonal should be zero
-        and matrix should be symmetric."""
+        """Diagonal should be zero and matrix should be symmetric."""
         prot = mda_universe.select_atoms("name CA")
         result = Protein2DRMSD(prot).run(step=10)
 
@@ -113,6 +105,13 @@ class TestProtein2DRMSD:
         prot = mda_universe.select_atoms("name CA")
         result = Protein2DRMSD(prot).run(step=10)
 
+        # Check the output shape
+        n_frames = len(mda_universe.trajectory[::10])
+        expected_pairs = n_frames * (n_frames - 1) // 2
+        assert len(result.results.rmsd2d) == expected_pairs
+        assert np.all(result.results.rmsd2d >= 0)
+
+        # Distancematrix doesn't do centering and superposition by default
         metric = partial(rms.rmsd, center=True, superposition=True)
         ref = diffusionmap.DistanceMatrix(prot, metric=metric)
         ref.run(step=10)
@@ -123,25 +122,8 @@ class TestProtein2DRMSD:
         assert_allclose(result.results.rmsd2d, expected, atol=1e-4)
 
 
-class TestLigandCOMDrift:
-    @pytest.fixture
-    def ligand(self, hybrid_system_skipped_pdb, simulation_skipped_nc):
-        u = make_Universe(hybrid_system_skipped_pdb, simulation_skipped_nc, state=0)
-        yield u.select_atoms("resname UNK")
-        u.trajectory.close()
-
-    def test_first_frame_is_zero(self, ligand):
-        """COM drift at the first frame should always be zero."""
-        result = LigandCOMDrift(ligand).run(step=10)
-        assert result.results.com_drift[0] == pytest.approx(0.0, abs=1e-5)
-
-    def test_output_shape(self, ligand):
-        """Output should have one entry per analyzed frame."""
-        result = LigandCOMDrift(ligand).run(step=10)
-        n_frames = len(ligand.universe.trajectory[::10])
-        assert len(result.results.com_drift) == n_frames
-
-    def test_values_nonnegative(self, ligand):
-        """COM drift values should be non-negative distances."""
-        result = LigandCOMDrift(ligand).run(step=10)
-        assert np.all(result.results.com_drift >= 0)
+def test_ligand_com_drift(ligand):
+    result = LigandCOMDrift(ligand).run(step=10)
+    expected = [0.0, 0.38549, 0.61483, 0.54140, 1.26861, 0.92772]
+    assert len(result.results.com_drift) == len(ligand.universe.trajectory[::10])
+    assert_allclose(result.results.com_drift[:6], expected, rtol=1e-3)
