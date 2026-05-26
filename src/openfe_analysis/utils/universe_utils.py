@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import warnings
 from typing import Literal
 
 import MDAnalysis as mda
 import numpy as np
 from MDAnalysis.guesser.tables import vdwradii as MDA_VDWRADII
+from rdkit import Chem
 
 # B-factor values used to identify atoms present at a given lambda state.
 # 0.25 : atoms unique to state A
