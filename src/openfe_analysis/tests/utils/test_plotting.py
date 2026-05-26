@@ -1,7 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
-from openfe_analysis.plots import (
+
+from openfe_analysis.utils.plotting import (
     plot_2D_rmsd,
     plot_ligand_COM_drift,
     plot_ligand_RMSD,
