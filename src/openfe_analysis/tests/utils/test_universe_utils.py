@@ -126,7 +126,7 @@ def test_correct_elements_no_change_when_correct():
 
 
 def test_correct_elements_with_atom_mapping():
-    """correct_elements with atom_mapping should use mapping without warning."""
+    """correct_elements with atom_mapping should use mapping"""
 
     u = mda.Universe.empty(2, n_residues=1, trajectory=True)
     u.add_TopologyAttr("elements", ["C", "C"])  # second atom is wrong

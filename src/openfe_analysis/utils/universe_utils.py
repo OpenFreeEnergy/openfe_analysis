@@ -95,7 +95,7 @@ def correct_elements(
 ) -> None:
     """
     Correct element and atom names in an AtomGroup in-place
-    using an RDKit molecule as the source of truth.
+    using an RDKit molecule.
 
     This is needed for hybrid topologies where mapped atoms that
     undergo element changes carry state A's element types, even when
