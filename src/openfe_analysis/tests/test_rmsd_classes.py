@@ -157,12 +157,13 @@ class TestLigandCOMDrift:
 
 
 class TestSymmetryCorrectedLigandRMSD:
-    def test_values_nonnegative(self, ligand):
+    def test_regression(self, ligand):
         state_lig = universe_utils.select_state_atoms(ligand.universe, end_state="A").select_atoms(
             "resname UNK"
         )
-        result = SymmetryCorrectedLigandRMSD(state_lig).run()
-        assert np.all(result.results.rmsd >= 0.0)
+        result = SymmetryCorrectedLigandRMSD(state_lig).run(step=10)
+        expected = [0.0, 0.75138, 2.09003, 0.95125, 1.54566, 2.00029]
+        assert_allclose(result.results.rmsd[:6], expected, rtol=1e-3)
 
     def test_zero_for_valid_swap(self):
         """
