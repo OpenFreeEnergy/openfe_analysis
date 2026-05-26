@@ -2,7 +2,6 @@ import pytest
 
 from openfe_analysis.rmsd import make_Universe
 from openfe_analysis.utils.universe_utils import (
-    correct_elements,
     guess_ligand_bonds,
     select_state_atoms,
 )

@@ -7,12 +7,27 @@ from MDAnalysis.analysis import diffusionmap, rms
 from MDAnalysisTests.datafiles import DCD, PSF
 from numpy.testing import assert_allclose, assert_almost_equal
 
-from openfe_analysis.rmsd import LigandCOMDrift, Protein2DRMSD, RMSDAnalysis, make_Universe
+from openfe_analysis.rmsd import (
+    LigandCOMDrift,
+    Protein2DRMSD,
+    RMSDAnalysis,
+    SymmetryCorrectedLigandRMSD,
+    gather_rms_data,
+    make_Universe,
+)
+from openfe_analysis.utils import universe_utils
 
 
 @pytest.fixture
 def mda_universe():
     return mda.Universe(PSF, DCD)
+
+
+@pytest.fixture
+def ligand(hybrid_system_skipped_pdb, simulation_skipped_nc):
+    u = make_Universe(hybrid_system_skipped_pdb, simulation_skipped_nc, state=0)
+    yield u.select_atoms("resname UNK")
+    u.trajectory.close()
 
 
 @pytest.fixture()
@@ -124,12 +139,6 @@ class TestProtein2DRMSD:
 
 
 class TestLigandCOMDrift:
-    @pytest.fixture
-    def ligand(self, hybrid_system_skipped_pdb, simulation_skipped_nc):
-        u = make_Universe(hybrid_system_skipped_pdb, simulation_skipped_nc, state=0)
-        yield u.select_atoms("resname UNK")
-        u.trajectory.close()
-
     def test_first_frame_is_zero(self, ligand):
         """COM drift at the first frame should always be zero."""
         result = LigandCOMDrift(ligand).run(step=10)
@@ -145,3 +154,56 @@ class TestLigandCOMDrift:
         """COM drift values should be non-negative distances."""
         result = LigandCOMDrift(ligand).run(step=10)
         assert np.all(result.results.com_drift >= 0)
+
+
+class TestSymmetryCorrectedLigandRMSD:
+    def test_values_nonnegative(self, ligand):
+        state_lig = universe_utils.select_state_atoms(ligand.universe, end_state="A").select_atoms(
+            "resname UNK"
+        )
+        result = SymmetryCorrectedLigandRMSD(state_lig).run()
+        assert np.all(result.results.rmsd >= 0.0)
+
+    def test_zero_for_valid_swap(self):
+        """
+        For a water-like symmetric molecule, swapping the two equivalent H atoms
+        gives naive RMSD > 0 but SymmetryCorrectedLigandRMSD = 0.
+        """
+        # Build a minimal universe with two frames: reference and swapped
+        coords_ref = np.array(
+            [
+                [0.0, 0.0, 0.0],  # O
+                [1.0, 0.0, 0.0],  # H1
+                [0.0, 1.0, 0.0],  # H2
+            ]
+        )
+        coords_swapped = np.array(
+            [
+                [0.0, 0.0, 0.0],  # O
+                [0.0, 1.0, 0.0],  # H2 in H1's slot
+                [1.0, 0.0, 0.0],  # H1 in H2's slot
+            ]
+        )
+
+        u = mda.Universe.empty(3, trajectory=True)
+        u.add_TopologyAttr("elements", ["O", "H", "H"])
+        u.add_TopologyAttr("names", ["O", "H1", "H2"])
+        u.add_TopologyAttr("resnames", ["UNK"])
+        u.add_TopologyAttr("resids", [1])
+        u.load_new(
+            np.array([coords_ref, coords_swapped]),
+            order="fac",
+        )
+
+        ag = u.select_atoms("all")
+
+        corrected = SymmetryCorrectedLigandRMSD(ag).run()
+        naive = RMSDAnalysis(ag).run()
+
+        # Frame 0 is reference — both should be 0
+        assert corrected.results.rmsd[0] == pytest.approx(0.0, abs=1e-5)
+        assert naive.results.rmsd[0] == pytest.approx(0.0, abs=1e-5)
+
+        # Frame 1 is the swap — naive sees displacement, corrected sees zero
+        assert naive.results.rmsd[1] > 0.0
+        assert corrected.results.rmsd[1] == pytest.approx(0.0, abs=1e-5)
