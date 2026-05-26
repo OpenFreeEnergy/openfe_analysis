@@ -1,7 +1,4 @@
-import MDAnalysis as mda
-import numpy as np
 import pytest
-from rdkit import Chem
 
 from openfe_analysis.rmsd import make_Universe
 from openfe_analysis.utils.universe_utils import (
