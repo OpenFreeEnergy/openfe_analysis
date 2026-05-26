@@ -10,6 +10,8 @@ dependencies:
   - pip
   - tqdm
   - pyyaml
+  - spyrmsd
+  - rdkit
   # for testing
   - coverage
   - pooch >=1.9.0  # min for https://github.com/fatiando/pooch/issues/502
