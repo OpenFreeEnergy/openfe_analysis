@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import warnings
 from typing import Literal
 
 import MDAnalysis as mda
 import numpy as np
 from MDAnalysis.guesser.tables import vdwradii as MDA_VDWRADII
-from rdkit import Chem
 
 # B-factor values used to identify atoms present at a given lambda state.
 # 0.25 : atoms unique to state A
@@ -86,62 +84,3 @@ def guess_ligand_bonds(
         }
     )
     atomgroup.guess_bonds(vdwradii)
-
-
-def correct_elements(
-    atomgroup: mda.AtomGroup,
-    rdmol: Chem.Mol,
-    atom_mapping: dict[int, int] | None = None,
-) -> None:
-    """
-    Correct element and atom names in an AtomGroup in-place
-    using an RDKit molecule as the source of truth.
-
-    This is needed for hybrid topologies where mapped atoms that
-    undergo element changes carry state A's element types, even when
-    state B's ligand is selected.
-
-    Parameters
-    ----------
-    atomgroup : mda.AtomGroup
-        Ligand atoms whose elements and names will be corrected.
-    rdmol : Chem.Mol
-        RDKit molecule with the correct element and atom name information.
-    atom_mapping : dict[int, int], optional
-        A mapping of ``{atomgroup_index: rdmol_index}`` defining the
-        correspondence between atoms in ``atomgroup`` and ``rdmol``. If
-        ``None``, atoms are matched by position which gives wrong results if
-        the atom order was not the same.
-
-    Raises
-    ------
-    ValueError
-        If the number of atoms in ``atomgroup`` and ``rdmol`` do not match.
-    """
-    periodic_table = Chem.GetPeriodicTable()
-
-    if len(atomgroup) != rdmol.GetNumAtoms():
-        raise ValueError(
-            f"atomgroup has {len(atomgroup)} atoms but rdmol has {rdmol.GetNumAtoms()} atoms."
-        )
-
-    if atom_mapping is not None:
-        for ag_idx, rd_idx in atom_mapping.items():
-            mda_atom = atomgroup[ag_idx]
-            rd_atom = rdmol.GetAtomWithIdx(rd_idx)
-            element = periodic_table.GetElementSymbol(rd_atom.GetAtomicNum())
-            if mda_atom.element != element:
-                mda_atom.element = element
-                mda_atom.name = rd_atom.GetSymbol()
-    else:
-        warnings.warn(
-            "No atom_mapping provided to correct_elements. Assuming that "
-            "atom ordering is the same between atomgroup and rdmol. This may "
-            "give incorrect results if the atom ordering differs between the two.",
-            UserWarning,
-        )
-        for mda_atom, rd_atom in zip(atomgroup, rdmol.GetAtoms()):
-            element = periodic_table.GetElementSymbol(rd_atom.GetAtomicNum())
-            if mda_atom.element != element:
-                mda_atom.element = element
-                mda_atom.name = rd_atom.GetSymbol()
