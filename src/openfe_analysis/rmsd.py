@@ -9,7 +9,7 @@ from MDAnalysis.analysis import diffusionmap, rms
 from MDAnalysis.analysis.base import AnalysisBase
 
 from .utils.apply_transformations import apply_alignment_transformations
-from .utils.universe_utils import _create_universe_single_state
+from .utils.universe_utils import create_universe_single_state
 
 
 class Protein2DRMSD(AnalysisBase):
@@ -246,7 +246,7 @@ def gather_rms_data(
         for state_idx in range(n_lambda):
             # cheeky, but we can read the PDB topology once and reuse per universe
             # this then only hits the PDB file once for all replicas
-            u = _create_universe_single_state(u_top._topology, ds, state_idx)
+            u = create_universe_single_state(u_top._topology, ds, state_idx)
 
             prot = u.select_atoms(protein_selection)
             ligand = u.select_atoms(ligand_selection)

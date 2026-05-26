@@ -22,7 +22,7 @@ def mda_universe(hybrid_system_skipped_pdb, simulation_skipped_nc):
     Guarantees:
     - NetCDF file is opened exactly once
     """
-    u = universe_utils._create_universe_single_state(
+    u = universe_utils.create_universe_single_state(
         hybrid_system_skipped_pdb, simulation_skipped_nc, 0
     )
     protein = u.select_atoms("protein and name CA")
@@ -109,7 +109,7 @@ def test_gather_rms_data_regression_skippednc(simulation_skipped_nc, hybrid_syst
 
 
 def test_multichain_rmsd_shifting(simulation_skipped_nc, hybrid_system_skipped_pdb):
-    u = universe_utils._create_universe_single_state(
+    u = universe_utils.create_universe_single_state(
         hybrid_system_skipped_pdb, simulation_skipped_nc, 0
     )
     prot = u.select_atoms("protein and name CA")
@@ -130,7 +130,7 @@ def test_multichain_rmsd_shifting(simulation_skipped_nc, hybrid_system_skipped_p
     u.trajectory.close()
 
     # RMSD with shifting
-    u2 = universe_utils._create_universe_single_state(
+    u2 = universe_utils.create_universe_single_state(
         hybrid_system_skipped_pdb, simulation_skipped_nc, 0
     )
     prot2 = u2.select_atoms("protein and name CA")
@@ -145,7 +145,7 @@ def test_multichain_rmsd_shifting(simulation_skipped_nc, hybrid_system_skipped_p
 
 
 def test_chain_radius_of_gyration_stable(simulation_skipped_nc, hybrid_system_skipped_pdb):
-    u = universe_utils._create_universe_single_state(
+    u = universe_utils.create_universe_single_state(
         hybrid_system_skipped_pdb, simulation_skipped_nc, 0
     )
     protein = u.select_atoms("protein and name CA")
