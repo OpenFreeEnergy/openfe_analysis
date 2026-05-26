@@ -18,7 +18,6 @@ dependencies = [
     'netCDF4',
     'openff-units',
     'pyyaml',
-    'spyrmsd',
 ]
 description="Trajectory analysis of free energy calculations."
 readme="README.md"
