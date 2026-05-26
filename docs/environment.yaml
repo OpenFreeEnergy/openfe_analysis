@@ -7,5 +7,3 @@ dependencies:
 - python=3.12
 - sphinx
 - furo
-- spyrmsd
-- rdkit
