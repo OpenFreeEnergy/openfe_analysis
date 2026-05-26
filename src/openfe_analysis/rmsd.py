@@ -140,8 +140,10 @@ class LigandCOMDrift(AnalysisBase):
 
     Notes
     -----
-    The initial position is taken from the first analyzed frame, so
-    ``run(start=10)`` measures drift relative to frame 10, not frame 0.
+    The reference COM is taken from whatever frame the trajectory is on when ``.run()`` is
+    called, not necessarily the first analyzed frame. For consistent results,
+    ensure the trajectory is at frame 0 (or your desired reference frame)
+    before calling ``.run()``.
 
     PBC are not applied as the trajectory is assumed to have been
     pre-processed, ensuring the ligand does not jump between periodic images.
@@ -158,7 +160,7 @@ class LigandCOMDrift(AnalysisBase):
 
     def _prepare(self) -> None:
         self.results.com_drift = np.zeros(self.n_frames, dtype=np.float64)
-        # initial COM is taken from the first analyzed frame, not necessarily frame 0
+        # COM is captured from the current trajectory frame when .run() is called
         self._initial_com = self._ag.center_of_mass()
 
     def _single_frame(self) -> None:

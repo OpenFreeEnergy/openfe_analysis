@@ -16,12 +16,6 @@ from openfe_analysis.utils import apply_transformations, universe_utils
 
 @pytest.fixture
 def mda_universe(hybrid_system_skipped_pdb, simulation_skipped_nc):
-    """
-    Safely create and destroy an MDAnalysis Universe.
-
-    Guarantees:
-    - NetCDF file is opened exactly once
-    """
     u = universe_utils.create_universe_single_state(
         hybrid_system_skipped_pdb, simulation_skipped_nc, 0
     )
@@ -84,14 +78,12 @@ def test_gather_rms_data_regression_skippednc(simulation_skipped_nc, hybrid_syst
         rtol=1e-3,
     )
     assert len(output["ligand_RMSD"]) == 11
-    # TODO: RMSD is very large as the multichain fix is not in yet
     assert_allclose(
         output["ligand_RMSD"][0][:6],
         [0.0, 1.092039, 0.839234, 1.228383, 1.533331, 1.276798],
         rtol=1e-3,
     )
     assert len(output["ligand_wander"]) == 11
-    # TODO: very large as the multichain fix is not in yet
     assert_allclose(
         output["ligand_wander"][0][:6],
         [0.0, 0.908097, 0.674262, 0.971328, 0.909263, 1.101882],
@@ -100,7 +92,6 @@ def test_gather_rms_data_regression_skippednc(simulation_skipped_nc, hybrid_syst
     assert len(output["protein_2D_RMSD"]) == 11
     # 15 entries because 6 * 6 frames // 2
     assert len(output["protein_2D_RMSD"][0]) == 1275
-    # TODO: very large as the multichain fix is not in yet
     assert_allclose(
         output["protein_2D_RMSD"][0][:6],
         [1.089747, 1.006143, 1.045068, 1.476353, 1.332893, 1.110507],
