@@ -3,9 +3,10 @@ import numpy as np
 import pytest
 from rdkit import Chem
 
-from openfe_analysis.rmsd import make_Universe
+from openfe_analysis.utils import apply_transformations
 from openfe_analysis.utils.universe_utils import (
     correct_elements,
+    create_universe_single_state,
     guess_ligand_bonds,
     select_state_atoms,
 )
@@ -13,14 +14,27 @@ from openfe_analysis.utils.universe_utils import (
 
 @pytest.fixture
 def universe(hybrid_system_skipped_pdb, simulation_skipped_nc):
-    u = make_Universe(hybrid_system_skipped_pdb, simulation_skipped_nc, state=0)
-    yield u
-    u.trajectory.close()
+    universe = create_universe_single_state(
+        hybrid_system_skipped_pdb, simulation_skipped_nc, state=0
+    )
+    prot = universe.select_atoms("protein and name CA")
+    ligand = universe.select_atoms("resname UNK")
+    apply_transformations.apply_alignment_transformations(universe, prot, ligand)
+    yield universe
+    universe.trajectory.close()
 
 
 @pytest.fixture
-def ligand_ag(universe):
-    return select_state_atoms(universe, end_state="A").select_atoms("resname UNK")
+def ligand_ag(hybrid_system_skipped_pdb, simulation_skipped_nc):
+    universe = create_universe_single_state(
+        hybrid_system_skipped_pdb, simulation_skipped_nc, state=0
+    )
+    prot = universe.select_atoms("protein and name CA")
+    ligand = universe.select_atoms("resname UNK")
+    apply_transformations.apply_alignment_transformations(universe, prot, ligand)
+    ag = select_state_atoms(universe, end_state="A").select_atoms("resname UNK")
+    yield ag
+    universe.trajectory.close()
 
 
 def test_guess_ligand_bonds_adds_bonds(ligand_ag):

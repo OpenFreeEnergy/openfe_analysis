@@ -27,10 +27,12 @@ def _determine_position_indices(dataset: nc.Dataset) -> NDArray[np.int64]:
     Raises
     ------
     ValueError
+        If no position indices are found (empty trajectory).
+    ValueError
         If positions are not written at a consistent interval.
 
-    Note
-    ----
+    Notes
+    -----
     This assumes that the indices are equally spaced by a given
     value.
     """
@@ -49,7 +51,12 @@ def _determine_position_indices(dataset: nc.Dataset) -> NDArray[np.int64]:
         warnings.warn(wmsg)
         indices = np.arange(dataset.dimensions["iteration"].size, dtype=np.int64)
 
-    indices = np.array(indices)
+    if len(indices) == 0:
+        raise ValueError("No position indices found in the dataset. The trajectory may be empty.")
+
+    # A single frame has no pairs to diff
+    if len(indices) <= 1:
+        return indices
 
     if not all(np.diff(indices) == np.diff(indices)[0]):
         errmsg = (
@@ -123,7 +130,7 @@ def _create_new_dataset(filename: Path, n_atoms: int, title: str) -> nc.Dataset:
 
     Parameters
     ----------
-    filename : path.Pathlib
+    filename : pathlib.Path
         Name of the new netcdf trajectory to write.
     n_atoms : int
         Number of atoms to store in trajectory.
@@ -229,9 +236,9 @@ def trajectory_from_multistate(
 
     Parameters
     ----------
-    input_file : path.Pathlib
+    input_file : pathlib.Path
         Path to the input MultiState sampler generated NetCDF file.
-    output_file : path.Pathlib
+    output_file : pathlib.Path
         Path to the AMBER-style NetCDF trajectory to be written.
     index : int
         Index of the state or replica to extract. May be negative.

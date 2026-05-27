@@ -12,10 +12,8 @@ from openfe_analysis.rmsd import (
     Protein2DRMSD,
     RMSDAnalysis,
     SymmetryCorrectedLigandRMSD,
-    gather_rms_data,
-    make_Universe,
 )
-from openfe_analysis.utils import universe_utils
+from openfe_analysis.utils import apply_transformations, universe_utils
 
 
 @pytest.fixture
@@ -25,9 +23,14 @@ def mda_universe():
 
 @pytest.fixture
 def ligand(hybrid_system_skipped_pdb, simulation_skipped_nc):
-    u = make_Universe(hybrid_system_skipped_pdb, simulation_skipped_nc, state=0)
-    yield u.select_atoms("resname UNK")
-    u.trajectory.close()
+    universe = universe_utils.create_universe_single_state(
+        hybrid_system_skipped_pdb, simulation_skipped_nc, state=0
+    )
+    prot = universe.select_atoms("protein and name CA")
+    ligand = universe.select_atoms("resname UNK")
+    apply_transformations.apply_alignment_transformations(universe, prot, ligand)
+    yield universe.select_atoms("resname UNK")
+    universe.trajectory.close()
 
 
 @pytest.fixture()
