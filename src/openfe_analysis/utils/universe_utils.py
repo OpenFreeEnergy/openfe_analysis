@@ -6,13 +6,15 @@ import netCDF4 as nc
 from ..reader import FEReader
 
 
-def create_universe_single_state(top: Path | mda.core.topology.Topology, trj: nc.Dataset, state: int) -> mda.Universe:
+def create_universe_single_state(
+    top: Path | mda.core.topology.Topology, trj: nc.Dataset, state: int
+) -> mda.Universe:
     """
     Construct a raw MDAnalysis Universe for a single thermodynamic state.
 
     Parameters
     ----------
-    top : pathlib.Path
+    top : pathlib.Path | mda.core.topology.Topology
         Path to a topology file (e.g. PDB).
     trj : nc.Dataset
         Open NetCDF dataset produced by

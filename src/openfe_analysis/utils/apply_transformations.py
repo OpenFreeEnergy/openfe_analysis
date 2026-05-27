@@ -88,7 +88,8 @@ def _transformations_complex(
     shift_targets = chains[1:]
     if ligand is not None:
         shift_targets.append(ligand)
-    transforms.append(ClosestImageShift(chains[0], shift_targets))
+    if shift_targets:
+        transforms.append(ClosestImageShift(chains[0], shift_targets))
 
     # 3. Align on protein backbone/atoms
     transforms.append(Aligner(protein))
