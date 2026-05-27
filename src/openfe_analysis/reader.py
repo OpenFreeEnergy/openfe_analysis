@@ -1,7 +1,6 @@
 import pathlib
 from typing import Literal, Optional
 
-import MDAnalysis as mda
 import netCDF4 as nc
 import numpy as np
 import yaml
