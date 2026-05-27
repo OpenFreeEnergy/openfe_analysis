@@ -246,12 +246,17 @@ class SymmetryCorrectedLigandRMSD(AnalysisBase):
     ):
         super().__init__(atomgroup.universe.trajectory, **kwargs)
         self._ag = atomgroup
-        if rdmol is None and len(atomgroup.bonds) == 0:
-            raise ValueError(
-                "No bonds found on atomgroup. Call guess_ligand_bonds() "
-                "before instantiating SymmetryCorrectedLigandRMSD, or "
-                "pass an rdmol directly."
-            )
+        if rdmol is None:
+            try:
+                has_bonds = len(atomgroup.bonds) > 0
+            except mda.exceptions.NoDataError:
+                has_bonds = False
+            if not has_bonds:
+                raise ValueError(
+                    "No bonds found on atomgroup. Call guess_ligand_bonds() "
+                    "before instantiating SymmetryCorrectedLigandRMSD, or "
+                    "pass an rdmol directly."
+                )
         self._mol = rdmol if rdmol is not None else atomgroup.convert_to("RDKIT")
         self._aprops = np.array([atom.GetAtomicNum() for atom in self._mol.GetAtoms()])
         self._am = Chem.rdmolops.GetAdjacencyMatrix(self._mol)
@@ -327,7 +332,7 @@ def gather_rms_data(
     pdb_topology: pathlib.Path,
     dataset: pathlib.Path,
     skip: Optional[int] = None,
-) -> dict[str, list[float]]:
+) -> dict[str, list[np.ndarray]]:
     """
     Compute structural RMSD-based metrics for a multistate BFE simulation.
 
@@ -392,6 +397,7 @@ def gather_rms_data(
             # cheeky, but we can read the PDB topology once and reuse per universe
             # this then only hits the PDB file once for all replicas
             u = make_Universe(u_top._topology, ds, state=state_idx)
+
             prot = u.select_atoms("protein and name CA")
             ligand = u.select_atoms("resname UNK")
 
@@ -413,6 +419,6 @@ def gather_rms_data(
                 lig_com_drift = LigandCOMDrift(ligand).run(step=skip)
                 output["ligand_wander"].append(lig_com_drift.results.com_drift)
 
-        output["time(ps)"] = np.arange(len(u.trajectory))[::skip] * u.trajectory.dt
+            output["time(ps)"] = np.arange(len(u.trajectory))[::skip] * u.trajectory.dt
 
     return output

@@ -172,6 +172,7 @@ class TestSymmetryCorrectedLigandRMSD:
         u.add_TopologyAttr("names", ["O", "H1", "H2"])
         u.add_TopologyAttr("resnames", ["UNK"])
         u.add_TopologyAttr("resids", [1])
+        u.add_TopologyAttr("bonds", [(0, 1), (0, 2)])
         u.load_new(
             np.array([coords_ref, coords_swapped]),
             order="fac",
