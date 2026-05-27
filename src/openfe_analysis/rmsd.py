@@ -246,12 +246,17 @@ class SymmetryCorrectedLigandRMSD(AnalysisBase):
     ):
         super().__init__(atomgroup.universe.trajectory, **kwargs)
         self._ag = atomgroup
-        if rdmol is None and len(atomgroup.bonds) == 0:
-            raise ValueError(
-                "No bonds found on atomgroup. Call guess_ligand_bonds() "
-                "before instantiating SymmetryCorrectedLigandRMSD, or "
-                "pass an rdmol directly."
-            )
+        if rdmol is None:
+            try:
+                has_bonds = len(atomgroup.bonds) > 0
+            except mda.exceptions.NoDataError:
+                has_bonds = False
+            if not has_bonds:
+                raise ValueError(
+                    "No bonds found on atomgroup. Call guess_ligand_bonds() "
+                    "before instantiating SymmetryCorrectedLigandRMSD, or "
+                    "pass an rdmol directly."
+                )
         self._mol = rdmol if rdmol is not None else atomgroup.convert_to("RDKIT")
         self._aprops = np.array([atom.GetAtomicNum() for atom in self._mol.GetAtoms()])
         self._am = Chem.rdmolops.GetAdjacencyMatrix(self._mol)
