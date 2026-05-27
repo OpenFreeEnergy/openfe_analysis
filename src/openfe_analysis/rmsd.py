@@ -327,7 +327,7 @@ def gather_rms_data(
     pdb_topology: pathlib.Path,
     dataset: pathlib.Path,
     skip: Optional[int] = None,
-) -> dict[str, list[float]]:
+) -> dict[str, list[np.ndarray]]:
     """
     Compute structural RMSD-based metrics for a multistate BFE simulation.
 
@@ -392,6 +392,7 @@ def gather_rms_data(
             # cheeky, but we can read the PDB topology once and reuse per universe
             # this then only hits the PDB file once for all replicas
             u = make_Universe(u_top._topology, ds, state=state_idx)
+
             prot = u.select_atoms("protein and name CA")
             ligand = u.select_atoms("resname UNK")
 
@@ -413,6 +414,6 @@ def gather_rms_data(
                 lig_com_drift = LigandCOMDrift(ligand).run(step=skip)
                 output["ligand_wander"].append(lig_com_drift.results.com_drift)
 
-        output["time(ps)"] = np.arange(len(u.trajectory))[::skip] * u.trajectory.dt
+            output["time(ps)"] = np.arange(len(u.trajectory))[::skip] * u.trajectory.dt
 
     return output
