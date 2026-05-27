@@ -48,6 +48,7 @@ test = [
     "pytest-xdist",
     "pytest-cov",
     "pooch",
+    "MDAnalysisTests",
 ]
 
 [project.urls]
