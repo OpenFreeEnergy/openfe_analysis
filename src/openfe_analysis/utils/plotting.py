@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def plot_2D_rmsd(data: list[np.ndarray], vmax: float = 5.0) -> plt.Figure:
+def plot_2D_rmsd(data: list[np.ndarray] | list[list[float]], vmax: float = 5.0) -> plt.Figure:
     """Plots 2D RMSD for many states
 
     Parameters
