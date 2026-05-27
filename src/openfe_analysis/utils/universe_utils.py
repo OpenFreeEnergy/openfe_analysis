@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Literal
 
 import MDAnalysis as mda
-import numpy as np
+import netCDF4 as nc
 from MDAnalysis.guesser.tables import vdwradii as MDA_VDWRADII
+
+from ..reader import FEReader
 
 # B-factor values used to identify atoms present at a given lambda state.
 # 0.25 : atoms unique to state A
@@ -87,3 +90,33 @@ def guess_ligand_bonds(
         }
     )
     atomgroup.guess_bonds(vdwradii)
+
+
+def create_universe_single_state(
+    top: Path | mda.core.topology.Topology, trj: nc.Dataset, state: int
+) -> mda.Universe:
+    """
+    Construct a raw MDAnalysis Universe for a single thermodynamic state.
+
+    Parameters
+    ----------
+    top : pathlib.Path | mda.core.topology.Topology
+        Path to a topology file (e.g. PDB).
+    trj : nc.Dataset
+        Open NetCDF dataset produced by
+        ``openmmtools.multistate.MultiStateReporter``.
+    state : int
+        Thermodynamic state index to extract from the multistate trajectory.
+
+    Returns
+    -------
+    mda.Universe
+        A Universe with no trajectory transformations applied.
+    """
+    return mda.Universe(
+        top,
+        trj,
+        index=state,
+        index_method="state",
+        format=FEReader,
+    )

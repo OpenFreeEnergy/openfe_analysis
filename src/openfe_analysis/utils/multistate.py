@@ -130,7 +130,7 @@ def _create_new_dataset(filename: Path, n_atoms: int, title: str) -> nc.Dataset:
 
     Parameters
     ----------
-    filename : path.Pathlib
+    filename : pathlib.Path
         Name of the new netcdf trajectory to write.
     n_atoms : int
         Number of atoms to store in trajectory.
@@ -236,9 +236,9 @@ def trajectory_from_multistate(
 
     Parameters
     ----------
-    input_file : path.Pathlib
+    input_file : pathlib.Path
         Path to the input MultiState sampler generated NetCDF file.
-    output_file : path.Pathlib
+    output_file : pathlib.Path
         Path to the AMBER-style NetCDF trajectory to be written.
     index : int
         Index of the state or replica to extract. May be negative.
