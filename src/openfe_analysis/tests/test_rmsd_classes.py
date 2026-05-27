@@ -1,0 +1,135 @@
+from functools import partial
+
+import MDAnalysis as mda
+import numpy as np
+import pytest
+from MDAnalysis.analysis import diffusionmap, rms
+from MDAnalysisTests.datafiles import DCD, PSF
+from numpy.testing import assert_allclose, assert_almost_equal
+
+from openfe_analysis.rmsd import LigandCOMDrift, Protein2DRMSD, RMSDAnalysis
+from openfe_analysis.utils import apply_transformations, universe_utils
+
+
+@pytest.fixture
+def mda_universe():
+    return mda.Universe(PSF, DCD)
+
+
+@pytest.fixture
+def ligand(hybrid_system_skipped_pdb, simulation_skipped_nc):
+    universe = universe_utils.create_universe_single_state(
+        hybrid_system_skipped_pdb, simulation_skipped_nc, state=0
+    )
+    prot = universe.select_atoms("protein and name CA")
+    ligand = universe.select_atoms("resname UNK")
+    apply_transformations.apply_alignment_transformations(universe, prot, ligand)
+    yield universe.select_atoms("resname UNK")
+    universe.trajectory.close()
+
+
+@pytest.fixture()
+def correct_values():
+    return [0, 4.68953]
+
+
+@pytest.fixture()
+def correct_values_mass():
+    return [0, 4.74920]
+
+
+class TestRMSDAnalysis:
+    def test_rmsd(self, mda_universe, correct_values):
+        prot = mda_universe.select_atoms("name CA")
+        prot_rmsd = RMSDAnalysis(prot, superposition=True).run(step=49)
+        assert_almost_equal(
+            prot_rmsd.results.rmsd,
+            correct_values,
+            4,
+            err_msg="error: rmsd profile should match test values",
+        )
+
+    def test_rmsd_frames(self, mda_universe, correct_values):
+        prot = mda_universe.select_atoms("name CA")
+        prot_rmsd = RMSDAnalysis(prot, superposition=True).run(frames=[0, 49])
+        assert_almost_equal(
+            prot_rmsd.results.rmsd,
+            correct_values,
+            4,
+            err_msg="error: rmsd profile should match test values",
+        )
+
+    def test_rmsd_single_frame(self, mda_universe):
+        prot = mda_universe.select_atoms("name CA")
+        prot_rmsd = RMSDAnalysis(prot, superposition=True).run(start=5, stop=6)
+        assert_almost_equal(
+            prot_rmsd.results.rmsd,
+            [0.91544906],
+            4,
+            err_msg="error: rmsd profile should match test values",
+        )
+
+    def test_mass_weighted(self, mda_universe, correct_values):
+        # mass weighting the CA should give the same answer as weighing
+        # equally because all CA have the same mass
+        prot = mda_universe.select_atoms("name CA")
+        prot_rmsd = RMSDAnalysis(prot, superposition=True, mass_weighted=True).run(step=49)
+        assert_almost_equal(
+            prot_rmsd.results.rmsd,
+            correct_values,
+            4,
+            err_msg="error: rmsd profile should match test values",
+        )
+
+    def test_custom_weighted(self, mda_universe, correct_values_mass):
+        prot = mda_universe.select_atoms("all")
+        prot_rmsd = RMSDAnalysis(prot, superposition=True, mass_weighted=True).run(step=49)
+        assert_almost_equal(
+            prot_rmsd.results.rmsd,
+            correct_values_mass,
+            4,
+            err_msg="error: rmsd profile should match test values",
+        )
+
+
+class TestProtein2DRMSD:
+    def test_symmetric_diagonal_zero(self, mda_universe):
+        """Diagonal should be zero and matrix should be symmetric."""
+        prot = mda_universe.select_atoms("name CA")
+        result = Protein2DRMSD(prot).run(step=10)
+
+        n_frames = len(mda_universe.trajectory[::10])
+        mat = np.zeros((n_frames, n_frames))
+        mat[np.triu_indices_from(mat, k=1)] = result.results.rmsd2d
+        mat += mat.T
+
+        assert_allclose(np.diag(mat), 0.0)
+        assert_allclose(mat, mat.T)
+
+    def test_matches_mda_distance_matrix(self, mda_universe):
+        """Results should match MDAnalysis DistanceMatrix."""
+        prot = mda_universe.select_atoms("name CA")
+        result = Protein2DRMSD(prot).run(step=10)
+
+        # Check the output shape
+        n_frames = len(mda_universe.trajectory[::10])
+        expected_pairs = n_frames * (n_frames - 1) // 2
+        assert len(result.results.rmsd2d) == expected_pairs
+        assert np.all(result.results.rmsd2d >= 0)
+
+        # Distancematrix doesn't do centering and superposition by default
+        metric = partial(rms.rmsd, center=True, superposition=True)
+        ref = diffusionmap.DistanceMatrix(prot, metric=metric)
+        ref.run(step=10)
+        dist_mat = ref.results.dist_matrix
+        i, j = np.triu_indices_from(dist_mat, k=1)
+        expected = dist_mat[i, j]
+
+        assert_allclose(result.results.rmsd2d, expected, atol=1e-4)
+
+
+def test_ligand_com_drift(ligand):
+    result = LigandCOMDrift(ligand).run(step=10)
+    expected = [0.0, 0.38549, 0.61483, 0.54140, 1.26861, 0.92772]
+    assert len(result.results.com_drift) == len(ligand.universe.trajectory[::10])
+    assert_allclose(result.results.com_drift[:6], expected, rtol=1e-3)

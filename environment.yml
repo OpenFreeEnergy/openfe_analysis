@@ -3,7 +3,9 @@ channels:
   - conda-forge
 dependencies:
   - click
+  - matplotlib
   - MDAnalysis
+  - MDAnalysisTests
   - netCDF4
   - openff-units
   - pip

@@ -181,3 +181,40 @@ def test_trajectory_success(tmp_path):
     assert out_ds.variables["cell_lengths"].shape == (2, 3)
     assert out_ds.variables["cell_angles"].shape == (2, 3)
     out_ds.close()
+
+
+def test_trajectory_from_multistate_raises_on_missing_unitcell(
+    tmp_path, simulation_skipped_nc, hybrid_system_skipped_pdb
+):
+    """RuntimeError should be raised if a frame has no unit cell."""
+    from unittest.mock import patch
+
+    output_file = tmp_path / "output.nc"
+
+    with patch(
+        "openfe_analysis.utils.multistate._get_unitcell",
+        return_value=None,
+    ):
+        with pytest.raises(RuntimeError, match="Frame without unit cell encountered"):
+            trajectory_from_multistate(
+                simulation_skipped_nc,
+                output_file,
+                index=0,
+            )
+
+
+def test_determine_position_indices_single_frame(tmp_path):
+    """A single frame should be returned."""
+    with nc.Dataset(tmp_path / "single.nc", "w") as ds:
+        ds.createDimension("iteration", 1)
+        indices = _determine_position_indices(ds)
+        assert len(indices) == 1
+        assert indices[0] == 0
+
+
+def test_determine_position_indices_empty(tmp_path):
+    """An empty dataset should raise a ValueError."""
+    with nc.Dataset(tmp_path / "empty.nc", "w") as ds:
+        ds.createDimension("iteration", 0)
+        with pytest.raises(ValueError, match="No position indices found"):
+            _determine_position_indices(ds)
