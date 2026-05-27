@@ -5,7 +5,7 @@ from typing import Any, Optional
 import MDAnalysis as mda
 import netCDF4 as nc
 import numpy as np
-from MDAnalysis.analysis import diffusionmap, rms
+from MDAnalysis.analysis import rms
 from MDAnalysis.analysis.base import AnalysisBase
 from MDAnalysis.transformations import unwrap
 
