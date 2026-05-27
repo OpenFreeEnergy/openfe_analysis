@@ -205,9 +205,16 @@ def test_trajectory_from_multistate_raises_on_missing_unitcell(
 
 def test_determine_position_indices_single_frame(tmp_path):
     """A single frame should be returned."""
-    ds = nc.Dataset(tmp_path / "single.nc", "w")
-    ds.createDimension("iteration", 1)
-    indices = _determine_position_indices(ds)
-    assert len(indices) == 1
-    assert indices[0] == 0
-    ds.close()
+    with nc.Dataset(tmp_path / "single.nc", "w") as ds:
+        ds.createDimension("iteration", 1)
+        indices = _determine_position_indices(ds)
+        assert len(indices) == 1
+        assert indices[0] == 0
+
+
+def test_determine_position_indices_empty(tmp_path):
+    """An empty dataset should raise a ValueError."""
+    with nc.Dataset(tmp_path / "empty.nc", "w") as ds:
+        ds.createDimension("iteration", 0)
+        with pytest.raises(ValueError, match="No position indices found"):
+            _determine_position_indices(ds)
