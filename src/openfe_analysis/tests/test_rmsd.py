@@ -16,6 +16,12 @@ from openfe_analysis.transformations import Aligner
 
 @pytest.fixture
 def mda_universe(hybrid_system_skipped_pdb, simulation_skipped_nc):
+    """
+    Safely create and destroy an MDAnalysis Universe.
+
+    Guarantees:
+    - NetCDF file is opened exactly once
+    """
     u = make_Universe(
         hybrid_system_skipped_pdb,
         simulation_skipped_nc,

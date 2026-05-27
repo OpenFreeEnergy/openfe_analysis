@@ -346,6 +346,6 @@ def gather_rms_data(
                 lig_com_drift = LigandCOMDrift(ligand).run(step=skip)
                 output["ligand_wander"].append(lig_com_drift.results.com_drift)
 
-        output["time(ps)"] = np.arange(len(u.trajectory))[::skip] * u.trajectory.dt
+            output["time(ps)"] = np.arange(len(u.trajectory))[::skip] * u.trajectory.dt
 
     return output
