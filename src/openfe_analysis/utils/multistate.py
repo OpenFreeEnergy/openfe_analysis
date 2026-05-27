@@ -27,10 +27,12 @@ def _determine_position_indices(dataset: nc.Dataset) -> NDArray[np.int64]:
     Raises
     ------
     ValueError
+        If no position indices are found (empty trajectory).
+    ValueError
         If positions are not written at a consistent interval.
 
-    Note
-    ----
+    Notes
+    -----
     This assumes that the indices are equally spaced by a given
     value.
     """
@@ -49,7 +51,12 @@ def _determine_position_indices(dataset: nc.Dataset) -> NDArray[np.int64]:
         warnings.warn(wmsg)
         indices = np.arange(dataset.dimensions["iteration"].size, dtype=np.int64)
 
-    indices = np.array(indices)
+    if len(indices) == 0:
+        raise ValueError("No position indices found in the dataset. The trajectory may be empty.")
+
+    # A single frame has no pairs to diff
+    if len(indices) <= 1:
+        return indices
 
     if not all(np.diff(indices) == np.diff(indices)[0]):
         errmsg = (
