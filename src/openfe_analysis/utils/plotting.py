@@ -42,10 +42,8 @@ def plot_2D_rmsd(data: list[np.ndarray], vmax: float = 5.0) -> plt.Figure:
         ax.axis("off")  # turn off ticks/labels
         ax.set_title(f"State {i}")
 
-    # if we have any leftover plots then we turn them off
-    # except the last one!
-    overage = len(axes.flatten()) - len(twod_rmsd_arrs)
-    for i in range(overage, len(axes.flatten()) - 1):
+    # turn off unused axes between the last plot and the colorbar
+    for i in range(len(twod_rmsd_arrs), len(axes.flatten()) - 1):
         axes.flatten()[i].set_axis_off()
 
     plt.colorbar(
