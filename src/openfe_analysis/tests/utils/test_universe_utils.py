@@ -15,8 +15,11 @@ def universe(hybrid_system_skipped_pdb, simulation_skipped_nc):
 
 
 @pytest.fixture
-def ligand_ag(universe):
-    return select_state_atoms(universe, end_state="A").select_atoms("resname UNK")
+def ligand_ag(hybrid_system_skipped_pdb, simulation_skipped_nc):
+    u = make_Universe(hybrid_system_skipped_pdb, simulation_skipped_nc, state=0)
+    ag = select_state_atoms(u, end_state="A").select_atoms("resname UNK")
+    yield ag
+    u.trajectory.close()
 
 
 def test_guess_ligand_bonds_adds_bonds(ligand_ag):
