@@ -5,7 +5,7 @@ from typing import Any, Optional
 import MDAnalysis as mda
 import netCDF4 as nc
 import numpy as np
-from MDAnalysis.analysis import diffusionmap, rms
+from MDAnalysis.analysis import rms
 from MDAnalysis.analysis.base import AnalysisBase
 from MDAnalysis.transformations import unwrap
 
@@ -263,7 +263,7 @@ def gather_rms_data(
     pdb_topology: pathlib.Path,
     dataset: pathlib.Path,
     skip: Optional[int] = None,
-) -> dict[str, list[float]]:
+) -> dict[str, list[np.ndarray]]:
     """
     Compute structural RMSD-based metrics for a multistate BFE simulation.
 
