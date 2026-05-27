@@ -263,7 +263,7 @@ def gather_rms_data(
     pdb_topology: pathlib.Path,
     dataset: pathlib.Path,
     skip: Optional[int] = None,
-) -> dict[str, list[float]]:
+) -> dict[str, list[np.ndarray]]:
     """
     Compute structural RMSD-based metrics for a multistate BFE simulation.
 
