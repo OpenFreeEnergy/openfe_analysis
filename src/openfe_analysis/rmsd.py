@@ -5,8 +5,9 @@ from typing import Any, Optional
 import MDAnalysis as mda
 import netCDF4 as nc
 import numpy as np
-from MDAnalysis.analysis import diffusionmap, rms
+from MDAnalysis.analysis import rms
 from MDAnalysis.analysis.base import AnalysisBase
+from MDAnalysis.transformations import unwrap
 
 from .utils.apply_transformations import apply_alignment_transformations
 from .utils.universe_utils import create_universe_single_state
@@ -178,7 +179,7 @@ def gather_rms_data(
     skip: Optional[int] = None,
     protein_selection: str = "protein and name CA",
     ligand_selection: str = "resname UNK",
-) -> dict[str, list[float]]:
+) -> dict[str, list[np.ndarray]]:
     """
     Compute structural RMSD-based metrics for a multistate BFE simulation.
 
@@ -248,12 +249,12 @@ def gather_rms_data(
         for state_idx in range(n_lambda):
             # cheeky, but we can read the PDB topology once and reuse per universe
             # this then only hits the PDB file once for all replicas
-            u = create_universe_single_state(u_top._topology, ds, state_idx)
+            universe = create_universe_single_state(u_top._topology, ds, state_idx)
 
-            prot = u.select_atoms(protein_selection)
-            ligand = u.select_atoms(ligand_selection)
+            prot = universe.select_atoms(protein_selection)
+            ligand = universe.select_atoms(ligand_selection)
 
-            apply_alignment_transformations(u, prot, ligand)
+            apply_alignment_transformations(universe, prot, ligand)
 
             if prot:
                 prot_rmsd = RMSDAnalysis(prot).run(step=skip)
@@ -269,6 +270,8 @@ def gather_rms_data(
                 lig_com_drift = LigandCOMDrift(ligand).run(step=skip)
                 output["ligand_wander"].append(lig_com_drift.results.com_drift)
 
-        output["time(ps)"] = np.arange(len(u.trajectory))[::skip] * u.trajectory.dt
+            output["time(ps)"] = (
+                np.arange(len(universe.trajectory))[::skip] * universe.trajectory.dt
+            )
 
     return output
