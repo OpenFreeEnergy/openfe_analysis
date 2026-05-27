@@ -9,7 +9,7 @@ def plot_2D_rmsd(data: list[np.ndarray], vmax: float = 5.0) -> plt.Figure:
 
     Parameters
     ----------
-    data : list[np.ndarray]
+    data : list[np.ndarray] | list[list[float]]
       for each state, the 2D RMSD
     vmax : float, optional
       the value to consider "high" in the colourmap to flag bad values,
