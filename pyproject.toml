@@ -19,6 +19,7 @@ dependencies = [
     'openff-units',
     'pyyaml',
     'spyrmsd',
+    'matplotlib',
 ]
 description="Trajectory analysis of free energy calculations."
 readme="README.md"
