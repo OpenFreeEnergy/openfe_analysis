@@ -146,6 +146,13 @@ class SymmetryCorrectedLigandRMSD(AnalysisBase):
         used directly and ``guess_ligand_bonds`` does not need to be called.
         If ``None``, the RDKit molecule is derived from ``atomgroup`` via
         ``convert_to("RDKIT")``.
+
+    Raises
+    ------
+    ValueError
+        If ``rdmol`` is ``None`` and no bonds are found on the atomgroup.
+    ValueError
+        If the number of atoms in ``atomgroup`` and ``rdmol`` do not match.
     """
 
     _analysis_algorithm_is_parallelizable = False
@@ -168,6 +175,12 @@ class SymmetryCorrectedLigandRMSD(AnalysisBase):
                     "No bonds found on atomgroup. Call guess_ligand_bonds() "
                     "before instantiating SymmetryCorrectedLigandRMSD, or "
                     "pass an rdmol directly."
+                )
+        else:
+            if len(atomgroup) != rdmol.GetNumAtoms():
+                raise ValueError(
+                    f"atomgroup has {len(atomgroup)} atoms but rdmol has "
+                    f"{rdmol.GetNumAtoms()} atoms."
                 )
         self._mol = rdmol if rdmol is not None else atomgroup.convert_to("RDKIT")
         self._aprops = np.array([atom.GetAtomicNum() for atom in self._mol.GetAtoms()])
