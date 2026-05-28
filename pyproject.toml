@@ -18,6 +18,8 @@ dependencies = [
     'netCDF4',
     'openff-units',
     'pyyaml',
+    'spyrmsd',
+    'rdkit',
     'matplotlib',
 ]
 description="Trajectory analysis of free energy calculations."
