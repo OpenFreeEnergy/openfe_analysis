@@ -146,6 +146,13 @@ class SymmetryCorrectedLigandRMSD(AnalysisBase):
         used directly and ``guess_ligand_bonds`` does not need to be called.
         If ``None``, the RDKit molecule is derived from ``atomgroup`` via
         ``convert_to("RDKIT")``.
+
+    Raises
+    ------
+    ValueError
+        If ``rdmol`` is ``None`` and no bonds are found on the atomgroup.
+    ValueError
+        If the number of atoms in ``atomgroup`` and ``rdmol`` do not match.
     """
 
     _analysis_algorithm_is_parallelizable = False
@@ -170,6 +177,11 @@ class SymmetryCorrectedLigandRMSD(AnalysisBase):
                     "pass an rdmol directly."
                 )
         self._mol = rdmol if rdmol is not None else atomgroup.convert_to("RDKIT")
+        if len(atomgroup) != self._mol.GetNumAtoms():
+            raise ValueError(
+                f"atomgroup has {len(atomgroup)} atoms but rdmol has "
+                f"{self._mol.GetNumAtoms()} atoms."
+            )
         self._aprops = np.array([atom.GetAtomicNum() for atom in self._mol.GetAtoms()])
         self._am = Chem.rdmolops.GetAdjacencyMatrix(self._mol)
 
@@ -331,11 +343,7 @@ def gather_rms_data(
                 output["protein_2D_RMSD"].append(prot_rmsd2d.results.rmsd2d)
 
             if ligand:
-                # For now, leave it at the normal RMSD
                 lig_rmsd = RMSDAnalysis(ligand, mass_weighted=True).run(step=skip)
-                # state_lig = select_state_atoms(u, end_state="A").select_atoms("resname UNK")
-                # guess_ligand_bonds(state_lig, delete_existing=True)
-                # lig_rmsd = SymmetryCorrectedLigandRMSD(state_lig).run(step=skip)
                 output["ligand_RMSD"].append(lig_rmsd.results.rmsd)
 
                 lig_com_drift = LigandCOMDrift(ligand).run(step=skip)

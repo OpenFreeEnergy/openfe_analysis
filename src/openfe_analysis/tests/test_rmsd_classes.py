@@ -6,6 +6,7 @@ import pytest
 from MDAnalysis.analysis import diffusionmap, rms
 from MDAnalysisTests.datafiles import DCD, PSF
 from numpy.testing import assert_allclose, assert_almost_equal
+from rdkit import Chem
 
 from openfe_analysis.rmsd import (
     LigandCOMDrift,
@@ -31,6 +32,21 @@ def ligand(hybrid_system_skipped_pdb, simulation_skipped_nc):
     apply_transformations.apply_alignment_transformations(universe, prot, ligand)
     yield universe.select_atoms("resname UNK")
     universe.trajectory.close()
+
+
+@pytest.fixture
+def minimal_universe():
+    """Minimal 3-atom water-like universe without bonds."""
+    u = mda.Universe.empty(3, n_residues=1, trajectory=True)
+    u.add_TopologyAttr("elements", ["O", "H", "H"])
+    u.add_TopologyAttr("names", ["O", "H1", "H2"])
+    u.add_TopologyAttr("resnames", ["UNK"])
+    u.add_TopologyAttr("resids", [1])
+    u.load_new(
+        np.array([[[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]]),
+        order="fac",
+    )
+    return u.select_atoms("all")
 
 
 @pytest.fixture()
@@ -194,17 +210,15 @@ class TestSymmetryCorrectedLigandRMSD:
         assert naive.results.rmsd[1] > 0.0
         assert corrected.results.rmsd[1] == pytest.approx(0.0, abs=1e-5)
 
-    def test_raises_on_missing_bonds(self):
+    def test_raises_on_missing_bonds(self, minimal_universe):
         """Should raise ValueError if atomgroup has no bonds and no rdmol is provided."""
-        u = mda.Universe.empty(3, n_residues=1, trajectory=True)
-        u.add_TopologyAttr("elements", ["O", "H", "H"])
-        u.add_TopologyAttr("names", ["O", "H1", "H2"])
-        u.add_TopologyAttr("resnames", ["UNK"])
-        u.add_TopologyAttr("resids", [1])
-        u.load_new(
-            np.array([[[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]]),
-            order="fac",
-        )
-        ag = u.select_atoms("all")
         with pytest.raises(ValueError, match="No bonds found"):
-            SymmetryCorrectedLigandRMSD(ag)
+            SymmetryCorrectedLigandRMSD(minimal_universe)
+
+    def test_raises_on_atom_count_mismatch(self, minimal_universe):
+        """Should raise ValueError if atomgroup and rdmol have different atom counts."""
+        mol = Chem.RWMol()
+        mol.AddAtom(Chem.Atom(8))  # O
+        mol.AddAtom(Chem.Atom(1))  # H
+        with pytest.raises(ValueError, match="atomgroup has 3 atoms but rdmol has 2"):
+            SymmetryCorrectedLigandRMSD(minimal_universe, rdmol=mol.GetMol())
