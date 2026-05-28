@@ -5,9 +5,10 @@ from typing import Any, Optional
 import MDAnalysis as mda
 import netCDF4 as nc
 import numpy as np
+import spyrmsd.rmsd as srmsd
 from MDAnalysis.analysis import rms
 from MDAnalysis.analysis.base import AnalysisBase
-from MDAnalysis.transformations import unwrap
+from rdkit import Chem
 
 from .utils.apply_transformations import apply_alignment_transformations
 from .utils.universe_utils import create_universe_single_state
@@ -128,6 +129,85 @@ class RMSDAnalysis(AnalysisBase):
             center=self._center,
             superposition=self._superposition,
         )
+
+
+class SymmetryCorrectedLigandRMSD(AnalysisBase):
+    """
+    Symmetry-corrected 1D RMSD time series for a ligand AtomGroup.
+
+    Parameters
+    ----------
+    atomgroup : mda.AtomGroup
+        Ligand atoms to compute RMSD for. If ``rdmol`` is not provided,
+        bonds must be guessed on the atomgroup before instantiating this
+        class; use :func:`guess_ligand_bonds` for this purpose.
+    rdmol : Chem.Mol, optional
+        RDKit molecule corresponding to ``atomgroup``. If provided, it is
+        used directly and ``guess_ligand_bonds`` does not need to be called.
+        If ``None``, the RDKit molecule is derived from ``atomgroup`` via
+        ``convert_to("RDKIT")``.
+
+    Raises
+    ------
+    ValueError
+        If ``rdmol`` is ``None`` and no bonds are found on the atomgroup.
+    ValueError
+        If the number of atoms in ``atomgroup`` and ``rdmol`` do not match.
+    """
+
+    _analysis_algorithm_is_parallelizable = False
+
+    def __init__(
+        self,
+        atomgroup: mda.AtomGroup,
+        rdmol: Optional[Chem.Mol] = None,
+        **kwargs,
+    ):
+        super().__init__(atomgroup.universe.trajectory, **kwargs)
+        self._ag = atomgroup
+        if rdmol is None:
+            try:
+                has_bonds = len(atomgroup.bonds) > 0
+            except mda.exceptions.NoDataError:
+                has_bonds = False
+            if not has_bonds:
+                raise ValueError(
+                    "No bonds found on atomgroup. Call guess_ligand_bonds() "
+                    "before instantiating SymmetryCorrectedLigandRMSD, or "
+                    "pass an rdmol directly."
+                )
+        else:
+            if len(atomgroup) != rdmol.GetNumAtoms():
+                raise ValueError(
+                    f"atomgroup has {len(atomgroup)} atoms but rdmol has "
+                    f"{rdmol.GetNumAtoms()} atoms."
+                )
+        self._mol = rdmol if rdmol is not None else atomgroup.convert_to("RDKIT")
+        self._aprops = np.array([atom.GetAtomicNum() for atom in self._mol.GetAtoms()])
+        self._am = Chem.rdmolops.GetAdjacencyMatrix(self._mol)
+
+    def _prepare(self):
+        self.results.rmsd = np.zeros(self.n_frames, dtype=np.float64)
+        # reference is taken from the first analyzed frame, not necessarily frame 0
+        self._reference = self._ag.positions.copy()
+        self._isomorphisms: list | None = None
+
+    def _single_frame(self) -> None:
+        frame_rmsd, isomorphisms, _ = srmsd._rmsd_isomorphic_core(
+            coords1=self._ag.positions.copy(),
+            coords2=self._reference,
+            aprops1=self._aprops,
+            aprops2=self._aprops,
+            am1=self._am,
+            am2=self._am,
+            center=False,
+            minimize=False,
+            isomorphisms=self._isomorphisms,
+        )
+        self.results.rmsd[self._frame_index] = frame_rmsd
+        # cache isomorphisms after first frame to avoid redundant graph matching
+        if self._isomorphisms is None:
+            self._isomorphisms = isomorphisms
 
 
 class LigandCOMDrift(AnalysisBase):
