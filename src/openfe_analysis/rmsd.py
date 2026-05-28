@@ -176,12 +176,13 @@ class SymmetryCorrectedLigandRMSD(AnalysisBase):
                     "before instantiating SymmetryCorrectedLigandRMSD, or "
                     "pass an rdmol directly."
                 )
+        else:
+            if len(atomgroup) != rdmol.GetNumAtoms():
+                raise ValueError(
+                    f"atomgroup has {len(atomgroup)} atoms but rdmol has "
+                    f"{rdmol.GetNumAtoms()} atoms."
+                )
         self._mol = rdmol if rdmol is not None else atomgroup.convert_to("RDKIT")
-        if len(atomgroup) != self._mol.GetNumAtoms():
-            raise ValueError(
-                f"atomgroup has {len(atomgroup)} atoms but rdmol has "
-                f"{self._mol.GetNumAtoms()} atoms."
-            )
         self._aprops = np.array([atom.GetAtomicNum() for atom in self._mol.GetAtoms()])
         self._am = Chem.rdmolops.GetAdjacencyMatrix(self._mol)
 
