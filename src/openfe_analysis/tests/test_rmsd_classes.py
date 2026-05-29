@@ -1,6 +1,7 @@
 from functools import partial
 
 import MDAnalysis as mda
+import netCDF4 as nc
 import numpy as np
 import pytest
 from MDAnalysis.analysis import diffusionmap, rms
@@ -29,7 +30,7 @@ def ligand(hybrid_system_skipped_pdb, simulation_skipped_nc):
     )
     prot = universe.select_atoms("protein and name CA")
     ligand = universe.select_atoms("resname UNK")
-    apply_transformations.apply_alignment_transformations(universe, prot, ligand)
+    apply_transformations.apply_complex_alignment_transformations(universe, prot, [ligand])
     yield universe.select_atoms("resname UNK")
     universe.trajectory.close()
 
@@ -111,6 +112,66 @@ class TestRMSDAnalysis:
             4,
             err_msg="error: rmsd profile should match test values",
         )
+
+    @pytest.mark.parametrize(
+        "state_idx,ligand_key,expected_spike",
+        [
+            (14, "ligand_A_indices", True),
+            (12, "ligand_B_indices", True),
+            (16, "ligand_B_indices", True),
+        ],
+    )
+    def test_separate_ligands_fixes_pbc_spike(
+        self, septop_complex_data, state_idx, ligand_key, expected_spike
+    ):
+        """
+        Regression test for PBC imaging artifact when two ligands are passed
+        as a combined AtomGroup (SepTop case).
+
+        Known problematic states from transformation HIF2a rbfe_1_155:
+        - State 14, ligand A: ~62 A spike at frame 45 (4500 ps)
+        - State 12, ligand B: ~62 A spike at frame 45 (4500 ps)
+        - State 16, ligand B: ~62 A spike at frame 39 (3900 ps)
+
+        Passing ligands separately to apply_complex_alignment_transformations
+        fixes this by imaging each ligand independently relative to the protein.
+        """
+        d = septop_complex_data
+
+        with nc.Dataset(d["nc"]) as ds:
+            if hasattr(ds, "PositionInterval"):
+                n_frames = len(range(0, ds.dimensions["iteration"].size, ds.PositionInterval))
+            else:
+                n_frames = ds.dimensions["iteration"].size
+            skip = max(n_frames // 500, 1)
+
+            # Combined approach should produce a spike
+            u_combined = universe_utils.create_universe_single_state(d["pdb"], ds, state=state_idx)
+            prot = u_combined.select_atoms("protein and name CA")
+            lig_A = u_combined.atoms[np.array(d["ligand_A_indices"])]
+            lig_B = u_combined.atoms[np.array(d["ligand_B_indices"])]
+            lig = u_combined.atoms[np.array(d[ligand_key])]
+
+            apply_transformations.apply_complex_alignment_transformations(
+                u_combined, protein=prot, ligands=[lig_A + lig_B]
+            )
+
+            rmsd_combined = RMSDAnalysis(lig).run(step=skip)
+            assert np.max(rmsd_combined.results.rmsd) > 10.0
+
+            # Separate approach should fix it
+            u_separate = universe_utils.create_universe_single_state(d["pdb"], ds, state=state_idx)
+            prot = u_separate.select_atoms("protein and name CA")
+            lig_A = u_separate.atoms[d["ligand_A_indices"]]
+            lig_B = u_separate.atoms[d["ligand_B_indices"]]
+            lig = u_separate.atoms[d[ligand_key]]
+
+            apply_transformations.apply_complex_alignment_transformations(
+                u_separate, protein=prot, ligands=[lig_A, lig_B]
+            )
+
+            rmsd_separate = RMSDAnalysis(lig).run(step=skip)
+            assert np.max(rmsd_separate.results.rmsd) < 10.0
 
 
 class TestProtein2DRMSD:

@@ -1,8 +1,10 @@
 import pathlib
 from importlib import resources
 
+import numpy as np
 import pooch
 import pytest
+from rdkit import Chem
 
 ZENODO_DOI = "doi:10.5281/zenodo.18378051"
 
@@ -69,3 +71,20 @@ def mcmc_serialized():
         "n_steps: 625\nreassign_velocities: false\n"
         "timestep: !Quantity\n  unit: femtosecond\n  value: 4\n"
     )
+
+
+@pytest.fixture(scope="session")
+def septop_data_dir():
+    return pathlib.Path("data/openfe_analysis_septop")
+
+
+@pytest.fixture(scope="session")
+def septop_complex_data(septop_data_dir):
+    return {
+        "pdb": septop_data_dir / "alchemical_system.pdb",
+        "nc": septop_data_dir / "complex.nc",
+        "ligand_A_indices": np.load(septop_data_dir / "ligand_A_indices.npy").tolist(),
+        "ligand_B_indices": np.load(septop_data_dir / "ligand_B_indices.npy").tolist(),
+        "rdmol_A": Chem.SDMolSupplier(str(septop_data_dir / "ligand_A.sdf"), removeHs=False)[0],
+        "rdmol_B": Chem.SDMolSupplier(str(septop_data_dir / "ligand_B.sdf"), removeHs=False)[0],
+    }

@@ -104,7 +104,7 @@ def test_chain_radius_of_gyration_stable(universe_single_state):
     """Protein chains should not explode or collapse due to PBC errors
     after applying alignment transformations."""
     protein = universe_single_state.select_atoms("protein and name CA")
-    apply_transformations.apply_alignment_transformations(universe_single_state, protein)
+    apply_transformations.apply_complex_alignment_transformations(universe_single_state, protein)
 
     chain = protein.segments[0].atoms
     rgs = []
@@ -118,7 +118,9 @@ def test_ligand_com_continuity(universe_single_state):
     """Ligand COM should not jump between periodic images after applying
     alignment transformations."""
     ligand = universe_single_state.select_atoms("resname UNK")
-    apply_transformations.apply_alignment_transformations(universe_single_state, ligand=ligand)
+    apply_transformations.apply_ligand_alignment_transformations(
+        universe_single_state, ligand=ligand
+    )
 
     coms = [ligand.center_of_mass() for ts in islice(universe_single_state.trajectory, 20)]
     jumps = [np.linalg.norm(coms[i + 1] - coms[i]) for i in range(len(coms) - 1)]
@@ -153,7 +155,7 @@ def test_multichain_rmsd_shifting(simulation_skipped_nc, hybrid_system_skipped_p
         hybrid_system_skipped_pdb, simulation_skipped_nc, 0
     )
     prot2 = u2.select_atoms("protein and name CA")
-    apply_transformations.apply_alignment_transformations(u2, protein=prot2)
+    apply_transformations.apply_complex_alignment_transformations(u2, protein=prot2)
 
     R2 = rms.RMSD(prot2)
     R2.run()
@@ -165,7 +167,9 @@ def test_multichain_rmsd_shifting(simulation_skipped_nc, hybrid_system_skipped_p
 def test_rmsd_reference_is_first_frame(universe_single_state):
     """After alignment, RMSD at the first frame should be zero."""
     prot = universe_single_state.select_atoms("protein and name CA")
-    apply_transformations.apply_alignment_transformations(universe_single_state, protein=prot)
+    apply_transformations.apply_complex_alignment_transformations(
+        universe_single_state, protein=prot
+    )
 
     _ = next(iter(universe_single_state.trajectory))  # SAFE
     ref = prot.positions.copy()
