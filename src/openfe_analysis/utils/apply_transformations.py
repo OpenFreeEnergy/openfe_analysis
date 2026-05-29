@@ -12,15 +12,17 @@ def apply_complex_alignment_transformations(
     ligands: list[mda.AtomGroup] | None = None,
 ) -> None:
     """
-    Apply PBC-handling and alignment transformations for complex systems.
+    Apply a standard set of PBC-handling and alignment transformations
+    required for RMSD-based analyses and other structural analyses that
+    assume a pre-processed trajectory.
 
     Parameters
     ----------
-    universe : mda.Universe
+    universe: mda.Universe
         The Universe the transformations are applied to. Modified in-place.
-    protein : mda.AtomGroup
-        Protein atoms used for unwrapping, image shifting, and alignment.
-    ligands : list[mda.AtomGroup] | None
+    protein: mda.AtomGroup | None
+        The AtomGroup of the protein
+    ligands: list[mda.AtomGroup] | None
         List of ligand AtomGroups. Each is unwrapped and shifted to the
         closest image of the protein independently. If None or empty,
         only the protein is used.
