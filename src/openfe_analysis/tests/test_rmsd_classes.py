@@ -114,15 +114,18 @@ class TestRMSDAnalysis:
         )
 
     @pytest.mark.parametrize(
-        "state_idx,ligand_key,expected_spike",
+        "state_idx,ligand_key",
         [
-            (14, "ligand_A_indices", True),
-            (12, "ligand_B_indices", True),
-            (16, "ligand_B_indices", True),
+            (14, "ligand_A_indices"),
+            (12, "ligand_B_indices"),
+            (16, "ligand_B_indices"),
         ],
     )
     def test_separate_ligands_fixes_pbc_spike(
-        self, septop_complex_data, state_idx, ligand_key, expected_spike
+        self,
+        septop_complex_data,
+        state_idx,
+        ligand_key,
     ):
         """
         Regression test for PBC imaging artifact when two ligands are passed
@@ -148,9 +151,9 @@ class TestRMSDAnalysis:
             # Combined approach should produce a spike
             u_combined = universe_utils.create_universe_single_state(d["pdb"], ds, state=state_idx)
             prot = u_combined.select_atoms("protein and name CA")
-            lig_A = u_combined.atoms[np.array(d["ligand_A_indices"])]
-            lig_B = u_combined.atoms[np.array(d["ligand_B_indices"])]
-            lig = u_combined.atoms[np.array(d[ligand_key])]
+            lig_A = u_combined.atoms[d["ligand_A_indices"]]
+            lig_B = u_combined.atoms[d["ligand_B_indices"]]
+            lig = u_combined.atoms[d[ligand_key]]
 
             apply_transformations.apply_complex_alignment_transformations(
                 u_combined, protein=prot, ligands=[lig_A + lig_B]

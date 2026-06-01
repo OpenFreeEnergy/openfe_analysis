@@ -20,7 +20,7 @@ def apply_complex_alignment_transformations(
     ----------
     universe: mda.Universe
         The Universe the transformations are applied to. Modified in-place.
-    protein: mda.AtomGroup | None
+    protein: mda.AtomGroup
         The AtomGroup of the protein
     ligands: list[mda.AtomGroup] | None
         List of ligand AtomGroups. Each is unwrapped and shifted to the
@@ -41,7 +41,7 @@ def apply_complex_alignment_transformations(
       closest to the first protein chain (:class:`ClosestImageShift`)
     - Aligns the entire system to minimize the protein RMSD (:class:`Aligner`)
     """
-    if protein is None or protein.n_atoms == 0:
+    if protein is None or not protein:
         raise ValueError("protein AtomGroup is empty or None")
 
     if isinstance(ligands, mda.AtomGroup):
@@ -50,7 +50,7 @@ def apply_complex_alignment_transformations(
             "Use ligands=[ligand] to wrap a single ligand."
         )
 
-    ligands = [lig for lig in (ligands or []) if lig.n_atoms > 0]
+    ligands = [lig for lig in (ligands or []) if lig]
 
     group = protein
     for lig in ligands:
