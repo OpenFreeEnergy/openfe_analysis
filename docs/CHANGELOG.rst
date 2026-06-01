@@ -4,28 +4,28 @@ Changelog
 
 .. current developments
 
-v1.2.0
+v0.5.0
 ====================
 
 **Added:**
 
 * Added API documentation, which can be found at openfe-analysis.openfree.energy (`PR #74 <https://github.com/OpenFreeEnergy/openfe_analysis/pull/74>`_).
-* Added plotting utils for plotting ligand RMSD and COM timeseries and protein 2D RMSD.
-* Added an analysis class to calculate the symmetry corrected RMSD using spyrmsd.
+* Added plotting utils for plotting ligand RMSD and COM timeseries and protein 2D RMSD (`PR #106 <https://github.com/OpenFreeEnergy/openfe_analysis/pull/106>`_).
+* Added an analysis class to calculate the symmetry corrected RMSD using spyrmsd (`PR #92 <https://github.com/OpenFreeEnergy/openfe_analysis/pull/92>`_).
 
 **Changed:**
 
-* Refactored the alignment transformation function to properly handle cases with multiple ligands, as needed e.g. for the SepTop protocol.
-* Refactored the universe creation for a state and the alignment of a trajectory into separate functions.
-* Refactored the structural analyses methods into MDAnalysis AnalysisBase classes.
+* Refactored the alignment transformation function to properly handle cases with multiple ligands, as needed e.g. for the SepTop protocol (`PR #110 <https://github.com/OpenFreeEnergy/openfe_analysis/pull/110>`_).
+* Refactored the universe creation for a state and the alignment of a trajectory into separate functions (`PR #93 <https://github.com/OpenFreeEnergy/openfe_analysis/pull/93>`_).
+* Refactored the structural analyses methods into MDAnalysis AnalysisBase classes (`PR #90 <https://github.com/OpenFreeEnergy/openfe_analysis/pull/90>`_).
 
 **Removed:**
 
-* Removed the `make_Universe` function.
+* Removed the `make_Universe` function (`PR #93 <https://github.com/OpenFreeEnergy/openfe_analysis/pull/93>`_).
 
 **Fixed:**
 
-* Fixed determine_position_indices to handle the single frame case
+* Fixed determine_position_indices to handle the single frame case (`PR #107 <https://github.com/OpenFreeEnergy/openfe_analysis/pull/107>`_).
 
 
 
