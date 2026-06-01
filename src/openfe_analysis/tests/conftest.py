@@ -1,14 +1,17 @@
 import pathlib
 from importlib import resources
 
+import numpy as np
 import pooch
 import pytest
+from rdkit import Chem
 
-ZENODO_DOI = "doi:10.5281/zenodo.18378051"
+ZENODO_DOI = "doi:10.5281/zenodo.20442933"
 
 ZENODO_FILES = {
     "openfe_analysis_simulation_output.tar.gz": "md5:7f0babaac3dc8f7dd2db63cb79dff00f",
     "openfe_analysis_skipped.tar.gz": "md5:ac42219bde9da3641375adf3a9ddffbf",
+    "openfe_analysis_septop.tar.gz": "md5:8977d86cdbc05767a2e82760bdf9006f",
 }
 
 POOCH_CACHE = pathlib.Path(pooch.os_cache("openfe_analysis"))
@@ -36,6 +39,12 @@ def rbfe_output_data_dir() -> pathlib.Path:
 @pytest.fixture(scope="session")
 def rbfe_skipped_data_dir() -> pathlib.Path:
     cached_dir = _fetch_and_untar("openfe_analysis_skipped")
+    return cached_dir
+
+
+@pytest.fixture(scope="session")
+def septop_data_dir() -> pathlib.Path:
+    cached_dir = _fetch_and_untar("openfe_analysis_septop")
     return cached_dir
 
 
@@ -69,3 +78,15 @@ def mcmc_serialized():
         "n_steps: 625\nreassign_velocities: false\n"
         "timestep: !Quantity\n  unit: femtosecond\n  value: 4\n"
     )
+
+
+@pytest.fixture(scope="session")
+def septop_complex_data(septop_data_dir):
+    return {
+        "pdb": septop_data_dir / "alchemical_system.pdb",
+        "nc": septop_data_dir / "complex.nc",
+        "ligand_A_indices": np.load(septop_data_dir / "ligand_A_indices.npy").tolist(),
+        "ligand_B_indices": np.load(septop_data_dir / "ligand_B_indices.npy").tolist(),
+        "rdmol_A": Chem.SDMolSupplier(str(septop_data_dir / "ligand_A.sdf"), removeHs=False)[0],
+        "rdmol_B": Chem.SDMolSupplier(str(septop_data_dir / "ligand_B.sdf"), removeHs=False)[0],
+    }

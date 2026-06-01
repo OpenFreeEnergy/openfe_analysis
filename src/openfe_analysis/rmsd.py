@@ -10,7 +10,10 @@ from MDAnalysis.analysis import rms
 from MDAnalysis.analysis.base import AnalysisBase
 from rdkit import Chem
 
-from .utils.apply_transformations import apply_alignment_transformations
+from .utils.apply_transformations import (
+    apply_complex_alignment_transformations,
+    apply_ligand_alignment_transformations,
+)
 from .utils.universe_utils import create_universe_single_state
 
 
@@ -334,7 +337,14 @@ def gather_rms_data(
             prot = universe.select_atoms(protein_selection)
             ligand = universe.select_atoms(ligand_selection)
 
-            apply_alignment_transformations(universe, prot, ligand)
+            if prot:
+                apply_complex_alignment_transformations(
+                    universe,
+                    protein=prot,
+                    ligands=[ligand] if ligand.n_atoms > 0 else None,
+                )
+            elif ligand.n_atoms > 0:
+                apply_ligand_alignment_transformations(universe, ligand=ligand)
 
             if prot:
                 prot_rmsd = RMSDAnalysis(prot).run(step=skip)
