@@ -4,6 +4,36 @@ Changelog
 
 .. current developments
 
+v0.5.0
+====================
+
+**Added:**
+
+* Added API documentation, which can be found at openfe-analysis.openfree.energy (`PR #74 <https://github.com/OpenFreeEnergy/openfe_analysis/pull/74>`_).
+* Plotting utilities for ligand RMSD, COM drift timeseries, and protein 2D RMSD (`PR #106 <https://github.com/OpenFreeEnergy/openfe_analysis/pull/106>`_).
+* Symmetry-corrected ligand RMSD via spyrmsd (:class:`SymmetryCorrectedLigandRMSD`) (`PR #92 <https://github.com/OpenFreeEnergy/openfe_analysis/pull/92>`_).
+
+**Changed:**
+
+* :func:`apply_complex_alignment_transformations` now handles multiple ligands, as needed for the SepTop protocol (`PR #110 <https://github.com/OpenFreeEnergy/openfe_analysis/pull/110>`_).
+* Universe creation and trajectory alignment split into separate functions:
+  :func:`create_universe_single_state`, :func:`apply_complex_alignment_transformations`
+  (for protein-ligand systems), and :func:`apply_ligand_alignment_transformations`
+  (for ligand-only systems) (`PR #93 <https://github.com/OpenFreeEnergy/openfe_analysis/pull/93>`_).
+* Structural analyses refactored into MDAnalysis ``AnalysisBase`` classes (`PR #90 <https://github.com/OpenFreeEnergy/openfe_analysis/pull/90>`_).
+
+**Removed:**
+
+* :func:`make_Universe` — replaced by :func:`create_universe_single_state` combined
+  with :func:`apply_complex_alignment_transformations` or
+  :func:`apply_ligand_alignment_transformations` (`PR #93 <https://github.com/OpenFreeEnergy/openfe_analysis/pull/93>`_).
+
+**Fixed:**
+
+* :func:`_determine_position_indices` now correctly handles single-frame trajectories (`PR #107 <https://github.com/OpenFreeEnergy/openfe_analysis/pull/107>`_).
+
+
+
 v0.4.0
 ====================
 
