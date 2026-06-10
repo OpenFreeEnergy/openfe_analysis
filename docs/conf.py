@@ -71,4 +71,4 @@ html_theme = "furo"
 
 # Do not re-execute notebooks during the build; use the pre-saved cell outputs
 nb_execution_mode = "off"
-myst_heading_anchors = 1
+myst_heading_anchors = 3
