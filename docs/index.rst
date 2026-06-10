@@ -8,9 +8,21 @@ Welcome to OpenFE Analysis' documentation!
 
 The **OpenFE Analysis** toolkit provides a free and open-source framework for analyzing alchemical free energy calculations.
 
+Contents
+--------
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
+
+   tutorials/index
+
+Reference
+---------
+
+.. toctree::
+   :maxdepth: 1
 
    api
    CHANGELOG
+
+:ref:`genindex`
