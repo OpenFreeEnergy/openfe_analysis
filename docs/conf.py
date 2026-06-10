@@ -31,6 +31,7 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
     "sphinx.ext.napoleon",
+    "myst_nb",
 ]
 
 autoclass_content = "both"
@@ -64,3 +65,14 @@ autodoc_mock_imports = [
 # a list of builtin themes.
 #
 html_theme = "furo"
+
+
+# -- myst-nb configuration ---------------------------------------------------
+
+# Do not re-execute notebooks during the build; use the pre-saved cell outputs
+nb_execution_mode = "off"
+
+# Generate HTML anchors for headings up to depth 3 so that plain #slug fragment
+# links inside notebooks resolve as HTML anchors rather than Sphinx cross-refs.
+# This restores the nbsphinx behavior for within-page heading links.
+myst_heading_anchors = 3
