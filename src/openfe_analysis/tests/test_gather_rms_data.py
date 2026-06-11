@@ -75,3 +75,20 @@ def test_gather_rms_data_regression_skippednc(simulation_skipped_nc, hybrid_syst
         [1.089747, 1.006143, 1.045068, 1.476353, 1.332893, 1.110507],
         rtol=1e-3,
     )
+
+
+def test_gather_rms_data_ligand_only(simulation_skipped_nc, hybrid_system_skipped_pdb):
+    output = gather_rms_data(
+        hybrid_system_skipped_pdb,
+        simulation_skipped_nc,
+        skip=100,
+        protein_selection="resname DOESNOTEXIST",  # no protein
+    )
+
+    # No protein results
+    assert len(output["protein_RMSD"]) == 0
+    assert len(output["protein_2D_RMSD"]) == 0
+
+    # Ligand results should still be present
+    assert len(output["ligand_RMSD"]) > 0
+    assert len(output["ligand_wander"]) > 0
