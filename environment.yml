@@ -19,4 +19,4 @@ dependencies:
   - pytest-xdist
   - pytest-rerunfailures
   - spyrmsd
-  - rdkit !=2026.03.3
+  - rdkit !=2026.03.3 # see https://github.com/rdkit/rdkit/issues/9335
