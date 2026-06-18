@@ -11,6 +11,7 @@ import prolif as plf
 
 from .utils.plotting import plot_prolif_3d, plot_prolif_lignetwork
 
+
 class ProLIFAnalysis:
     """
     ProLIF interaction fingerprint analysis for an OpenFEReader Universe.
@@ -62,9 +63,9 @@ class ProLIFAnalysis:
         self.ligand_ag = ligand_ag
         self.water_order = water_order
 
-        self.frames = None
-        self.times = None
-        self.n_frames = None
+        self.frames: Optional[np.ndarray] = None
+        self.times: Optional[np.ndarray] = None
+        self.n_frames: Optional[int] = None
         self.ifp_df = None
 
         # --- Guess bonds once on stable selections so RDKit/ProLIF can detect HBonds ---
@@ -104,6 +105,7 @@ class ProLIFAnalysis:
 
         available = plf.Fingerprint.list_available(show_bridged=True)
 
+        fp_interactions: Optional[list[str] | str]
         if interactions is None:
             fp_interactions = None
 
@@ -156,10 +158,10 @@ class ProLIFAnalysis:
         start: Optional[int] = None,
         stop: Optional[int] = None,
         step: Optional[int] = None,
-        residues: Optional[bool] = None,
+        residues: Optional[Literal["all"] | Sequence[str | int]] = None,
         progress: bool = True,
         n_jobs: Optional[int] = None,
-        parallel_strategy: Optional[str] = None,
+        parallel_strategy: Optional[Literal["chunk", "queue"]] = None,
         converter_kwargs: Optional[Tuple[Dict[str, Any], Dict[str, Any]]] = None,
     ) -> "ProLIFAnalysis":
         """
@@ -170,8 +172,9 @@ class ProLIFAnalysis:
         start, stop, step
             Trajectory slicing parameters.
         residues
-            Passed to ProLIF: whether to aggregate interactions with residues.
-            If None, ProLIF's default is used and interactions with atoms are identified.
+            Passed to ProLIF: ``"all"`` to track every residue, or an explicit
+            sequence of residue identifiers. If None, ProLIF's default is used
+            and interactions with atoms are identified.
         progress
             Show progress bar.
         n_jobs
