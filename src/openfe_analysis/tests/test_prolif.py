@@ -152,7 +152,7 @@ def test_plot_2d_builds_ligand_mol_and_delegates(monkeypatch):
         return fake_ligand_mol
 
     monkeypatch.setattr(
-        "openfe_analysis.prolif.plf.Molecule.from_mda",
+        "openfe_analysis.utils.plotting.plf.Molecule.from_mda",
         fake_from_mda,
     )
 
@@ -167,3 +167,40 @@ def test_plot_2d_builds_ligand_mol_and_delegates(monkeypatch):
     assert calls["plot_lignetwork"][1]["frame"] == 0
     assert calls["plot_lignetwork"][1]["kind"] == "frame"
     assert analysis.universe.trajectory.last_frame == 0
+
+def test_plot_3d_builds_mols_and_delegates(monkeypatch):
+    """plot_3d builds ligand/protein/water mols and delegates to fp.plot_3d."""
+    ag = lambda n: type("AG", (), {"n_atoms": n})()
+    calls = {}
+
+    class DummyFP:
+        ifp = {0: {"x": []}}
+        use_segid = False
+
+        def plot_3d(self, lig, prot, **kw):
+            calls.update(args=(lig, prot), kw=kw)
+            return "fake-3d"
+
+    a = object.__new__(ProLIFAnalysis)
+    a.ligand_ag, a.protein_ag, a.water_ag = ag(10), ag(100), ag(3)
+    a.universe = type("U", (), {"trajectory": {0: None}})()
+    a.fp = DummyFP()
+
+    made = []
+    monkeypatch.setattr(
+        "openfe_analysis.utils.plotting.plf.Molecule.from_mda",
+        lambda ag, **kw: made.append(ag) or object(),
+    )
+
+    assert a.plot_3d(frame=0) == "fake-3d"
+    assert made == [a.ligand_ag, a.protein_ag, a.water_ag]
+    assert calls["kw"]["frame"] == 0
+
+
+def test_plot_methods_raise_without_ifp():
+    """Plotting before run() raises a clear RuntimeError."""
+    a = object.__new__(ProLIFAnalysis)
+    a.fp = type("FP", (), {"ifp": {}})()
+    for call in (a.plot_2d, a.plot_3d, a.plot_barcode):
+        with pytest.raises(RuntimeError, match=r"Run `analysis\.run"):
+            call()
