@@ -255,6 +255,63 @@ class LigandCOMDrift(AnalysisBase):
             self._initial_com,
         )
 
+def _select_ligand(
+    universe: mda.Universe,
+    ligand_selection: str,
+) -> mda.AtomGroup:
+    """
+    Select the ligand AtomGroup, handling cofactors with the same resname.
+
+    In OpenFE hybrid topologies, the alchemical ligand atoms have tempfactors
+    (b-factors) of 0.25, 0.5, or 0.75, while cofactors typically have
+    tempfactors of 0.0. When the default selection `"resname UNK"` matches
+    multiple residues, the ligand is identified as the residue containing
+    atoms with tempfactors strictly between 0 and 1.
+
+    Parameters
+    ----------
+    universe : mda.Universe
+        The MDAnalysis universe to select from.
+    ligand_selection : str
+        MDAnalysis selection string. If this is the default
+        `"resname UNK"` and multiple residues match, the ligand is
+        auto-detected using tempfactors.
+
+    Returns
+    -------
+    mda.AtomGroup
+        The selected ligand atoms.
+    """
+    ligand = universe.select_atoms(ligand_selection)
+
+    # If user provided a custom selection, only one residue matches,
+    # or no atoms matched, return the selection as-is.
+    if ligand_selection != "resname UNK" or len(ligand.residues) <= 1 or ligand.n_atoms == 0:
+        return ligand
+
+    # Multiple UNK residues: identify the ligand by hybrid tempfactors.
+    # In OpenFE hybrid topologies, alchemical atoms have tempfactors
+    # of 0.25 (state A unique), 0.5 (shared), or 0.75 (state B unique).
+    try:
+        has_tempfactors = True
+        universe.atoms.tempfactors
+    except AttributeError:
+        has_tempfactors = False
+
+    if has_tempfactors:
+        hybrid_residues = [
+            res
+            for res in ligand.residues
+            if any(0.0 < tf < 1.0 for tf in res.atoms.tempfactors)
+        ]
+
+        if len(hybrid_residues) == 1:
+            return hybrid_residues[0].atoms
+        elif len(hybrid_residues) > 1:
+            return max(hybrid_residues, key=lambda r: len(r.atoms)).atoms
+
+    # Fallback: no hybrid residues found or no tempfactors available
+    return max(ligand.residues, key=lambda r: len(r.atoms)).atoms
 
 def gather_rms_data(
     pdb_topology: pathlib.Path,
@@ -335,7 +392,7 @@ def gather_rms_data(
             universe = create_universe_single_state(u_top._topology, ds, state_idx)
 
             prot = universe.select_atoms(protein_selection)
-            ligand = universe.select_atoms(ligand_selection)
+            ligand = _select_ligand(universe, ligand_selection)
 
             if prot:
                 apply_complex_alignment_transformations(
