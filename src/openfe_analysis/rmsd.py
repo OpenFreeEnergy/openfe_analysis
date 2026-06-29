@@ -255,6 +255,7 @@ class LigandCOMDrift(AnalysisBase):
             self._initial_com,
         )
 
+
 def _select_ligand(
     universe: mda.Universe,
     ligand_selection: str,
@@ -300,9 +301,7 @@ def _select_ligand(
 
     if has_tempfactors:
         hybrid_residues = [
-            res
-            for res in ligand.residues
-            if any(0.0 < tf < 1.0 for tf in res.atoms.tempfactors)
+            res for res in ligand.residues if any(0.0 < tf < 1.0 for tf in res.atoms.tempfactors)
         ]
 
         if len(hybrid_residues) == 1:
@@ -312,6 +311,7 @@ def _select_ligand(
 
     # Fallback: no hybrid residues found or no tempfactors available
     return max(ligand.residues, key=lambda r: len(r.atoms)).atoms
+
 
 def gather_rms_data(
     pdb_topology: pathlib.Path,
