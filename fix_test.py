@@ -1,4 +1,4 @@
-import MDAnalysis as mda
+content = """import MDAnalysis as mda
 import numpy as np
 from numpy.testing import assert_allclose
 
@@ -159,3 +159,9 @@ def test_select_ligand_custom_selection_unchanged():
     ligand = _select_ligand(u, "resname LIG")
     assert len(ligand) == 3
     assert set(ligand.resids) == {1}
+"""
+
+with open('src/openfe_analysis/tests/test_gather_rms_data.py', 'w') as f:
+    f.write(content)
+
+print("Done! File written successfully.")
