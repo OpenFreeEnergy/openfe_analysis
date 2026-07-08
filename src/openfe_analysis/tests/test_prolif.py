@@ -241,3 +241,92 @@ def test_plot_prolif_functions_raise_without_ifp():
         plot_prolif_3d(fp, ag, ag)
     with pytest.raises(RuntimeError, match="No ProLIF fingerprint data"):
         plot_prolif_barcode(fp)
+
+
+def test_plot_prolif_lignetwork_invalid_frame_raises():
+    """kind='frame' with a frame not in the results raises ValueError."""
+    from openfe_analysis.utils.plotting import plot_prolif_lignetwork
+
+    fp = type("FP", (), {"ifp": {0: {"x": []}}, "use_segid": False})()
+    ag = type("AG", (), {"universe": type("U", (), {"trajectory": {0: None}})()})()
+    with pytest.raises(ValueError, match="not present"):
+        plot_prolif_lignetwork(fp, ag, frame=99, kind="frame")
+
+
+def test_plot_prolif_lignetwork_auto_picks_first_frame(monkeypatch):
+    """With no frame given, the first available frame is used."""
+    from openfe_analysis.utils.plotting import plot_prolif_lignetwork
+
+    calls = {}
+    ag = type("AG", (), {"universe": type("U", (), {"trajectory": {5: None}})()})()
+
+    class DummyFP:
+        ifp = {5: {"x": []}}
+        use_segid = False
+
+        def plot_lignetwork(self, ligand_mol, **kwargs):
+            calls["kw"] = kwargs
+            return "fake-view"
+
+    monkeypatch.setattr(
+        "openfe_analysis.utils.plotting.plf.Molecule.from_mda",
+        lambda ag, **kw: object(),
+    )
+
+    assert plot_prolif_lignetwork(DummyFP(), ag) == "fake-view"
+    assert calls["kw"]["frame"] == 5
+
+
+def test_plot_prolif_barcode_delegates():
+    """plot_prolif_barcode delegates to the fingerprint's plot_barcode."""
+    from openfe_analysis.utils.plotting import plot_prolif_barcode
+
+    calls = {}
+
+    class DummyFP:
+        ifp = {0: {"x": []}}
+
+        def plot_barcode(self, **kwargs):
+            calls["kw"] = kwargs
+            return "fake-barcode"
+
+    assert plot_prolif_barcode(DummyFP()) == "fake-barcode"
+    assert calls["kw"]["xlabel"] == "Frame"
+
+
+def test_plot_prolif_3d_invalid_frame_raises():
+    """plot_prolif_3d with a frame not in the results raises ValueError."""
+    from openfe_analysis.utils.plotting import plot_prolif_3d
+
+    fp = type("FP", (), {"ifp": {0: {"x": []}}, "use_segid": False})()
+    ag = type("AG", (), {"universe": type("U", (), {"trajectory": {0: None}})()})()
+    with pytest.raises(ValueError, match="not present"):
+        plot_prolif_3d(fp, ag, ag, frame=99)
+
+
+def test_plot_prolif_3d_skips_water_when_absent(monkeypatch):
+    """With water_ag=None, no water molecule is built and water_mol stays None."""
+    from openfe_analysis.utils.plotting import plot_prolif_3d
+
+    calls = {}
+
+    def ag():
+        return type("AG", (), {"universe": type("U", (), {"trajectory": {0: None}})()})()
+
+    class DummyFP:
+        ifp = {0: {"x": []}}
+        use_segid = False
+
+        def plot_3d(self, lig, prot, **kw):
+            calls["kw"] = kw
+            return "fake-3d"
+
+    made = []
+    monkeypatch.setattr(
+        "openfe_analysis.utils.plotting.plf.Molecule.from_mda",
+        lambda a, **kw: made.append(a) or object(),
+    )
+
+    assert plot_prolif_3d(DummyFP(), ag(), ag(), water_ag=None, frame=0) == "fake-3d"
+    assert len(made) == 2  # ligand + protein only
+    assert calls["kw"]["water_mol"] is None

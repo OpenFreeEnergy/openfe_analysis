@@ -14,6 +14,34 @@ from .utils.universe_utils import guess_ligand_bonds
 class ProLIFAnalysis:
     """
     ProLIF interaction fingerprint analysis for an OpenFEReader Universe.
+
+    Parameters
+    ----------
+    universe
+        MDAnalysis Universe containing topology and trajectory.
+    ligand_ag
+        mda.AtomGroup representing the ligand.
+    water_order
+        Maximum WaterBridge interaction order (water-water interaction).
+        Only used if "WaterBridge" is tracked.
+    protein_cutoff
+        Distance cutoff in angstrom used to define the protein pocket
+        around the ligand.
+    water_cutoff
+        Distance cutoff in angstrom used to define waters considered
+        around the ligand/protein pocket.
+    interactions
+        Which interactions to track:
+          - None: ProLIF defaults (Hydrophobic, HBDonor, HBAcceptor,
+            PiStacking, Anionic, Cationic, CationPi, PiCation, VdWContact);
+            see ProLIF's ``DEFAULT_INTERACTIONS``:
+            https://github.com/chemosim-lab/ProLIF/blob/6d993eb1b54cd20cc160461dba1ee5e775cb4037/prolif/fingerprint.py#L97
+          - "all": every available interaction, including bridged ones
+            (e.g. WaterBridge)
+          - Sequence[str]: explicit list like ["VdWContact", "HBDonor"]
+    guess_bonds
+        If True, guess bonds for (protein, ligand, water) so ProLIF can
+        recognize donors/acceptors and bonded hydrogens.
     """
 
     def __init__(
@@ -26,37 +54,6 @@ class ProLIFAnalysis:
         interactions: Optional[Sequence[str] | str] = None,
         guess_bonds: bool = True,
     ) -> None:
-        """
-        Initialize the ProLIF analysis.
-
-        Parameters
-        ----------
-        universe
-            MDAnalysis Universe containing topology and trajectory.
-        ligand_ag
-            mda.AtomGroup representing the ligand.
-        water_order
-            Maximum WaterBridge interaction order (water-water interaction).
-            Only used if "WaterBridge" is tracked.
-        protein_cutoff
-            Distance cutoff in angstrom used to define the protein pocket
-            around the ligand.
-        water_cutoff
-            Distance cutoff in angstrom used to define waters considered
-            around the ligand/protein pocket.
-        interactions
-            Which interactions to track:
-              - None: ProLIF defaults (Hydrophobic, HBDonor, HBAcceptor,
-                PiStacking, Anionic, Cationic, CationPi, PiCation, VdWContact);
-                see ProLIF's ``DEFAULT_INTERACTIONS``:
-                https://github.com/chemosim-lab/ProLIF/blob/6d993eb1b54cd20cc160461dba1ee5e775cb4037/prolif/fingerprint.py#L97
-              - "all": every available interaction, including bridged ones
-                (e.g. WaterBridge)
-              - Sequence[str]: explicit list like ["VdWContact", "HBDonor"]
-        guess_bonds
-            If True, guess bonds for (protein, ligand, water) so ProLIF can
-            recognize donors/acceptors and bonded hydrogens.
-        """
         self.universe = universe
         self.ligand_ag = ligand_ag
         self.water_order = water_order
@@ -124,12 +121,6 @@ class ProLIFAnalysis:
             fp_interactions = list(available)
 
         else:
-            # Cover case of false interaction
-            missing = [i for i in interactions if i not in available]
-            if missing:
-                raise ValueError(
-                    f"Unknown interaction(s): {missing}. Available: {available}"
-                )
             fp_interactions = list(interactions)
 
         self._parameters: Optional[dict] = None
