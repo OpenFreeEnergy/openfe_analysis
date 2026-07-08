@@ -141,10 +141,12 @@ def plot_ligand_RMSD(time: list[float], data: list[np.ndarray]) -> plt.Figure:
         title="Ligand RMSD",
     )
 
+
 def plot_prolif_lignetwork(
-    analysis,
-    ligand_mol=None,
+    fingerprint,
+    ligand_ag,
     *,
+    ligand_mol=None,
     frame: Optional[int] = None,
     kind: Literal["aggregate", "frame"] = "frame",
     display_all: bool = False,
@@ -162,18 +164,26 @@ def plot_prolif_lignetwork(
 ):
     """
     2D ProLIF ligand-network visualization.
+
+    Parameters
+    ----------
+    fingerprint : prolif.Fingerprint
+        A fingerprint that has already been run.
+    ligand_ag : mda.AtomGroup
+        Ligand atoms used to build the 2D depiction; its universe is advanced
+        to ``frame`` before rendering.
     """
-    if not analysis.ifp:
+    if not getattr(fingerprint, "ifp", None):
         raise RuntimeError(
-            "No ProLIF fingerprint data found. Run `analysis.run(...)` first."
+            "No ProLIF fingerprint data found; run the fingerprint first."
         )
 
-    available_frames = list(analysis.fp.ifp.keys())
+    available_frames = list(fingerprint.ifp.keys())
 
     if frame is None:
         frame = available_frames[0]
 
-    if kind == "frame" and frame not in analysis.fp.ifp:
+    if kind == "frame" and frame not in fingerprint.ifp:
         preview = available_frames[:10]
         suffix = " ..." if len(available_frames) > 10 else ""
         raise ValueError(
@@ -181,18 +191,17 @@ def plot_prolif_lignetwork(
             f"Available frames: {preview}{suffix}"
         )
 
-    if frame is not None:
-        analysis.universe.trajectory[frame]
+    ligand_ag.universe.trajectory[frame]
 
     if ligand_mol is None:
         ligand_mol = plf.Molecule.from_mda(
-            analysis.ligand_ag,
+            ligand_ag,
             inferrer=None,
             implicit_hydrogens=False,
-            use_segid=analysis.fp.use_segid,
+            use_segid=fingerprint.use_segid,
         )
 
-    return analysis.fp.plot_lignetwork(
+    return fingerprint.plot_lignetwork(
         ligand_mol,
         kind=kind,
         frame=frame,
@@ -210,12 +219,57 @@ def plot_prolif_lignetwork(
         show_interaction_data=show_interaction_data,
     )
 
+
+def plot_prolif_barcode(
+    fingerprint,
+    *,
+    figsize: tuple[int, int] = (8, 10),
+    dpi: int = 100,
+    interactive: bool = True,
+    n_frame_ticks: int = 10,
+    residues_tick_location: Literal["top", "bottom"] = "top",
+    xlabel: str = "Frame",
+    subplots_kwargs: Optional[dict] = None,
+    tight_layout_kwargs: Optional[dict] = None,
+):
+    """
+    Barcode plot of interactions across frames.
+
+    Parameters
+    ----------
+    fingerprint : prolif.Fingerprint
+        A fingerprint that has already been run.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+    """
+    if not getattr(fingerprint, "ifp", None):
+        raise RuntimeError(
+            "No ProLIF fingerprint data found; run the fingerprint first."
+        )
+
+    return fingerprint.plot_barcode(
+        figsize=figsize,
+        dpi=dpi,
+        interactive=interactive,
+        n_frame_ticks=n_frame_ticks,
+        residues_tick_location=residues_tick_location,
+        xlabel=xlabel,
+        subplots_kwargs=subplots_kwargs,
+        tight_layout_kwargs=tight_layout_kwargs,
+    )
+
+
 def plot_prolif_3d(
-    analysis,
+    fingerprint,
+    ligand_ag,
+    protein_ag,
+    water_ag=None,
+    *,
     ligand_mol=None,
     protein_mol=None,
     water_mol=None,
-    *,
     frame: int = 0,
     size: tuple[int, int] = (650, 600),
     display_all: bool = False,
@@ -224,40 +278,49 @@ def plot_prolif_3d(
 ):
     """
     3D ProLIF interaction visualization using py3Dmol.
+
+    Parameters
+    ----------
+    fingerprint : prolif.Fingerprint
+        A fingerprint that has already been run.
+    ligand_ag, protein_ag : mda.AtomGroup
+        Ligand and pocket atoms used to build the 3D depiction.
+    water_ag : mda.AtomGroup, optional
+        Water atoms for water-mediated interactions; ignored if None/empty.
     """
-    if not analysis.ifp:
+    if not getattr(fingerprint, "ifp", None):
         raise RuntimeError(
-            "No ProLIF fingerprint data found. Run `analysis.run(...)` first."
+            "No ProLIF fingerprint data found; run the fingerprint first."
         )
 
-    if frame not in analysis.fp.ifp:
+    if frame not in fingerprint.ifp:
         raise ValueError(f"frame={frame} not present in fingerprint results.")
 
-    analysis.universe.trajectory[frame]
+    ligand_ag.universe.trajectory[frame]
 
     if ligand_mol is None:
         ligand_mol = plf.Molecule.from_mda(
-            analysis.ligand_ag,
+            ligand_ag,
             inferrer=None,
             implicit_hydrogens=False,
-            use_segid=analysis.fp.use_segid,
+            use_segid=fingerprint.use_segid,
         )
 
     if protein_mol is None:
         protein_mol = plf.Molecule.from_mda(
-            analysis.protein_ag,
+            protein_ag,
             implicit_hydrogens=False,
-            use_segid=analysis.fp.use_segid,
+            use_segid=fingerprint.use_segid,
         )
 
-    if water_mol is None and analysis.water_ag.n_atoms:
+    if water_mol is None and water_ag is not None and water_ag.n_atoms:
         water_mol = plf.Molecule.from_mda(
-            analysis.water_ag,
+            water_ag,
             implicit_hydrogens=False,
-            use_segid=analysis.fp.use_segid,
+            use_segid=fingerprint.use_segid,
         )
 
-    return analysis.fp.plot_3d(
+    return fingerprint.plot_3d(
         ligand_mol,
         protein_mol,
         water_mol=water_mol,

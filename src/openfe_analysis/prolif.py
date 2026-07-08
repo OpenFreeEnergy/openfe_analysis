@@ -5,11 +5,10 @@ from typing import Any, Dict, Optional, Sequence, Tuple, Literal
 import warnings
 
 import MDAnalysis as mda
-from MDAnalysis.guesser.tables import vdwradii as MDA_VDWRADII
 
 import prolif as plf
 
-from .utils.plotting import plot_prolif_3d, plot_prolif_lignetwork
+from .utils.universe_utils import guess_ligand_bonds
 
 
 class ProLIFAnalysis:
@@ -26,7 +25,6 @@ class ProLIFAnalysis:
         water_cutoff: float = 8.0,
         interactions: Optional[Sequence[str] | str] = None,
         guess_bonds: bool = True,
-        vdwradii: Optional[Dict[str, float]] = None,
     ) -> None:
         """
         Initialize the ProLIF analysis.
@@ -48,16 +46,16 @@ class ProLIFAnalysis:
             around the ligand/protein pocket.
         interactions
             Which interactions to track:
-              - None: ProLIF defaults
-              - "all": all registered (non-bridged; depends on ProLIF version)
+              - None: ProLIF defaults (Hydrophobic, HBDonor, HBAcceptor,
+                PiStacking, Anionic, Cationic, CationPi, PiCation, VdWContact);
+                see ProLIF's ``DEFAULT_INTERACTIONS``:
+                https://github.com/chemosim-lab/ProLIF/blob/6d993eb1b54cd20cc160461dba1ee5e775cb4037/prolif/fingerprint.py#L97
+              - "all": every available interaction, including bridged ones
+                (e.g. WaterBridge)
               - Sequence[str]: explicit list like ["VdWContact", "HBDonor"]
         guess_bonds
             If True, guess bonds for (protein, ligand, water) so ProLIF can
             recognize donors/acceptors and bonded hydrogens.
-        vdwradii
-            Optional dict of van der Waals radii used by MDAnalysis bond guesser.
-            Useful when your topology contains types the guesser doesn't know
-            (e.g. "Cl", "Na"). If None, uses coded defaults.
         """
         self.universe = universe
         self.ligand_ag = ligand_ag
@@ -66,31 +64,34 @@ class ProLIFAnalysis:
         self.frames: Optional[np.ndarray] = None
         self.times: Optional[np.ndarray] = None
         self.n_frames: Optional[int] = None
-        self.ifp_df = None
 
-        # --- Guess bonds once on stable selections so RDKit/ProLIF can detect HBonds ---
         if guess_bonds:
-            if vdwradii is None:
-                vdwradii = dict(MDA_VDWRADII)
-                vdwradii.update(
-                    {
-                        "Cl": vdwradii["CL"],
-                        "Br": vdwradii["BR"],
-                        "Na": vdwradii["NA"],
-                    }
-                )
+            self._guess_bonds()
 
-            # Protein: guess on the full protein so any pocket residue later has bonds
-            universe.select_atoms("protein").guess_bonds(vdwradii=vdwradii)
+        self._setup_selections(protein_cutoff, water_cutoff)
 
-            # Ligand: stable group
-            self.ligand_ag.guess_bonds(vdwradii=vdwradii)
+        self.fp = self._build_fingerprint(interactions)
 
-            # Water: only if you care about water-mediated interactions
-            wat_all = universe.select_atoms("water")
-            if wat_all.n_atoms:
-                wat_all.guess_bonds(vdwradii=vdwradii)
+    def _guess_bonds(self) -> None:
+        """
+        Guess bonds for the protein, ligand and water selections in-place so
+        RDKit/ProLIF can detect donors/acceptors and bonded hydrogens.
+        """
+        # Protein: guess on the full protein so any pocket residue later has bonds
+        guess_ligand_bonds(self.universe.select_atoms("protein"))
 
+        # Ligand: stable group
+        guess_ligand_bonds(self.ligand_ag)
+
+        # Water: only if water-mediated interactions are of interest
+        water = self.universe.select_atoms("water")
+        if water.n_atoms:
+            guess_ligand_bonds(water)
+
+    def _setup_selections(self, protein_cutoff: float, water_cutoff: float) -> None:
+        """
+        Build the updating pocket and water selections around the ligand.
+        """
         self.protein_ag = self.universe.select_atoms(
             f"protein and byres around {protein_cutoff} group ligand",
             ligand=self.ligand_ag,
@@ -103,36 +104,42 @@ class ProLIFAnalysis:
             updating=True,
         )
 
+    def _build_fingerprint(
+        self, interactions: Optional[Sequence[str] | str]
+    ) -> plf.Fingerprint:
+        """
+        Resolve the requested interactions and construct the ProLIF Fingerprint.
+
+        Configures WaterBridge parameters when it is requested and waters are
+        present, and drops WaterBridge (with a warning) when they are not.
+        """
         available = plf.Fingerprint.list_available(show_bridged=True)
 
-        fp_interactions: Optional[list[str] | str]
+        fp_interactions: Optional[list[str]]
         if interactions is None:
             fp_interactions = None
 
         elif interactions == "all":
-            fp_interactions = "all"
+            # ProLIF's "all" excludes bridged interactions (e.g. WaterBridge)
+            fp_interactions = list(available)
 
         else:
             # Cover case of false interaction
             missing = [i for i in interactions if i not in available]
             if missing:
                 raise ValueError(
-                    f"Unknown interaction(s): {missing}. " f"Available: {available}"
+                    f"Unknown interaction(s): {missing}. Available: {available}"
                 )
             fp_interactions = list(interactions)
 
-        self._parameters = None
-        if (
-            fp_interactions is not None
-            and fp_interactions != "all"
-            and "WaterBridge" in fp_interactions
-        ):
+        self._parameters: Optional[dict] = None
+        if fp_interactions is not None and "WaterBridge" in fp_interactions:
             if self.water_ag.n_atoms == 0:
                 warnings.warn(
                     "WaterBridge selected but water selection is empty at the initial "
                     "frame; removing WaterBridge from the requested interactions.",
                     UserWarning,
-                    stacklevel=2,
+                    stacklevel=3,
                 )
                 fp_interactions = [
                     interaction
@@ -145,12 +152,11 @@ class ProLIFAnalysis:
                 }
 
         if not fp_interactions:
-            self.fp = plf.Fingerprint(parameters=self._parameters)
-        else:
-            self.fp = plf.Fingerprint(
-                interactions=fp_interactions,
-                parameters=self._parameters,
-            )
+            return plf.Fingerprint(parameters=self._parameters)
+        return plf.Fingerprint(
+            interactions=fp_interactions,
+            parameters=self._parameters,
+        )
 
     def run(
         self,
@@ -249,58 +255,8 @@ class ProLIFAnalysis:
         """
         return getattr(self.fp, "ifp", None)
 
-    # For now, depending on what we do withe the data
     def to_dataframe(self, **kwargs):
         """
         Transform fingerprint results to pd.DataFrame.
         """
-        df = self.fp.to_dataframe(**kwargs)
-        self.ifp_df = df
-        return df
-
-    def plot_lignetwork(self, ligand_mol=None, **kwargs):
-        """
-        2D ProLIF ligand-network visualization.
-        """
-        return plot_prolif_lignetwork(self, ligand_mol, **kwargs)
-
-    plot_2d = plot_lignetwork
-
-    def plot_barcode(
-        self,
-        *,
-        figsize: tuple[int, int] = (8, 10),
-        dpi: int = 100,
-        interactive: bool = True,
-        n_frame_ticks: int = 10,
-        residues_tick_location: Literal["top", "bottom"] = "top",
-        xlabel: str = "Frame",
-        subplots_kwargs: Optional[dict] = None,
-        tight_layout_kwargs: Optional[dict] = None,
-    ):
-        """
-        Barcode plot of interactions across frames.
-        """
-        if not self.ifp:
-            raise RuntimeError(
-                "No ProLIF fingerprint data found. Run `analysis.run(...)` first."
-            )
-
-        return self.fp.plot_barcode(
-            figsize=figsize,
-            dpi=dpi,
-            interactive=interactive,
-            n_frame_ticks=n_frame_ticks,
-            residues_tick_location=residues_tick_location,
-            xlabel=xlabel,
-            subplots_kwargs=subplots_kwargs,
-            tight_layout_kwargs=tight_layout_kwargs,
-        )
-
-    def plot_3d(self, ligand_mol=None, protein_mol=None, water_mol=None, **kwargs):
-        """
-        3D ProLIF interaction visualization using py3Dmol.
-        """
-        return plot_prolif_3d(
-            self, ligand_mol, protein_mol, water_mol=water_mol, **kwargs
-        )
+        return self.fp.to_dataframe(**kwargs)
