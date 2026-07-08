@@ -54,6 +54,7 @@ def test_multichain_rmsd_shifting(simulation_skipped_nc, hybrid_system_skipped_p
     u = universe_utils.create_universe_single_state(
         hybrid_system_skipped_pdb, simulation_skipped_nc, 0
     )
+    u.select_atoms("protein").guess_bonds()
     prot = u.select_atoms("protein and name CA")
     # Do other transformations, but no shifting
     unwrap_tr = unwrap(prot)
@@ -75,7 +76,9 @@ def test_multichain_rmsd_shifting(simulation_skipped_nc, hybrid_system_skipped_p
     u2 = universe_utils.create_universe_single_state(
         hybrid_system_skipped_pdb, simulation_skipped_nc, 0
     )
+    u2.select_atoms("protein").guess_bonds()
     prot2 = u2.select_atoms("protein and name CA")
+    assert len(list(prot2.fragments)) == 2
     apply_transformations.apply_complex_alignment_transformations(u2, protein=prot2)
 
     R2 = rms.RMSD(prot2)

@@ -58,11 +58,15 @@ def apply_complex_alignment_transformations(
     # 1. Make molecules whole (protein + optional ligand)
     transforms = [unwrap(group)]
 
-    # 2. Closest image shift for protein chains + ligand (if present)
-    chains = [seg.atoms for seg in protein.segments]
-    shift_targets = chains[1:] + ligands
+    # 2. Closest image shift for protein fragments + ligand (if present)
+    fragments = list(protein.fragments)
+    # Pick the largest fragment as the reference
+    ref_idx = max(range(len(fragments)), key=lambda i: fragments[i].n_atoms)
+    reference = fragments[ref_idx]
+    shift_targets = [f for i, f in enumerate(fragments) if i != ref_idx]
+    shift_targets += ligands
     if shift_targets:
-        transforms.append(ClosestImageShift(chains[0], shift_targets))
+        transforms.append(ClosestImageShift(reference=reference, targets=shift_targets))
 
     # 3. Align on protein backbone/atoms
     transforms.append(Aligner(protein))
