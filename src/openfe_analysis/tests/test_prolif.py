@@ -135,6 +135,40 @@ def test_waterbridge_empty_selection_warns_and_skips_parameters(
     assert analysis._parameters is None
 
 
+def test_waterbridge_with_water_sets_parameters(
+    simulation_skipped_nc, hybrid_system_skipped_pdb
+):
+    """
+    Requesting WaterBridge with waters present should configure the
+    WaterBridge parameters.
+    """
+    u = mda.Universe(
+        hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, index=0
+    )
+    ligand_ag = u.select_atoms("resname UNK")
+
+    analysis = ProLIFAnalysis(u, ligand_ag, interactions=["WaterBridge"])
+
+    assert analysis._parameters is not None
+    assert "WaterBridge" in analysis._parameters
+
+
+def test_guess_bonds_false_skips_guessing(
+    simulation_skipped_nc, hybrid_system_skipped_pdb
+):
+    """guess_bonds=False should skip bond guessing and still build a fingerprint."""
+    u = mda.Universe(
+        hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, index=0
+    )
+    ligand_ag = u.select_atoms("resname UNK")
+
+    analysis = ProLIFAnalysis(
+        u, ligand_ag, interactions=["VdWContact"], guess_bonds=False
+    )
+
+    assert analysis.fp is not None
+
+
 def test_plot_prolif_lignetwork_builds_ligand_mol_and_delegates(monkeypatch):
     """
     plot_prolif_lignetwork builds a ligand molecule when one is not provided
