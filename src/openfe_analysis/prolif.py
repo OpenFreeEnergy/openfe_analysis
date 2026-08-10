@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import numpy as np
-from typing import Any, Dict, Optional, Sequence, Tuple, Literal
 import warnings
+from typing import Any, Dict, Literal, Optional, Sequence, Tuple
 
 import MDAnalysis as mda
-
+import numpy as np
 import prolif as plf
 
 from .utils.universe_utils import guess_ligand_bonds
@@ -101,9 +100,7 @@ class ProLIFAnalysis:
             updating=True,
         )
 
-    def _build_fingerprint(
-        self, interactions: Optional[Sequence[str] | str]
-    ) -> plf.Fingerprint:
+    def _build_fingerprint(self, interactions: Optional[Sequence[str] | str]) -> plf.Fingerprint:
         """
         Resolve the requested interactions and construct the ProLIF Fingerprint.
 
@@ -133,9 +130,7 @@ class ProLIFAnalysis:
                     stacklevel=3,
                 )
                 fp_interactions = [
-                    interaction
-                    for interaction in fp_interactions
-                    if interaction != "WaterBridge"
+                    interaction for interaction in fp_interactions if interaction != "WaterBridge"
                 ]
             else:
                 self._parameters = {

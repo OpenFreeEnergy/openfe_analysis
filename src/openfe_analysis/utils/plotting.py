@@ -174,9 +174,7 @@ def plot_prolif_lignetwork(
         to ``frame`` before rendering.
     """
     if not getattr(fingerprint, "ifp", None):
-        raise RuntimeError(
-            "No ProLIF fingerprint data found; run the fingerprint first."
-        )
+        raise RuntimeError("No ProLIF fingerprint data found; run the fingerprint first.")
 
     available_frames = list(fingerprint.ifp.keys())
 
@@ -187,8 +185,7 @@ def plot_prolif_lignetwork(
         preview = available_frames[:10]
         suffix = " ..." if len(available_frames) > 10 else ""
         raise ValueError(
-            f"frame={frame} not present in fingerprint results. "
-            f"Available frames: {preview}{suffix}"
+            f"frame={frame} not present in fingerprint results. Available frames: {preview}{suffix}"
         )
 
     ligand_ag.universe.trajectory[frame]
@@ -245,9 +242,7 @@ def plot_prolif_barcode(
     matplotlib.figure.Figure
     """
     if not getattr(fingerprint, "ifp", None):
-        raise RuntimeError(
-            "No ProLIF fingerprint data found; run the fingerprint first."
-        )
+        raise RuntimeError("No ProLIF fingerprint data found; run the fingerprint first.")
 
     return fingerprint.plot_barcode(
         figsize=figsize,
@@ -289,9 +284,7 @@ def plot_prolif_3d(
         Water atoms for water-mediated interactions; ignored if None/empty.
     """
     if not getattr(fingerprint, "ifp", None):
-        raise RuntimeError(
-            "No ProLIF fingerprint data found; run the fingerprint first."
-        )
+        raise RuntimeError("No ProLIF fingerprint data found; run the fingerprint first.")
 
     if frame not in fingerprint.ifp:
         raise ValueError(f"frame={frame} not present in fingerprint results.")

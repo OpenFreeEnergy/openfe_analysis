@@ -3,24 +3,18 @@ import numpy as np
 import pytest
 from rdkit.Chem import Lipinski
 
-from openfe_analysis.reader import FEReader
 from openfe_analysis.prolif import ProLIFAnalysis
+from openfe_analysis.reader import FEReader
 
 
-def test_prolifanalysis_runs_vdwcontact(
-    simulation_skipped_nc, hybrid_system_skipped_pdb
-):
+def test_prolifanalysis_runs_vdwcontact(simulation_skipped_nc, hybrid_system_skipped_pdb):
     """
     Test for identification of interactions
     """
-    u = mda.Universe(
-        hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, index=0
-    )
+    u = mda.Universe(hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, index=0)
     ligand_ag = u.select_atoms("resname UNK")
 
-    analysis = ProLIFAnalysis(
-        u, ligand_ag, interactions=["VdWContact"], guess_bonds=True
-    )
+    analysis = ProLIFAnalysis(u, ligand_ag, interactions=["VdWContact"], guess_bonds=True)
     analysis.run(stop=5, step=1, n_jobs=1, progress=False)
 
     df = analysis.to_dataframe(dtype=np.uint8)
@@ -35,20 +29,14 @@ def test_prolifanalysis_runs_vdwcontact(
     assert sum(len(v) for v in analysis.fp.ifp.values()) > 0
 
 
-def test_guess_bonds_enables_protein_chemistry(
-    simulation_skipped_nc, hybrid_system_skipped_pdb
-):
+def test_guess_bonds_enables_protein_chemistry(simulation_skipped_nc, hybrid_system_skipped_pdb):
     """
     Test for protein connectivity
     """
-    u = mda.Universe(
-        hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, index=0
-    )
+    u = mda.Universe(hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, index=0)
     ligand_ag = u.select_atoms("resname UNK")
 
-    analysis = ProLIFAnalysis(
-        u, ligand_ag, interactions=["VdWContact"], guess_bonds=True
-    )
+    analysis = ProLIFAnalysis(u, ligand_ag, interactions=["VdWContact"], guess_bonds=True)
 
     # pick a residue from the pocket and check it has connectivity in RDKit
     u.trajectory[0]
@@ -61,16 +49,12 @@ def test_guess_bonds_enables_protein_chemistry(
     assert Lipinski.NumHDonors(prot_mol) + Lipinski.NumHAcceptors(prot_mol) > 0
 
 
-def test_prolifanalysis_accepts_all_keyword(
-    simulation_skipped_nc, hybrid_system_skipped_pdb
-):
+def test_prolifanalysis_accepts_all_keyword(simulation_skipped_nc, hybrid_system_skipped_pdb):
     """
     The string "all" should be accepted as the special keyword for
     all available ProLIF interactions.
     """
-    u = mda.Universe(
-        hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, index=0
-    )
+    u = mda.Universe(hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, index=0)
     ligand_ag = u.select_atoms("resname UNK")
 
     analysis = ProLIFAnalysis(u, ligand_ag, interactions="all", guess_bonds=True)
@@ -78,13 +62,9 @@ def test_prolifanalysis_accepts_all_keyword(
     assert analysis.fp is not None
 
 
-def test_default_interactions_are_prolif_defaults(
-    simulation_skipped_nc, hybrid_system_skipped_pdb
-):
+def test_default_interactions_are_prolif_defaults(simulation_skipped_nc, hybrid_system_skipped_pdb):
     """interactions=None should track ProLIF's DEFAULT_INTERACTIONS."""
-    u = mda.Universe(
-        hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, index=0
-    )
+    u = mda.Universe(hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, index=0)
     ligand_ag = u.select_atoms("resname UNK")
 
     analysis = ProLIFAnalysis(u, ligand_ag, interactions=None)
@@ -110,9 +90,7 @@ def test_waterbridge_empty_selection_warns_and_skips_parameters(
     Requesting WaterBridge with an empty water selection should warn
     instead of raising, and should not configure WaterBridge parameters.
     """
-    u = mda.Universe(
-        hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, index=0
-    )
+    u = mda.Universe(hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, index=0)
     ligand_ag = u.select_atoms("resname UNK")
 
     original_select_atoms = u.select_atoms
@@ -135,16 +113,12 @@ def test_waterbridge_empty_selection_warns_and_skips_parameters(
     assert analysis._parameters is None
 
 
-def test_waterbridge_with_water_sets_parameters(
-    simulation_skipped_nc, hybrid_system_skipped_pdb
-):
+def test_waterbridge_with_water_sets_parameters(simulation_skipped_nc, hybrid_system_skipped_pdb):
     """
     Requesting WaterBridge with waters present should configure the
     WaterBridge parameters.
     """
-    u = mda.Universe(
-        hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, index=0
-    )
+    u = mda.Universe(hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, index=0)
     ligand_ag = u.select_atoms("resname UNK")
 
     analysis = ProLIFAnalysis(u, ligand_ag, interactions=["WaterBridge"])
@@ -153,18 +127,12 @@ def test_waterbridge_with_water_sets_parameters(
     assert "WaterBridge" in analysis._parameters
 
 
-def test_guess_bonds_false_skips_guessing(
-    simulation_skipped_nc, hybrid_system_skipped_pdb
-):
+def test_guess_bonds_false_skips_guessing(simulation_skipped_nc, hybrid_system_skipped_pdb):
     """guess_bonds=False should skip bond guessing and still build a fingerprint."""
-    u = mda.Universe(
-        hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, index=0
-    )
+    u = mda.Universe(hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, index=0)
     ligand_ag = u.select_atoms("resname UNK")
 
-    analysis = ProLIFAnalysis(
-        u, ligand_ag, interactions=["VdWContact"], guess_bonds=False
-    )
+    analysis = ProLIFAnalysis(u, ligand_ag, interactions=["VdWContact"], guess_bonds=False)
 
     assert analysis.fp is not None
 
