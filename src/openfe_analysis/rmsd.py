@@ -343,25 +343,28 @@ def gather_rms_data(
                     protein=prot,
                     ligands=[ligand] if ligand.n_atoms > 0 else None,
                 )
+
             elif ligand.n_atoms > 0:
                 apply_ligand_alignment_transformations(universe, ligand=ligand)
-
-            if prot:
-                prot_rmsd = RMSDAnalysis(prot).run(step=skip)
-                output["protein_RMSD"].append(prot_rmsd.results.rmsd)
-
-                prot_rmsd2d = Protein2DRMSD(prot).run(step=skip)
-                output["protein_2D_RMSD"].append(prot_rmsd2d.results.rmsd2d)
-
-            if ligand:
-                lig_rmsd = RMSDAnalysis(ligand, mass_weighted=True).run(step=skip)
-                output["ligand_RMSD"].append(lig_rmsd.results.rmsd)
-
-                lig_com_drift = LigandCOMDrift(ligand).run(step=skip)
-                output["ligand_wander"].append(lig_com_drift.results.com_drift)
 
             output["time(ps)"] = (
                 np.arange(len(universe.trajectory))[::skip] * universe.trajectory.dt
             )
+            # unwrap/shift/align run once per frame, here
+            universe.transfer_to_memory(step=skip)
+
+            if prot:
+                prot_rmsd = RMSDAnalysis(prot).run()
+                output["protein_RMSD"].append(prot_rmsd.results.rmsd)
+
+                prot_rmsd2d = Protein2DRMSD(prot).run()
+                output["protein_2D_RMSD"].append(prot_rmsd2d.results.rmsd2d)
+
+            if ligand:
+                lig_rmsd = RMSDAnalysis(ligand, mass_weighted=True).run()
+                output["ligand_RMSD"].append(lig_rmsd.results.rmsd)
+
+                lig_com_drift = LigandCOMDrift(ligand).run()
+                output["ligand_wander"].append(lig_com_drift.results.com_drift)
 
     return output
