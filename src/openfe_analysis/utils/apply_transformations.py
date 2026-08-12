@@ -44,6 +44,12 @@ def apply_complex_alignment_transformations(
     if protein is None or not protein:
         raise ValueError("protein AtomGroup is empty or None")
 
+    if not protein.bonds:
+        raise ValueError(
+            "protein AtomGroup has no bonds which would lead to wrong alignment. "
+            "Call guess_bonds() on the protein before applying these transformations."
+        )
+
     if isinstance(ligands, mda.AtomGroup):
         raise TypeError(
             "ligands must be a list of AtomGroups, not a single AtomGroup. "
