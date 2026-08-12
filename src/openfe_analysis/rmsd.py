@@ -328,7 +328,9 @@ def gather_rms_data(
             skip = max(n_frames // 500, 1)
 
         u_top = mda.Universe(pdb_topology)
-        u_top.select_atoms("protein").guess_bonds()
+        protein = u_top.select_atoms("protein")
+        if protein:
+            protein.guess_bonds()
 
         for state_idx in range(n_lambda):
             # cheeky, but we can read the PDB topology once and reuse per universe
