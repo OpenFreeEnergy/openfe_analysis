@@ -129,3 +129,14 @@ def test_empty_ligand_raises(universe_single_state):
         apply_transformations.apply_ligand_alignment_transformations(
             universe_single_state, ligand=empty
         )
+
+
+def test_missing_protein_bond_raises(universe_single_state):
+    prot = universe_single_state.select_atoms("protein and name CA")
+    ligand = universe_single_state.select_atoms("resname UNK")
+    assert not prot.bonds  # precondition: the guard's trigger is actually present
+
+    with pytest.raises(ValueError, match="no bonds"):
+        apply_transformations.apply_complex_alignment_transformations(
+            universe_single_state, prot, [ligand]
+        )
