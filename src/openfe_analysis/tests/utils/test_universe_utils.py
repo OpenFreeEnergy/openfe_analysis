@@ -13,8 +13,8 @@ def universe(hybrid_system_skipped_pdb, simulation_skipped_nc):
     universe = create_universe_single_state(
         hybrid_system_skipped_pdb, simulation_skipped_nc, state=0
     )
+    universe.select_atoms("protein").guess_bonds()
     prot = universe.select_atoms("protein and name CA")
-    prot.guess_bonds()
     ligand = universe.select_atoms("resname UNK")
     apply_transformations.apply_complex_alignment_transformations(universe, prot, [ligand])
     yield universe
@@ -26,8 +26,8 @@ def ligand_ag(hybrid_system_skipped_pdb, simulation_skipped_nc):
     universe = create_universe_single_state(
         hybrid_system_skipped_pdb, simulation_skipped_nc, state=0
     )
+    universe.select_atoms("protein").guess_bonds()
     prot = universe.select_atoms("protein and name CA")
-    prot.guess_bonds()
     ligand = universe.select_atoms("resname UNK")
     apply_transformations.apply_complex_alignment_transformations(universe, prot, [ligand])
     ag = select_state_atoms(universe, end_state="A").select_atoms("resname UNK")
