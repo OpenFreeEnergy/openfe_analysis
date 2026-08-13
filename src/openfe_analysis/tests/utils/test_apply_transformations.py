@@ -24,10 +24,11 @@ def universe_single_state(hybrid_system_skipped_pdb, simulation_skipped_nc):
 def test_chain_radius_of_gyration_stable(universe_single_state):
     """Protein chains should not explode or collapse due to PBC errors
     after applying alignment transformations."""
-    protein = universe_single_state.select_atoms("protein and name CA")
-    apply_transformations.apply_complex_alignment_transformations(universe_single_state, protein)
+    universe_single_state.select_atoms("protein").guess_bonds()
+    prot = universe_single_state.select_atoms("protein and name CA")
+    apply_transformations.apply_complex_alignment_transformations(universe_single_state, prot)
 
-    chain = protein.segments[0].atoms
+    chain = prot.segments[0].atoms
     rgs = []
     for ts in universe_single_state.trajectory[:50]:
         rgs.append(chain.radius_of_gyration())
@@ -54,6 +55,7 @@ def test_multichain_rmsd_shifting(simulation_skipped_nc, hybrid_system_skipped_p
     u = universe_utils.create_universe_single_state(
         hybrid_system_skipped_pdb, simulation_skipped_nc, 0
     )
+    u.select_atoms("protein").guess_bonds()
     prot = u.select_atoms("protein and name CA")
     # Do other transformations, but no shifting
     unwrap_tr = unwrap(prot)
@@ -75,7 +77,9 @@ def test_multichain_rmsd_shifting(simulation_skipped_nc, hybrid_system_skipped_p
     u2 = universe_utils.create_universe_single_state(
         hybrid_system_skipped_pdb, simulation_skipped_nc, 0
     )
+    u2.select_atoms("protein").guess_bonds()
     prot2 = u2.select_atoms("protein and name CA")
+    assert len(list(prot2.fragments)) == 2
     apply_transformations.apply_complex_alignment_transformations(u2, protein=prot2)
 
     R2 = rms.RMSD(prot2)
@@ -87,6 +91,7 @@ def test_multichain_rmsd_shifting(simulation_skipped_nc, hybrid_system_skipped_p
 
 def test_rmsd_reference_is_first_frame(universe_single_state):
     """After alignment, RMSD at the first frame should be zero."""
+    universe_single_state.select_atoms("protein").guess_bonds()
     prot = universe_single_state.select_atoms("protein and name CA")
     apply_transformations.apply_complex_alignment_transformations(
         universe_single_state, protein=prot
@@ -109,6 +114,7 @@ def test_empty_protein_raises(universe_single_state):
 
 
 def test_atomgroup_as_ligands_raises(universe_single_state):
+    universe_single_state.select_atoms("protein").guess_bonds()
     prot = universe_single_state.select_atoms("protein and name CA")
     lig = universe_single_state.select_atoms("resname UNK")
     with pytest.raises(TypeError, match="list of AtomGroups"):
@@ -122,4 +128,15 @@ def test_empty_ligand_raises(universe_single_state):
     with pytest.raises(ValueError, match="empty or None"):
         apply_transformations.apply_ligand_alignment_transformations(
             universe_single_state, ligand=empty
+        )
+
+
+def test_missing_protein_bond_raises(universe_single_state):
+    prot = universe_single_state.select_atoms("protein and name CA")
+    ligand = universe_single_state.select_atoms("resname UNK")
+    assert not prot.bonds  # precondition: the guard's trigger is actually present
+
+    with pytest.raises(ValueError, match="no bonds"):
+        apply_transformations.apply_complex_alignment_transformations(
+            universe_single_state, prot, [ligand]
         )
