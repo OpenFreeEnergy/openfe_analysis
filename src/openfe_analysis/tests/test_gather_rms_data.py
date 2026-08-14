@@ -1,7 +1,8 @@
+import MDAnalysis as mda
 import numpy as np
 from numpy.testing import assert_allclose
 
-from openfe_analysis.rmsd import gather_rms_data
+from openfe_analysis.rmsd import _select_ligand, gather_rms_data
 
 
 def test_gather_rms_data_regression(simulation_nc, hybrid_system_pdb):
@@ -31,7 +32,6 @@ def test_gather_rms_data_regression(simulation_nc, hybrid_system_pdb):
         rtol=1e-3,
     )
     assert len(output["protein_2D_RMSD"]) == 3
-    # 15 entries because 6 * 6 frames // 2
     assert len(output["protein_2D_RMSD"][0]) == 15
     assert_allclose(
         output["protein_2D_RMSD"][0][:6],
@@ -49,7 +49,6 @@ def test_gather_rms_data_regression_skippednc(simulation_skipped_nc, hybrid_syst
 
     assert_allclose(output["time(ps)"], np.arange(0, 5001, 100))
     assert len(output["protein_RMSD"]) == 11
-    # RMSD is low for this multichain protein
     assert_allclose(
         output["protein_RMSD"][0][:6],
         [0, 1.089747, 1.006143, 1.045068, 1.476353, 1.332893],
@@ -68,7 +67,6 @@ def test_gather_rms_data_regression_skippednc(simulation_skipped_nc, hybrid_syst
         rtol=1e-3,
     )
     assert len(output["protein_2D_RMSD"]) == 11
-    # 15 entries because 6 * 6 frames // 2
     assert len(output["protein_2D_RMSD"][0]) == 1275
     assert_allclose(
         output["protein_2D_RMSD"][0][:6],
@@ -82,13 +80,82 @@ def test_gather_rms_data_ligand_only(simulation_skipped_nc, hybrid_system_skippe
         hybrid_system_skipped_pdb,
         simulation_skipped_nc,
         skip=100,
-        protein_selection="resname DOESNOTEXIST",  # no protein
+        protein_selection="resname DOESNOTEXIST",
     )
 
-    # No protein results
     assert len(output["protein_RMSD"]) == 0
     assert len(output["protein_2D_RMSD"]) == 0
-
-    # Ligand results should still be present
     assert len(output["ligand_RMSD"]) > 0
     assert len(output["ligand_wander"]) > 0
+
+
+def _make_test_universe(tempfactors, resids, resnames=None):
+    n_atoms = len(tempfactors)
+    n_residues = len(set(resids))
+    unique_resids = list(dict.fromkeys(resids))
+    resid_to_idx = {r: i for i, r in enumerate(unique_resids)}
+    atom_resindex = [resid_to_idx[r] for r in resids]
+
+    if resnames is None:
+        resnames = ["UNK"] * n_residues
+
+    u = mda.Universe.empty(
+        n_atoms=n_atoms,
+        n_residues=n_residues,
+        atom_resindex=atom_resindex,
+    )
+    u.add_TopologyAttr("names", [f"C{i}" for i in range(1, n_atoms + 1)])
+    u.add_TopologyAttr("resnames", resnames)
+    u.add_TopologyAttr("resids", unique_resids)
+    u.add_TopologyAttr("tempfactors", tempfactors)
+    return u
+
+
+def test_select_ligand_single_unk():
+    u = _make_test_universe(
+        tempfactors=[0.25, 0.50, 0.75],
+        resids=[1, 1, 1],
+    )
+    ligand = _select_ligand(u, "resname UNK")
+    assert len(ligand) == 3
+    assert set(ligand.resids) == {1}
+
+
+def test_select_ligand_cofactor_present():
+    u = _make_test_universe(
+        tempfactors=[0.25, 0.50, 0.75, 0.00],
+        resids=[1, 1, 1, 2],
+    )
+    ligand = _select_ligand(u, "resname UNK")
+    assert len(ligand) == 3
+    assert set(ligand.resids) == {1}
+
+
+def test_select_ligand_multiple_hybrid():
+    u = _make_test_universe(
+        tempfactors=[0.25, 0.50, 0.75, 0.25, 0.50],
+        resids=[1, 1, 1, 2, 2],
+    )
+    ligand = _select_ligand(u, "resname UNK")
+    assert len(ligand) == 3
+    assert set(ligand.resids) == {1}
+
+
+def test_select_ligand_no_hybrid_fallback():
+    u = _make_test_universe(
+        tempfactors=[0.00, 0.00, 0.00, 0.00],
+        resids=[1, 1, 2, 2],
+    )
+    ligand = _select_ligand(u, "resname UNK")
+    assert len(ligand) == 2
+
+
+def test_select_ligand_custom_selection_unchanged():
+    u = _make_test_universe(
+        tempfactors=[0.25, 0.50, 0.75, 0.00],
+        resids=[1, 1, 1, 2],
+        resnames=["LIG", "LIG", "LIG", "COF"],
+    )
+    ligand = _select_ligand(u, "resname LIG")
+    assert len(ligand) == 3
+    assert set(ligand.resids) == {1}
