@@ -142,8 +142,11 @@ class ProLIFAnalysis:
                     "WaterBridge": {"water": self.water_ag, "order": self.water_order}
                 }
 
-        if not fp_interactions:
+        if fp_interactions is None:
+            # interactions=None -> ProLIF's own default interaction set
             return plf.Fingerprint(parameters=self._parameters)
+        if not fp_interactions:
+            raise ValueError("No interactions left to compute a fingerprint.")
         return plf.Fingerprint(
             interactions=fp_interactions,
             parameters=self._parameters,

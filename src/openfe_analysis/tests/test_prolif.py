@@ -103,12 +103,12 @@ def test_default_interactions_are_prolif_defaults(
     assert set(analysis.fp.interactions) == expected
 
 
-def test_waterbridge_empty_selection_warns_and_skips_parameters(
+def test_waterbridge_empty_selection_warns_and_raises(
     simulation_skipped_nc, hybrid_system_skipped_pdb, monkeypatch
 ):
     """
-    Requesting WaterBridge with an empty water selection should warn
-    instead of raising, and should not configure WaterBridge parameters.
+    Selecting only WaterBridge with an empty water selection should warn and
+    then raise Error about missing interactions.
     """
     u = mda.Universe(
         hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, index=0
@@ -125,14 +125,13 @@ def test_waterbridge_empty_selection_warns_and_skips_parameters(
     monkeypatch.setattr(u, "select_atoms", patched_select_atoms)
 
     with pytest.warns(UserWarning, match="WaterBridge selected"):
-        analysis = ProLIFAnalysis(
-            u,
-            ligand_ag,
-            interactions=["WaterBridge"],
-            guess_bonds=True,
-        )
-
-    assert analysis._parameters is None
+        with pytest.raises(ValueError, match="No interactions left"):
+            ProLIFAnalysis(
+                u,
+                ligand_ag,
+                interactions=["WaterBridge"],
+                guess_bonds=True,
+            )
 
 
 def test_waterbridge_with_water_sets_parameters(

@@ -270,7 +270,7 @@ def plot_prolif_3d(
     ligand_mol=None,
     protein_mol=None,
     water_mol=None,
-    frame: int = 0,
+    frame: Optional[int] = None,
     size: tuple[int, int] = (650, 600),
     display_all: bool = False,
     only_interacting: bool = True,
@@ -293,8 +293,16 @@ def plot_prolif_3d(
             "No ProLIF fingerprint data found; run the fingerprint first."
         )
 
+    available_frames = list(fingerprint.ifp.keys())
+    if frame is None:
+        frame = available_frames[0]
     if frame not in fingerprint.ifp:
-        raise ValueError(f"frame={frame} not present in fingerprint results.")
+        preview = available_frames[:10]
+        suffix = " ..." if len(available_frames) > 10 else ""
+        raise ValueError(
+            f"frame={frame} not present in fingerprint results. "
+            f"Available frames: {preview}{suffix}"
+        )
 
     ligand_ag.universe.trajectory[frame]
 
