@@ -208,12 +208,7 @@ class ProLIFAnalysis:
             self.frames = np.arange(s0, s1, s2, dtype=int)
             self.n_frames = len(traj)
 
-            if (
-                hasattr(self.universe.trajectory, "times")
-                and self.universe.trajectory.times is not None
-            ):
-                self.times = np.asarray(self.universe.trajectory.times)[self.frames]
-            elif getattr(self.universe.trajectory, "dt", None) is not None:
+            if getattr(self.universe.trajectory, "dt", None) is not None:
                 self.times = self.frames * self.universe.trajectory.dt
             else:
                 self.times = None
