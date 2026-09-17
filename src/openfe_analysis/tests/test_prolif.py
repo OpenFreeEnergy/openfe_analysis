@@ -1,5 +1,6 @@
 import MDAnalysis as mda
 import numpy as np
+import prolif as plf
 import pytest
 from rdkit.Chem import Lipinski
 
@@ -34,6 +35,24 @@ def test_prolifanalysis_runs_vdwcontact(
     # Ensure there is at least one detected interaction across all processed frames
     assert sum(len(v) for v in analysis.fp.ifp.values()) > 0
 
+def test_run_slice_sets_frames_times_nframes(
+    simulation_skipped_nc, hybrid_system_skipped_pdb
+):
+    """run() slicing should set frames, n_frames and times consistently."""
+    u = mda.Universe(
+        hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, index=0
+    )
+    ligand_ag = u.select_atoms("resname UNK")
+
+    analysis = ProLIFAnalysis(u, ligand_ag, interactions=["VdWContact"])
+    analysis.run(start=0, stop=5, step=2, n_jobs=1, progress=False)
+
+    assert list(analysis.frames) == [0, 2, 4]
+    assert analysis.n_frames == 3
+    assert analysis.times is not None
+    assert len(analysis.times) == 3
+    np.testing.assert_allclose(analysis.times, analysis.frames * u.trajectory.dt)
+
 
 def test_guess_bonds_enables_protein_chemistry(
     simulation_skipped_nc, hybrid_system_skipped_pdb
@@ -65,17 +84,21 @@ def test_prolifanalysis_accepts_all_keyword(
     simulation_skipped_nc, hybrid_system_skipped_pdb
 ):
     """
-    The string "all" should be accepted as the special keyword for
-    all available ProLIF interactions.
+    The string "all" should track every available ProLIF interaction
+    (bridged included), except WaterBridge which is dropped when the
+    system has no water.
     """
     u = mda.Universe(
         hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, index=0
     )
     ligand_ag = u.select_atoms("resname UNK")
 
-    analysis = ProLIFAnalysis(u, ligand_ag, interactions="all", guess_bonds=True)
+    with pytest.warns(UserWarning, match="WaterBridge selected"):
+        analysis = ProLIFAnalysis(u, ligand_ag, interactions="all", guess_bonds=True)
 
-    assert analysis.fp is not None
+    available = set(plf.Fingerprint.list_available(show_bridged=True))
+    # this test system has no water, so WaterBridge is dropped
+    assert set(analysis.fp.interactions) == available - {"WaterBridge"}
 
 
 def test_default_interactions_are_prolif_defaults(
@@ -107,8 +130,8 @@ def test_waterbridge_empty_selection_warns_and_raises(
     simulation_skipped_nc, hybrid_system_skipped_pdb, monkeypatch
 ):
     """
-    Selecting only WaterBridge with an empty water selection should warn and
-    then raise Error about missing interactions.
+    Selecting only WaterBridge in a water-free system should warn and then
+    raise an error about missing interactions.
     """
     u = mda.Universe(
         hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, index=0
@@ -118,7 +141,7 @@ def test_waterbridge_empty_selection_warns_and_raises(
     original_select_atoms = u.select_atoms
 
     def patched_select_atoms(selection, *args, **kwargs):
-        if selection == "water and byres around 8 (group ligand or group pocket)":
+        if selection == "water":
             return u.atoms[[]]
         return original_select_atoms(selection, *args, **kwargs)
 

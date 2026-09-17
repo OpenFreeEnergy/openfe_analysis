@@ -125,10 +125,10 @@ class ProLIFAnalysis:
 
         self._parameters: Optional[dict] = None
         if fp_interactions is not None and "WaterBridge" in fp_interactions:
-            if self.water_ag.n_atoms == 0:
+            if self.universe.select_atoms("water").n_atoms == 0:
                 warnings.warn(
-                    "WaterBridge selected but water selection is empty at the initial "
-                    "frame; removing WaterBridge from the requested interactions.",
+                    "WaterBridge selected but the system contains no water; "
+                    "removing WaterBridge from the requested interactions.",
                     UserWarning,
                     stacklevel=3,
                 )
