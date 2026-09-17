@@ -10,3 +10,4 @@ Trajectory Analysis
    :maxdepth: 1
 
    structural_analysis
+   boresch_analysis

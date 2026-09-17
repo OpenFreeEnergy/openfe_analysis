@@ -9,7 +9,7 @@ from rdkit import Chem
 ZENODO_DOI = "doi:10.5281/zenodo.20442933"
 
 ZENODO_FILES = {
-    "openfe_analysis_simulation_output.tar.gz": "md5:7f0babaac3dc8f7dd2db63cb79dff00f",
+    "openfe_analysis_full.tar.gz": "md5:a51b1f8d98b91ab1a69a6f55508d07db",
     "openfe_analysis_skipped.tar.gz": "md5:ac42219bde9da3641375adf3a9ddffbf",
     "openfe_analysis_septop.tar.gz": "md5:8977d86cdbc05767a2e82760bdf9006f",
 }
@@ -32,7 +32,7 @@ def _fetch_and_untar(dirname: str) -> pathlib.Path:
 
 @pytest.fixture(scope="session")
 def rbfe_output_data_dir() -> pathlib.Path:
-    cached_dir = _fetch_and_untar("openfe_analysis_simulation_output")
+    cached_dir = _fetch_and_untar("openfe_analysis_full")
     return cached_dir
 
 
