@@ -26,6 +26,8 @@ def test_prolifanalysis_runs_vdwcontact(
 
     df = analysis.to_dataframe(dtype=np.uint8)
     assert df.shape[0] == 5
+    # only VdWContact was requested
+    assert set(df.columns.get_level_values("interaction")) == {"VdWContact"}
     assert hasattr(analysis.fp, "ifp")
     assert len(analysis.fp.ifp) == 5
 
