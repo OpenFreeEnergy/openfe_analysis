@@ -4,16 +4,14 @@ import prolif as plf
 import pytest
 from rdkit.Chem import Lipinski
 
-from openfe_analysis.reader import FEReader
 from openfe_analysis.prolif import ProLIFAnalysis
+from openfe_analysis.reader import FEReader
 
 
 @pytest.fixture
 def universe(simulation_skipped_nc, hybrid_system_skipped_pdb):
     """Skipped-simulation Universe (FEReader) for the ProLIF tests."""
-    return mda.Universe(
-        hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, index=0
-    )
+    return mda.Universe(hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, index=0)
 
 
 @pytest.fixture
@@ -26,9 +24,7 @@ def test_prolifanalysis_runs_vdwcontact(universe, ligand_ag):
     """
     Test for identification of interactions
     """
-    analysis = ProLIFAnalysis(
-        universe, ligand_ag, interactions=["VdWContact"], guess_bonds=True
-    )
+    analysis = ProLIFAnalysis(universe, ligand_ag, interactions=["VdWContact"], guess_bonds=True)
     analysis.run(stop=5, step=1, n_jobs=1, progress=False)
 
     df = analysis.to_dataframe(dtype=np.uint8)
@@ -54,18 +50,14 @@ def test_run_slice_sets_frames_times_nframes(universe, ligand_ag):
     assert analysis.n_frames == 3
     assert analysis.times is not None
     assert len(analysis.times) == 3
-    np.testing.assert_allclose(
-        analysis.times, analysis.frames * universe.trajectory.dt
-    )
+    np.testing.assert_allclose(analysis.times, analysis.frames * universe.trajectory.dt)
 
 
 def test_guess_bonds_enables_protein_chemistry(universe, ligand_ag):
     """
     Test for protein connectivity
     """
-    analysis = ProLIFAnalysis(
-        universe, ligand_ag, interactions=["VdWContact"], guess_bonds=True
-    )
+    analysis = ProLIFAnalysis(universe, ligand_ag, interactions=["VdWContact"], guess_bonds=True)
 
     # pick a residue from the pocket and check it has connectivity in RDKit
     universe.trajectory[0]
@@ -85,9 +77,7 @@ def test_prolifanalysis_accepts_all_keyword(universe, ligand_ag):
     system has no water.
     """
     with pytest.warns(UserWarning, match="WaterBridge selected"):
-        analysis = ProLIFAnalysis(
-            universe, ligand_ag, interactions="all", guess_bonds=True
-        )
+        analysis = ProLIFAnalysis(universe, ligand_ag, interactions="all", guess_bonds=True)
 
     available = set(plf.Fingerprint.list_available(show_bridged=True))
     # this test system has no water, so WaterBridge is dropped
@@ -140,9 +130,7 @@ def test_guess_bonds_false_skips_guessing(universe, ligand_ag):
     """guess_bonds=False should not add bonds (leaves the ligand untouched)."""
     n_bonds_before = len(ligand_ag.bonds)
 
-    analysis = ProLIFAnalysis(
-        universe, ligand_ag, interactions=["VdWContact"], guess_bonds=False
-    )
+    analysis = ProLIFAnalysis(universe, ligand_ag, interactions=["VdWContact"], guess_bonds=False)
 
     assert analysis.fp is not None
     # guessing was skipped, so no bonds were added to the ligand

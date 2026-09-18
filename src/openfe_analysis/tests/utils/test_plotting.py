@@ -3,12 +3,12 @@ import numpy as np
 import pytest
 
 from openfe_analysis.utils.plotting import (
-    plot_prolif_3d,
-    plot_prolif_barcode,
-    plot_prolif_lignetwork,
     plot_2D_rmsd,
     plot_ligand_COM_drift,
     plot_ligand_RMSD,
+    plot_prolif_3d,
+    plot_prolif_barcode,
+    plot_prolif_lignetwork,
 )
 
 
