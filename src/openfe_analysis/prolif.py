@@ -7,7 +7,7 @@ import MDAnalysis as mda
 import numpy as np
 import prolif as plf
 
-from .utils.universe_utils import guess_ligand_bonds
+from .utils.universe_utils import guess_atomgroup_bonds
 
 
 class ProLIFAnalysis:
@@ -62,27 +62,27 @@ class ProLIFAnalysis:
         self.n_frames: Optional[int] = None
 
         if guess_bonds:
-            self._guess_bonds()
+            self._guess_prolif_bonds()
 
         self._setup_selections(protein_cutoff, water_cutoff)
 
         self.fp = self._build_fingerprint(interactions)
 
-    def _guess_bonds(self) -> None:
+    def _guess_prolif_bonds(self) -> None:
         """
         Guess bonds for the protein, ligand and water selections in-place so
         RDKit/ProLIF can detect donors/acceptors and bonded hydrogens.
         """
         # Protein: guess on the full protein so any pocket residue later has bonds
-        guess_ligand_bonds(self.universe.select_atoms("protein"))
+        guess_atomgroup_bonds(self.universe.select_atoms("protein"))
 
         # Ligand: stable group
-        guess_ligand_bonds(self.ligand_ag)
+        guess_atomgroup_bonds(self.ligand_ag)
 
         # Water: only if water-mediated interactions are of interest
         water = self.universe.select_atoms("water")
         if water.n_atoms:
-            guess_ligand_bonds(water)
+            guess_atomgroup_bonds(water)
 
     def _setup_selections(self, protein_cutoff: float, water_cutoff: float) -> None:
         """
