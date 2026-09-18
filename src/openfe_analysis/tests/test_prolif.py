@@ -171,6 +171,23 @@ def test_waterbridge_empty_selection_warns_and_raises(universe, ligand_ag, monke
             )
 
 
+def test_waterbridge_with_water_sets_parameters(ox2_solvated_complex_pdb):
+    """WaterBridge with waters present (SPC) configures the WaterBridge parameters."""
+    u = mda.Universe(ox2_solvated_complex_pdb)
+    ligand_ag = u.select_atoms("resname UNK")
+
+    analysis = ProLIFAnalysis(
+        u,
+        ligand_ag,
+        interactions=["WaterBridge"],
+        guess_bonds=False,
+        water_selection="resname SPC",
+    )
+
+    assert analysis._parameters is not None
+    assert "WaterBridge" in analysis._parameters
+
+
 def test_guess_bonds_false_skips_guessing(universe, ligand_ag):
     """guess_bonds=False should not add bonds (leaves the ligand untouched)."""
     n_bonds_before = len(ligand_ag.bonds)
