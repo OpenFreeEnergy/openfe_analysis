@@ -293,8 +293,7 @@ def plot_prolif_3d(
         preview = available_frames[:10]
         suffix = " ..." if len(available_frames) > 10 else ""
         raise ValueError(
-            f"frame={frame} not present in fingerprint results. "
-            f"Available frames: {preview}{suffix}"
+            f"frame={frame} not present in fingerprint results. Available frames: {preview}{suffix}"
         )
 
     ligand_ag.universe.trajectory[frame]
