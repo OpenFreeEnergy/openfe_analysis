@@ -41,6 +41,9 @@ class ProLIFAnalysis:
     guess_bonds
         If True, guess bonds for (protein, ligand, water) so ProLIF can
         recognize donors/acceptors and bonded hydrogens.
+    water_selection
+        Selection of water. Defaults to "water"; a custom MDAnalysis
+        selection can also be given, e.g. "resname SPC".
     """
 
     def __init__(
@@ -52,10 +55,12 @@ class ProLIFAnalysis:
         water_cutoff: float = 8.0,
         interactions: Optional[Sequence[str] | str] = None,
         guess_bonds: bool = True,
+        water_selection: str = "water",
     ) -> None:
         self.universe = universe
         self.ligand_ag = ligand_ag
         self.water_order = water_order
+        self.water_selection = water_selection
 
         self.frames: Optional[np.ndarray] = None
         self.times: Optional[np.ndarray] = None
@@ -80,7 +85,7 @@ class ProLIFAnalysis:
         guess_atomgroup_bonds(self.ligand_ag)
 
         # Water: only if water-mediated interactions are of interest
-        water = self.universe.select_atoms("water")
+        water = self.universe.select_atoms(self.water_selection)
         if water.n_atoms:
             guess_atomgroup_bonds(water)
 
@@ -94,7 +99,8 @@ class ProLIFAnalysis:
             updating=True,
         )
         self.water_ag = self.universe.select_atoms(
-            f"water and byres around {water_cutoff} (group ligand or group pocket)",
+            f"({self.water_selection}) and byres around {water_cutoff} "
+            "(group ligand or group pocket)",
             ligand=self.ligand_ag,
             pocket=self.protein_ag,
             updating=True,
@@ -122,7 +128,7 @@ class ProLIFAnalysis:
 
         self._parameters: Optional[dict] = None
         if fp_interactions is not None and "WaterBridge" in fp_interactions:
-            if self.universe.select_atoms("water").n_atoms == 0:
+            if self.universe.select_atoms(self.water_selection).n_atoms == 0:
                 warnings.warn(
                     "WaterBridge selected but the system contains no water; "
                     "removing WaterBridge from the requested interactions.",
