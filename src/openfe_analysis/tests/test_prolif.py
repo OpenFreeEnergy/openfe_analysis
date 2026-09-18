@@ -22,6 +22,21 @@ def ligand_ag(universe):
     return universe.select_atoms("resname UNK")
 
 
+@pytest.fixture
+def make_analysis():
+    """Factory: a bare ProLIFAnalysis wired with dummy universe/ligand/fp."""
+
+    def _make(trajectory):
+        analysis = object.__new__(ProLIFAnalysis)
+        analysis.universe = type("U", (), {"trajectory": trajectory})()
+        analysis.ligand_ag = object()
+        analysis.protein_ag = object()
+        analysis.fp = type("FP", (), {"run": lambda self, *a, **k: None})()
+        return analysis
+
+    return _make
+
+
 def test_prolifanalysis_runs_vdwcontact(universe, ligand_ag):
     """
     Test for identification of interactions
@@ -57,6 +72,26 @@ def test_run_slice_sets_frames_times_nframes(universe, ligand_ag):
     np.testing.assert_allclose(
         analysis.times, analysis.frames * universe.trajectory.dt
     )
+
+
+def test_run_frame_metadata_reset_to_none_on_error(make_analysis):
+    """run() resets frame metadata to None on error."""
+
+    class FailingTraj:
+        # len() raising is what trips the metadata fallback in run()
+        def __getitem__(self, s):
+            return "sliced"
+
+        def __len__(self):
+            raise RuntimeError("boom")
+
+    analysis = make_analysis(FailingTraj())
+    result = analysis.run(n_jobs=1, progress=False)
+
+    assert result is analysis
+    assert analysis.frames is None
+    assert analysis.times is None
+    assert analysis.n_frames is None
 
 
 def test_guess_bonds_enables_protein_chemistry(universe, ligand_ag):

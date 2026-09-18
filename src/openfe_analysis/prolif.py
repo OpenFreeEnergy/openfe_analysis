@@ -208,6 +208,8 @@ class ProLIFAnalysis:
             else:
                 self.times = None
         except Exception:
+            # Best-effort metadata: some readers lack len()/indices()/.dt.
+            # On failure, leave it unset rather than abort the run.
             self.frames = None
             self.times = None
             self.n_frames = None
