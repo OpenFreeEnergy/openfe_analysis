@@ -11,7 +11,9 @@ from openfe_analysis.reader import FEReader
 @pytest.fixture
 def universe(simulation_skipped_nc, hybrid_system_skipped_pdb):
     """Skipped-simulation Universe (FEReader) for the ProLIF tests."""
-    return mda.Universe(hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, index=0)
+    u = mda.Universe(hybrid_system_skipped_pdb, simulation_skipped_nc, format=FEReader, index=0)
+    yield u
+    u.trajectory.close()
 
 
 @pytest.fixture
