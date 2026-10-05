@@ -83,9 +83,7 @@ def patch_from_mda(monkeypatch):
         calls.append({"ag": atomgroup, "kwargs": kwargs, "mol": mol})
         return mol
 
-    monkeypatch.setattr(
-        "openfe_analysis.utils.plotting.plf.Molecule.from_mda", fake
-    )
+    monkeypatch.setattr("openfe_analysis.utils.plotting.plf.Molecule.from_mda", fake)
     return calls
 
 
@@ -119,9 +117,7 @@ def make_fp():
     return _make
 
 
-def test_plot_prolif_lignetwork_builds_ligand_mol_and_delegates(
-    make_fp, make_ag, patch_from_mda
-):
+def test_plot_prolif_lignetwork_builds_ligand_mol_and_delegates(make_fp, make_ag, patch_from_mda):
     """plot_prolif_lignetwork builds a ligand mol and delegates to fp.plot_lignetwork."""
     fp = make_fp(ifp={0: {"dummy": []}})
     ligand_ag = make_ag()

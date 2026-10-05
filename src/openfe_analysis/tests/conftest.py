@@ -80,6 +80,7 @@ def mcmc_serialized():
         "timestep: !Quantity\n  unit: femtosecond\n  value: 4\n"
     )
 
+
 @pytest.fixture(scope="session")
 def ox2_solvated_complex_pdb() -> pathlib.Path:
     """Standalone solvated OX2 complex PDB (single file, not tarred)."""
