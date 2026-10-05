@@ -19,7 +19,9 @@ from openfe_analysis import FEReader
 # Provide an index for the state or replica to extract.
 # The `index_method` then determines whether `index` refers to a Hamiltonian ``state`` (following a single lambda state)
 # or a ``replica`` (following a particular replica).
-u = mda.Universe('hybrid_system.pdb', 'simulation.nc', format=FEReader, index=0, index_method='state')
+u = mda.Universe(
+    "hybrid_system.pdb", "simulation.nc", format=FEReader, index=0, index_method="state"
+)
 ```
 
 For example to convert your trajectory to a different format for visualisation:
@@ -28,7 +30,7 @@ For example to convert your trajectory to a different format for visualisation:
 import MDAnalysis as mda
 from openfe_analysis import FEReader
 
-with mda.Writer('out.xtc', n_atoms=len(u.atoms)) as w:
+with mda.Writer("out.xtc", n_atoms=len(u.atoms)) as w:
     for ts in u.trajectory:
         w.write(u.atoms)
 ```
