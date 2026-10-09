@@ -28,6 +28,7 @@ def ligand(hybrid_system_skipped_pdb, simulation_skipped_nc):
     universe = universe_utils.create_universe_single_state(
         hybrid_system_skipped_pdb, simulation_skipped_nc, state=0
     )
+    universe.select_atoms("protein").guess_bonds()
     prot = universe.select_atoms("protein and name CA")
     ligand = universe.select_atoms("resname UNK")
     apply_transformations.apply_complex_alignment_transformations(universe, prot, [ligand])
@@ -150,6 +151,7 @@ class TestRMSDAnalysis:
 
             # Combined approach should produce a spike
             u_combined = universe_utils.create_universe_single_state(d["pdb"], ds, state=state_idx)
+            u_combined.select_atoms("protein").guess_bonds()
             prot = u_combined.select_atoms("protein and name CA")
             lig_A = u_combined.atoms[d["ligand_A_indices"]]
             lig_B = u_combined.atoms[d["ligand_B_indices"]]
@@ -164,6 +166,7 @@ class TestRMSDAnalysis:
 
             # Separate approach should fix it
             u_separate = universe_utils.create_universe_single_state(d["pdb"], ds, state=state_idx)
+            u_separate.select_atoms("protein").guess_bonds()
             prot = u_separate.select_atoms("protein and name CA")
             lig_A = u_separate.atoms[d["ligand_A_indices"]]
             lig_B = u_separate.atoms[d["ligand_B_indices"]]
