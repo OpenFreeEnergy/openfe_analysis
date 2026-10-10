@@ -143,10 +143,10 @@ class SymmetryCorrectedLigandRMSD(AnalysisBase):
     atomgroup : mda.AtomGroup
         Ligand atoms to compute RMSD for. If ``rdmol`` is not provided,
         bonds must be guessed on the atomgroup before instantiating this
-        class; use :func:`guess_ligand_bonds` for this purpose.
+        class; use :func:`guess_atomgroup_bonds` for this purpose.
     rdmol : Chem.Mol, optional
         RDKit molecule corresponding to ``atomgroup``. If provided, it is
-        used directly and ``guess_ligand_bonds`` does not need to be called.
+        used directly and ``guess_atomgroup_bonds`` does not need to be called.
         If ``None``, the RDKit molecule is derived from ``atomgroup`` via
         ``convert_to("RDKIT")``.
 
@@ -175,7 +175,7 @@ class SymmetryCorrectedLigandRMSD(AnalysisBase):
                 has_bonds = False
             if not has_bonds:
                 raise ValueError(
-                    "No bonds found on atomgroup. Call guess_ligand_bonds() "
+                    "No bonds found on atomgroup. Call guess_atomgroup_bonds() "
                     "before instantiating SymmetryCorrectedLigandRMSD, or "
                     "pass an rdmol directly."
                 )

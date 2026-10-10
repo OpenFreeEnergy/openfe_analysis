@@ -3,7 +3,7 @@ import pytest
 from openfe_analysis.utils import apply_transformations
 from openfe_analysis.utils.universe_utils import (
     create_universe_single_state,
-    guess_ligand_bonds,
+    guess_atomgroup_bonds,
     select_state_atoms,
 )
 
@@ -35,19 +35,19 @@ def ligand_ag(hybrid_system_skipped_pdb, simulation_skipped_nc):
     universe.trajectory.close()
 
 
-def test_guess_ligand_bonds_adds_bonds(ligand_ag):
-    """Bonds should be present on the atomgroup after guess_ligand_bonds."""
+def test_guess_atomgroup_bonds_adds_bonds(ligand_ag):
+    """Bonds should be present on the atomgroup after guess_atomgroup_bonds."""
     original_count = len(ligand_ag.bonds)
     # This also has stateB bond
     assert original_count == 49
-    guess_ligand_bonds(ligand_ag, delete_existing=True)
+    guess_atomgroup_bonds(ligand_ag, delete_existing=True)
     # Now only 48 stateA bonds
     assert len(ligand_ag.bonds) == 48
 
 
-def test_guess_ligand_bonds_modifies_universe_inplace(ligand_ag):
+def test_guess_atomgroup_bonds_modifies_universe_inplace(ligand_ag):
     """Bond topology should be reflected on the parent universe after guessing."""
-    guess_ligand_bonds(ligand_ag)
+    guess_atomgroup_bonds(ligand_ag)
     universe_bonds = ligand_ag.universe.select_atoms("resname UNK").bonds
     assert len(universe_bonds) > 0
 

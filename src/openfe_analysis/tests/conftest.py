@@ -6,12 +6,13 @@ import pooch
 import pytest
 from rdkit import Chem
 
-ZENODO_DOI = "doi:10.5281/zenodo.20442933"
+ZENODO_DOI = "doi:10.5281/zenodo.22828040"
 
 ZENODO_FILES = {
     "openfe_analysis_full.tar.gz": "md5:a51b1f8d98b91ab1a69a6f55508d07db",
     "openfe_analysis_skipped.tar.gz": "md5:ac42219bde9da3641375adf3a9ddffbf",
     "openfe_analysis_septop.tar.gz": "md5:8977d86cdbc05767a2e82760bdf9006f",
+    "ox2_solvated_complex.pdb": "md5:1d6f9b377b8a2cb57909f1010c2c4934",
 }
 
 POOCH_CACHE = pathlib.Path(pooch.os_cache("openfe_analysis"))
@@ -78,6 +79,12 @@ def mcmc_serialized():
         "n_steps: 625\nreassign_velocities: false\n"
         "timestep: !Quantity\n  unit: femtosecond\n  value: 4\n"
     )
+
+
+@pytest.fixture(scope="session")
+def ox2_solvated_complex_pdb() -> pathlib.Path:
+    """Standalone solvated OX2 complex PDB (single file, not tarred)."""
+    return pathlib.Path(ZENODO_RBFE_DATA.fetch("ox2_solvated_complex.pdb"))
 
 
 @pytest.fixture(scope="session")
