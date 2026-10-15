@@ -39,8 +39,9 @@ class ProLIFAnalysis:
             (e.g. WaterBridge)
           - Sequence[str]: explicit list like ["VdWContact", "HBDonor"]
     guess_bonds
-        If True, guess bonds for (protein, ligand, water) so ProLIF can
-        recognize donors/acceptors and bonded hydrogens.
+        If True, guess bonds for the protein and ligand (and water, when
+        WaterBridge is requested) so ProLIF can recognize donors/acceptors
+        and bonded hydrogens.
     water_selection
         Selection of water. Defaults to "water"; a custom MDAnalysis
         selection can also be given, e.g. "resname SPC".
@@ -67,15 +68,19 @@ class ProLIFAnalysis:
         self.n_frames: Optional[int] = None
 
         if guess_bonds:
-            self._guess_prolif_bonds()
+            # Water bonds are only needed when WaterBridge is requested
+            wants_water = interactions == "all" or (
+                interactions is not None and "WaterBridge" in interactions
+            )
+            self._guess_prolif_bonds(water=wants_water)
 
         self._setup_selections(protein_cutoff, water_cutoff)
 
         self.fp = self._build_fingerprint(interactions)
 
-    def _guess_prolif_bonds(self) -> None:
+    def _guess_prolif_bonds(self, water: bool = True) -> None:
         """
-        Guess bonds for the protein, ligand and water selections in-place so
+        Guess bonds for the protein, ligand and (optionally) water in-place so
         RDKit/ProLIF can detect donors/acceptors and bonded hydrogens.
         """
         # Protein: guess on the full protein so any pocket residue later has bonds
@@ -84,10 +89,11 @@ class ProLIFAnalysis:
         # Ligand: stable group
         guess_atomgroup_bonds(self.ligand_ag)
 
-        # Water: only if water-mediated interactions are of interest
-        water = self.universe.select_atoms(self.water_selection)
-        if water.n_atoms:
-            guess_atomgroup_bonds(water)
+        # Water: only needed for WaterBridge, and expensive on solvated systems
+        if water:
+            waters = self.universe.select_atoms(self.water_selection)
+            if waters.n_atoms:
+                guess_atomgroup_bonds(waters)
 
     def _setup_selections(self, protein_cutoff: float, water_cutoff: float) -> None:
         """
