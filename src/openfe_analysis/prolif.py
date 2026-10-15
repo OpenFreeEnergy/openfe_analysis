@@ -211,22 +211,11 @@ class ProLIFAnalysis:
         _slice = slice(start, stop, step)
         traj = self.universe.trajectory[_slice]
 
-        try:
-            n_total = len(self.universe.trajectory)
-            s0, s1, s2 = _slice.indices(n_total)
-            self.frames = np.arange(s0, s1, s2, dtype=int)
-            self.n_frames = len(traj)
-
-            if getattr(self.universe.trajectory, "dt", None) is not None:
-                self.times = self.frames * self.universe.trajectory.dt
-            else:
-                self.times = None
-        except Exception:
-            # Best-effort metadata: some readers lack len()/indices()/.dt.
-            # On failure, leave it unset rather than abort the run.
-            self.frames = None
-            self.times = None
-            self.n_frames = None
+        n_total = len(self.universe.trajectory)
+        s0, s1, s2 = _slice.indices(n_total)
+        self.frames = np.arange(s0, s1, s2, dtype=int)
+        self.n_frames = len(traj)
+        self.times = self.frames * self.universe.trajectory.dt
 
         if converter_kwargs is None:
             # Avoid Valence errors
