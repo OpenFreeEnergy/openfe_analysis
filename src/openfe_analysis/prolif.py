@@ -53,7 +53,7 @@ class ProLIFAnalysis:
         water_order: int = 3,
         protein_cutoff: float = 12.0,
         water_cutoff: float = 8.0,
-        interactions: Optional[Sequence[str] | str] = None,
+        interactions: Sequence[str] | Literal["all"] | None = None,
         guess_bonds: bool = True,
         water_selection: str = "water",
     ) -> None:
@@ -106,7 +106,9 @@ class ProLIFAnalysis:
             updating=True,
         )
 
-    def _build_fingerprint(self, interactions: Optional[Sequence[str] | str]) -> plf.Fingerprint:
+    def _build_fingerprint(
+        self, interactions: Sequence[str] | Literal["all"] | None
+    ) -> plf.Fingerprint:
         """
         Resolve the requested interactions and construct the ProLIF Fingerprint.
 
