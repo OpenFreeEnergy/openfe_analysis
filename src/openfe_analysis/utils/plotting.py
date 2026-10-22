@@ -1,6 +1,6 @@
 # This code is part of OpenFE and is licensed under the MIT license.
 # For details, see https://github.com/OpenFreeEnergy/openfe
-from typing import Literal, Optional
+from typing import Literal
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -147,7 +147,7 @@ def plot_prolif_lignetwork(
     ligand_ag,
     *,
     ligand_mol=None,
-    frame: Optional[int] = None,
+    frame: int | None = None,
     kind: Literal["aggregate", "frame"] = "frame",
     display_all: bool = False,
     threshold: float = 0.3,
@@ -222,12 +222,12 @@ def plot_prolif_barcode(
     *,
     figsize: tuple[int, int] = (8, 10),
     dpi: int = 100,
-    interactive: bool = True,
+    interactive: bool = False,
     n_frame_ticks: int = 10,
     residues_tick_location: Literal["top", "bottom"] = "top",
     xlabel: str = "Frame",
-    subplots_kwargs: Optional[dict] = None,
-    tight_layout_kwargs: Optional[dict] = None,
+    subplots_kwargs: dict | None = None,
+    tight_layout_kwargs: dict | None = None,
 ):
     """
     Barcode plot of interactions across frames.
@@ -265,7 +265,7 @@ def plot_prolif_3d(
     ligand_mol=None,
     protein_mol=None,
     water_mol=None,
-    frame: Optional[int] = None,
+    frame: int | None = None,
     size: tuple[int, int] = (650, 600),
     display_all: bool = False,
     only_interacting: bool = True,

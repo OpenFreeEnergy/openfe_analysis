@@ -54,6 +54,20 @@ def test_run_slice_sets_frames_times_nframes(universe, ligand_ag):
     assert len(analysis.times) == 3
     np.testing.assert_allclose(analysis.times, analysis.frames * universe.trajectory.dt)
 
+def test_run_parallel_matches_serial(universe, ligand_ag):
+    """n_jobs > 1 (the "queue" strategy) gives the same fingerprint as a serial run."""
+    serial = ProLIFAnalysis(universe, ligand_ag, interactions=["VdWContact"])
+    serial.run(stop=4, n_jobs=1, progress=False)
+
+    parallel = ProLIFAnalysis(universe, ligand_ag, interactions=["VdWContact"])
+    parallel.run(stop=4, n_jobs=2, progress=False)
+
+    assert len(parallel.ifp) == 4
+    df_serial = serial.to_dataframe().sort_index().sort_index(axis=1)
+    df_parallel = parallel.to_dataframe().sort_index().sort_index(axis=1)
+    assert df_parallel.equals(df_serial)
+
+
 
 def test_guess_bonds_enables_protein_chemistry(universe, ligand_ag):
     """
@@ -137,10 +151,13 @@ def test_waterbridge_with_water_sets_parameters(ox2_solvated_complex_pdb):
         u,
         ligand_ag,
         interactions=["WaterBridge"],
-        guess_bonds=False,
+        guess_bonds=True,
         water_selection="resname SPC",
     )
 
+    # WaterBridge is a bridged interaction, so ProLIF tracks it separately
+    assert not analysis.fp.interactions
+    assert set(analysis.fp.bridged_interactions) == {"WaterBridge"}
     assert analysis._parameters is not None
     assert "WaterBridge" in analysis._parameters
 

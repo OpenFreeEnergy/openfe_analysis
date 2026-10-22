@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import Any, Dict, Literal, Optional, Sequence, Tuple
+from typing import Any, Literal, Sequence
 
 import MDAnalysis as mda
 import numpy as np
@@ -63,9 +63,9 @@ class ProLIFAnalysis:
         self.water_order = water_order
         self.water_selection = water_selection
 
-        self.frames: Optional[np.ndarray] = None
-        self.times: Optional[np.ndarray] = None
-        self.n_frames: Optional[int] = None
+        self.frames: np.ndarray | None = None
+        self.times: np.ndarray | None = None
+        self.n_frames: int | None = None
 
         if guess_bonds:
             # Water bonds are only needed when WaterBridge is requested
@@ -123,18 +123,19 @@ class ProLIFAnalysis:
         """
         available = plf.Fingerprint.list_available(show_bridged=True)
 
-        fp_interactions: Optional[list[str]]
+        fp_interactions: list[str] | None
         if interactions is None:
             fp_interactions = None
 
         elif interactions == "all":
-            # ProLIF's "all" excludes bridged interactions (e.g. WaterBridge)
+            # Every available interaction, including bridged ones such as
+            # WaterBridge (ProLIF's own "all" leaves those out)
             fp_interactions = list(available)
 
         else:
             fp_interactions = list(interactions)
 
-        self._parameters: Optional[dict] = None
+        self._parameters: dict | None = None
         if fp_interactions is not None and "WaterBridge" in fp_interactions:
             if self.universe.select_atoms(self.water_selection).n_atoms == 0:
                 warnings.warn(
@@ -164,14 +165,14 @@ class ProLIFAnalysis:
     def run(
         self,
         *,
-        start: Optional[int] = None,
-        stop: Optional[int] = None,
-        step: Optional[int] = None,
-        residues: Optional[Literal["all"] | Sequence[str | int]] = None,
+        start: int | None = None,
+        stop: int | None = None,
+        step: int | None = None,
+        residues: Literal["all"] | Sequence[str | int] | None = None,
         progress: bool = True,
-        n_jobs: Optional[int] = None,
-        parallel_strategy: Optional[Literal["chunk", "queue"]] = None,
-        converter_kwargs: Optional[Tuple[Dict[str, Any], Dict[str, Any]]] = None,
+        n_jobs: int | None = None,
+        parallel_strategy: Literal["chunk", "queue"] | None = None,
+        converter_kwargs: tuple[dict[str, Any], dict[str, Any]] | None = None,
     ) -> "ProLIFAnalysis":
         """
         Run the fingerprint calculation over a slice of the trajectory.
@@ -187,7 +188,7 @@ class ProLIFAnalysis:
         progress
             Show progress bar.
         n_jobs
-            Number of workers for parallel execution.).
+            Number of workers for parallel execution.
         parallel_strategy
             ProLIF parallel strategy. If None, this wrapper sets:
               - "chunk" for n_jobs None/1
@@ -214,7 +215,7 @@ class ProLIFAnalysis:
         n_total = len(self.universe.trajectory)
         s0, s1, s2 = _slice.indices(n_total)
         self.frames = np.arange(s0, s1, s2, dtype=int)
-        self.n_frames = len(traj)
+        self.n_frames = len(self.frames)
         self.times = self.frames * self.universe.trajectory.dt
 
         if converter_kwargs is None:
