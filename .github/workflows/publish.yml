@@ -58,9 +58,6 @@ jobs:
           fi
           python -m build
 
-      - name: Build distributions
-        run: python -m build
-
       - name: Show distributions
         run: ls -lh dist/
 
