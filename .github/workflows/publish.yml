@@ -65,7 +65,7 @@ jobs:
           BACKFILL_VERSION: ${{ inputs.version }}
         run: |
           if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
-            export SETUPTOOLS_SCM_PRETEND_VERSION_FOR_OPENFE_ANALYSIS="$BACKFILL_VERSION"
+            export SETUPTOOLS_SCM_PRETEND_VERSION="$BACKFILL_VERSION"
           fi
           python -m build
 
