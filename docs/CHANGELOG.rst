@@ -4,6 +4,22 @@ Changelog
 
 .. current developments
 
+v0.6
+====================
+
+**Added:**
+
+* Added a tutorial notebook demonstrating structural analysis of multistate
+trajectory files, covering both the relative hybrid topology and separated
+topologies (SepTop) protocols (PR #114).
+* Added a BoreschRestraintAnalysis class that calculates and returns the Boresch restraint geometry (bond, 2 angles, 3 dihedrals) time series. Also added an example notebook that shows how to conduct the analysis for the SepTop and ABFE protocols.
+
+**Fixed:**
+
+* Fixed incorrect periodic boundary condition handling during protein alignment when multiple protein chains share the same segment ID, by using bonded protein fragments instead of segments for image shifting. Alignment now also raises a ValueError if the protein contains no bonds, rather than silently producing incorrect results (PR #124).
+
+
+
 v0.5.0
 ====================
 
