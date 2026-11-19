@@ -16,6 +16,7 @@ login-r2 = { cmd = "npm ci --no-audit --no-fund && npm exec -- wrangler login", 
 [feature.r2-upload.dependencies]
 python = ">=3.12,<3.14"
 nodejs = ">=24,<25"
+rclone = ">=1.76.0,<2"
 
 [environments]
 r2-upload = { features = ["r2-upload"], no-default-feature = true }
