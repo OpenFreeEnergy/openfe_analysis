@@ -12,7 +12,7 @@ v0.6
 * Added a tutorial notebook demonstrating structural analysis of multistate
 trajectory files, covering both the relative hybrid topology and separated
 topologies (SepTop) protocols (PR #114).
-* Added a BoreschRestraintAnalysis class that calculates and returns the Boresch restraint geometry (bond, 2 angles, 3 dihedrals) time series. Also added an example notebook that shows how to conduct the analysis for the SepTop and ABFE protocols.
+* Added a BoreschRestraintAnalysis class that calculates and returns the Boresch restraint geometry (bond, 2 angles, 3 dihedrals) time series. Also added an example notebook that shows how to conduct the analysis for the SepTop and ABFE protocols (PR #123).
 
 **Fixed:**
 
