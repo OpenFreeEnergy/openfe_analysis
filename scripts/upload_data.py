@@ -12,11 +12,13 @@ Prerequisites:
 """
 
 import argparse
+import configparser
 import hashlib
 import json
 import mimetypes
 import os
 import pathlib
+import shutil
 import subprocess
 from urllib.error import HTTPError
 from urllib.parse import quote, urlencode
@@ -26,6 +28,10 @@ R2_BUCKET = "ci-data"
 BASE_URL = "https://data.openfe.org"
 CACHE_CONTROL = "public, max-age=31536000, immutable"
 API_BASE = "https://api.cloudflare.com/client/v4"
+# Conservative ceiling for Wrangler/Cloudflare REST single-object uploads.
+# Use an S3-compatible client for larger files.
+WRANGLER_MAX_UPLOAD_BYTES = 300_000_000
+RCLONE_REMOTE = "openfe-r2"
 
 # Make sure we are using utils managed by pixi
 # This file needs to be placed in the repo root in a folder
@@ -166,6 +172,85 @@ def existing_objects(
             raise RuntimeError("R2 returned a truncated listing without a cursor.")
 
 
+
+def rclone_s3_flags(account_id: str) -> list[str]:
+    """Pin the destination account despite rclone environment overrides."""
+    return [
+        "--s3-endpoint", f"https://{account_id}.r2.cloudflarestorage.com",
+        "--s3-provider", "Cloudflare",
+        "--s3-region", "auto",
+        "--s3-no-check-bucket",
+    ]
+
+
+def rclone_ready(account_id: str) -> tuple[bool, str]:
+    """Validate a named R2 remote without reading its stored secrets."""
+    if shutil.which("rclone") is None:
+        return False, "rclone is not installed in the Pixi r2-upload environment"
+
+    try:
+        proc = subprocess.run(
+            ["rclone", "config", "redacted", RCLONE_REMOTE],
+            check=True,
+            text=True,
+            capture_output=True,
+            stdin=subprocess.DEVNULL,
+            timeout=20,
+        )
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+        return False, f"rclone configuration is unavailable ({type(exc).__name__})"
+
+    config = configparser.ConfigParser(interpolation=None)
+    try:
+        config.read_string(proc.stdout)
+    except configparser.Error:
+        return False, "rclone returned an unparseable configuration"
+    if not config.has_section(RCLONE_REMOTE):
+        return False, f"rclone remote {RCLONE_REMOTE!r} is not configured"
+
+    remote = config[RCLONE_REMOTE]
+    expected_endpoint = f"https://{account_id}.r2.cloudflarestorage.com"
+    if remote.get("type") != "s3" or remote.get("provider", "").lower() != "cloudflare":
+        return False, "rclone remote is not a Cloudflare S3 remote"
+    if remote.get("endpoint", "").rstrip("/") != expected_endpoint:
+        return False, f"rclone endpoint does not match the Cloudflare account owning {R2_BUCKET}"
+
+    # A remote configured for this endpoint may still have expired or
+    # insufficient credentials; probe the exact destination bucket read-only.
+    try:
+        subprocess.run(
+            [
+                "rclone", "lsf", f"{RCLONE_REMOTE}:{R2_BUCKET}",
+                "--max-depth", "1", *rclone_s3_flags(account_id),
+            ],
+            check=True,
+            text=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            stdin=subprocess.DEVNULL,
+            timeout=40,
+        )
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+        return False, f"rclone cannot list the destination bucket ({type(exc).__name__})"
+    return True, ""
+
+
+def upload_with_rclone(
+    file: pathlib.Path, key: str, account_id: str, content_type: str
+) -> None:
+    """Upload using a verified remote; never replace an existing object."""
+    subprocess.run(
+        [
+            "rclone", "copyto", str(file), f"{RCLONE_REMOTE}:{R2_BUCKET}/{key}",
+            "--immutable", "--progress",
+            "--metadata-set", f"cache-control={CACHE_CONTROL}",
+            "--metadata-set", f"content-type={content_type}",
+            *rclone_s3_flags(account_id),
+        ],
+        check=True,
+        stdin=subprocess.DEVNULL,
+    )
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("file", type=pathlib.Path)
@@ -203,14 +288,36 @@ def main() -> None:
             if path.name.endswith((".tar.gz", ".tgz", ".gz"))
             else mimetypes.guess_type(path.name)[0] or "application/octet-stream"
         )
-        print(f"Uploading {path} to {R2_BUCKET}/{key} ...")
-        wrangler(
-            "r2", "object", "put", f"{R2_BUCKET}/{key}",
-            "--file", str(path), "--remote",
-            "--content-type", content_type,
-            "--cache-control", CACHE_CONTROL,
-            account_id=account_id,
-        )
+        size = path.stat().st_size
+        if size > WRANGLER_MAX_UPLOAD_BYTES:
+            ready, reason = rclone_ready(account_id)
+            if ready:
+                print(f"File exceeds Wrangler's limit ({size:,} bytes); using rclone.")
+                upload_with_rclone(path, key, account_id, content_type)
+            else:
+                url = f"{BASE_URL}/{quote(key, safe='/')}"
+                print(f"File is too large for Wrangler ({size:,} bytes).")
+                print(f"rclone unavailable: {reason}. No upload was attempted.")
+                print("Configure a bucket-scoped rclone remote named 'openfe-r2'.")
+                print(f"Endpoint: https://{account_id}.r2.cloudflarestorage.com")
+                print(f"Bucket: {R2_BUCKET}")
+                print(f"Object key: {key}")
+                print(f"SHA256: {digest}")
+                print(f"Content-Type: {content_type}")
+                print(f"Cache-Control: {CACHE_CONTROL}")
+                print(f"URL after manual upload: {url}")
+                print(f'Pooch registry: "{path.name}": "sha256:{digest}"')
+                print(f'Pooch urls: "{path.name}": "{url}"')
+                raise SystemExit(2)
+        else:
+            print(f"Uploading {path} to {R2_BUCKET}/{key} ...")
+            wrangler(
+                "r2", "object", "put", f"{R2_BUCKET}/{key}",
+                "--file", str(path), "--remote",
+                "--content-type", content_type,
+                "--cache-control", CACHE_CONTROL,
+                account_id=account_id,
+            )
         print("Uploaded new object.")
 
     url = f"{BASE_URL}/{quote(key, safe='/')}"
