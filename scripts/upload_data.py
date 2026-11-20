@@ -38,6 +38,7 @@ RCLONE_REMOTE = "openfe-r2"
 # i.e. scripts/upload_data.py
 NPM_ROOT = pathlib.Path(__file__).resolve().parent / "r2-upload"
 
+
 def sha256_file(path: pathlib.Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as stream:
@@ -89,7 +90,9 @@ def authentication_headers() -> dict[str, str]:
         case "api_key":
             return {"X-Auth-Key": auth["key"], "X-Auth-Email": auth["email"]}
         case _:
-            raise RuntimeError("Wrangler has no usable credentials; run `pixi run --locked npm exec -- wrangler login`.")
+            raise RuntimeError(
+                "Wrangler has no usable credentials; run `pixi run --locked npm exec -- wrangler login`."
+            )
 
 
 def cf_get(
@@ -143,14 +146,9 @@ def discover_bucket_account(headers: dict[str, str]) -> tuple[str, str]:
     return matches[0]
 
 
-def existing_objects(
-    account_id: str, digest: str, headers: dict[str, str]
-) -> list[dict]:
+def existing_objects(account_id: str, digest: str, headers: dict[str, str]) -> list[dict]:
     """List all files under v1/<sha256>/, regardless of filename."""
-    path = (
-        f"/accounts/{quote(account_id, safe='')}/r2/buckets/"
-        f"{quote(R2_BUCKET, safe='')}/objects"
-    )
+    path = f"/accounts/{quote(account_id, safe='')}/r2/buckets/{quote(R2_BUCKET, safe='')}/objects"
     objects: list[dict] = []
     cursor = None
     while True:
@@ -172,13 +170,15 @@ def existing_objects(
             raise RuntimeError("R2 returned a truncated listing without a cursor.")
 
 
-
 def rclone_s3_flags(account_id: str) -> list[str]:
     """Pin the destination account despite rclone environment overrides."""
     return [
-        "--s3-endpoint", f"https://{account_id}.r2.cloudflarestorage.com",
-        "--s3-provider", "Cloudflare",
-        "--s3-region", "auto",
+        "--s3-endpoint",
+        f"https://{account_id}.r2.cloudflarestorage.com",
+        "--s3-provider",
+        "Cloudflare",
+        "--s3-region",
+        "auto",
         "--s3-no-check-bucket",
     ]
 
@@ -220,8 +220,12 @@ def rclone_ready(account_id: str) -> tuple[bool, str]:
     try:
         subprocess.run(
             [
-                "rclone", "lsf", f"{RCLONE_REMOTE}:{R2_BUCKET}",
-                "--max-depth", "1", *rclone_s3_flags(account_id),
+                "rclone",
+                "lsf",
+                f"{RCLONE_REMOTE}:{R2_BUCKET}",
+                "--max-depth",
+                "1",
+                *rclone_s3_flags(account_id),
             ],
             check=True,
             text=True,
@@ -235,21 +239,26 @@ def rclone_ready(account_id: str) -> tuple[bool, str]:
     return True, ""
 
 
-def upload_with_rclone(
-    file: pathlib.Path, key: str, account_id: str, content_type: str
-) -> None:
+def upload_with_rclone(file: pathlib.Path, key: str, account_id: str, content_type: str) -> None:
     """Upload using a verified remote; never replace an existing object."""
     subprocess.run(
         [
-            "rclone", "copyto", str(file), f"{RCLONE_REMOTE}:{R2_BUCKET}/{key}",
-            "--immutable", "--progress",
-            "--metadata-set", f"cache-control={CACHE_CONTROL}",
-            "--metadata-set", f"content-type={content_type}",
+            "rclone",
+            "copyto",
+            str(file),
+            f"{RCLONE_REMOTE}:{R2_BUCKET}/{key}",
+            "--immutable",
+            "--progress",
+            "--metadata-set",
+            f"cache-control={CACHE_CONTROL}",
+            "--metadata-set",
+            f"content-type={content_type}",
             *rclone_s3_flags(account_id),
         ],
         check=True,
         stdin=subprocess.DEVNULL,
     )
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -276,7 +285,9 @@ def main() -> None:
     if matches:
         existing = matches[0]
         if existing["size"] != path.stat().st_size:
-            raise RuntimeError("Existing object has the expected hash in its key but a different size.")
+            raise RuntimeError(
+                "Existing object has the expected hash in its key but a different size."
+            )
         key = existing["key"]
         print("Already uploaded; skipping.")
         if key != requested_key:
@@ -312,10 +323,17 @@ def main() -> None:
         else:
             print(f"Uploading {path} to {R2_BUCKET}/{key} ...")
             wrangler(
-                "r2", "object", "put", f"{R2_BUCKET}/{key}",
-                "--file", str(path), "--remote",
-                "--content-type", content_type,
-                "--cache-control", CACHE_CONTROL,
+                "r2",
+                "object",
+                "put",
+                f"{R2_BUCKET}/{key}",
+                "--file",
+                str(path),
+                "--remote",
+                "--content-type",
+                content_type,
+                "--cache-control",
+                CACHE_CONTROL,
                 account_id=account_id,
             )
         print("Uploaded new object.")

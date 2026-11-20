@@ -63,7 +63,7 @@ This installs the required tooling and opens your browser to authenticate with C
 pixi run --locked -e r2-upload upload-data path/to/file.tar.gz
 ```
 
-The script automatically computes the file's SHA256 hash, checks whether the data already exists, and uploads it only if necessary. 
+The script automatically computes the file's SHA256 hash, checks whether the data already exists, and uploads it only if necessary.
 It then prints the permanent URL and corresponding Pooch registry entry.
 
 The script also bootstraps the wrangler installation so on first use it will install wrangler using the pixi managed npm binary.
