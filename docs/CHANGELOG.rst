@@ -4,7 +4,7 @@ Changelog
 
 .. current developments
 
-v0.6
+v0.6.0
 ====================
 
 **Added:**
