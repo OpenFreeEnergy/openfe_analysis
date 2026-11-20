@@ -1,5 +1,4 @@
 [workspace]
-authors = ["Mike Henry <11765982+mikemhenry@users.noreply.github.com>"]
 channels = ["conda-forge"]
 name = "openfe_analysis"
 platforms = ["linux-64", "osx-64", "osx-arm64"]
