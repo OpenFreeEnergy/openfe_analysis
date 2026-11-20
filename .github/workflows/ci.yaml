@@ -75,7 +75,7 @@ jobs:
           )
 
           for fname in ZENODO_FILES:
-              zenodo.fetch(fname, processor=pooch.Untar())
+              zenodo.fetch(fname)
 
           EOF
 

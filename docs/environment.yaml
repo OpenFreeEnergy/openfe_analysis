@@ -9,4 +9,5 @@ dependencies:
 - furo
 - spyrmsd
 - rdkit
+- prolif
 - myst-nb
