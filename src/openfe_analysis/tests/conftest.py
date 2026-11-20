@@ -7,6 +7,7 @@ import pooch
 import pytest
 from rdkit import Chem
 
+# ruff:ignore[E501]
 DATA_FILES = {
     "openfe_analysis_full.tar.gz": "sha256:cd54a67a12318249de327bb46df3074ba028e98734543c6d335135e3e2695f24",
     "openfe_analysis_skipped.tar.gz": "sha256:b19ef80a55e35a8442143cb4cf6b3fa80c6bbf84c5a7547f359360e2690af984",

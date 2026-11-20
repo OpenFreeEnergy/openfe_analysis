@@ -91,7 +91,7 @@ def authentication_headers() -> dict[str, str]:
             return {"X-Auth-Key": auth["key"], "X-Auth-Email": auth["email"]}
         case _:
             raise RuntimeError(
-                "Wrangler has no usable credentials; run `pixi run --locked npm exec -- wrangler login`."
+                "Wrangler has no usable credentials; run `pixi run --locked npm exec -- wrangler login`."  # noqa: E501
             )
 
 
