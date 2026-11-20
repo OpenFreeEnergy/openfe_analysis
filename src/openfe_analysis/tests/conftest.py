@@ -1,6 +1,6 @@
+import fcntl
 import pathlib
 from importlib import resources
-import fcntl
 
 import numpy as np
 import pooch
@@ -16,10 +16,7 @@ DATA_FILES = {
 POOCH_CACHE = pathlib.Path(pooch.os_cache("openfe_analysis"))
 POOCH_CACHE.mkdir(parents=True, exist_ok=True)
 DATA_URLS = {
-    filename: (
-        f"https://data.openfe.org/v1/"
-        f"{digest.removeprefix('sha256:')}/{filename}"
-    )
+    filename: (f"https://data.openfe.org/v1/{digest.removeprefix('sha256:')}/{filename}")
     for filename, digest in DATA_FILES.items()
 }
 
@@ -29,6 +26,7 @@ RBFE_DATA = pooch.create(
     registry=DATA_FILES,
     urls=DATA_URLS,
 )
+
 
 def _fetch_and_untar(dirname: str) -> pathlib.Path:
     archive = f"{dirname}.tar.gz"
@@ -42,6 +40,7 @@ def _fetch_and_untar(dirname: str) -> pathlib.Path:
         RBFE_DATA.fetch(archive, processor=pooch.Untar())
 
     return cached_dir
+
 
 @pytest.fixture(scope="session")
 def rbfe_output_data_dir() -> pathlib.Path:
