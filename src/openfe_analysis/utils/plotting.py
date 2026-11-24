@@ -5,6 +5,7 @@ from collections.abc import Mapping, Sequence
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
+from matplotlib.artist import Artist
 from matplotlib.figure import Figure
 
 
@@ -239,14 +240,14 @@ def plot_boresch_restraint(
     for ax in axes[-1]:
         ax.set_xlabel("Time [ps]")
 
-    legend_entries = {}
+    legend_entries: dict[str, Artist] = {}
     for ax in axes.flat:
         handles, labels = ax.get_legend_handles_labels()
         legend_entries.update(zip(labels, handles))
 
     fig.legend(
-        list(legend_entries.values()),
-        list(legend_entries.keys()),
+        handles=legend_entries.values(),
+        labels=legend_entries.keys(),
         loc="outside lower center",
         ncols=min(len(legend_entries), 4),
         frameon=False,
