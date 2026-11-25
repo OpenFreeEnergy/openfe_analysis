@@ -228,7 +228,7 @@ class TestSymmetryCorrectedLigandRMSD:
         state_lig = universe_utils.select_state_atoms(ligand.universe, end_state="A").select_atoms(
             "resname UNK"
         )
-        result = SymmetryCorrectedLigandRMSD(state_lig).run(step=10)
+        result = SymmetryCorrectedLigandRMSD(state_lig, heavy_atoms_only=True).run(step=10)
         expected = [0.0, 0.75138, 2.09003, 0.95125, 1.54566, 2.00029]
         assert_allclose(result.results.rmsd[:6], expected, rtol=1e-3)
 
@@ -289,3 +289,112 @@ class TestSymmetryCorrectedLigandRMSD:
         mol.AddAtom(Chem.Atom(1))  # H
         with pytest.raises(ValueError, match="atomgroup has 3 atoms but rdmol has 2"):
             SymmetryCorrectedLigandRMSD(minimal_universe, rdmol=mol.GetMol())
+
+
+def _universe_from_smiles(smiles, explicit_h=True):
+    """Build a ligand universe with two identical frames in RDKit atom order."""
+    mol = Chem.MolFromSmiles(smiles)
+    if explicit_h:
+        mol = Chem.AddHs(mol)
+
+    rng = np.random.default_rng(42)
+    reference = rng.uniform(-5.0, 5.0, (mol.GetNumAtoms(), 3))
+
+    u = mda.Universe.empty(mol.GetNumAtoms(), trajectory=True)
+    u.add_TopologyAttr("elements", [atom.GetSymbol() for atom in mol.GetAtoms()])
+    u.load_new(np.array([reference, reference]), order="fac")
+
+    return u.atoms, mol, reference
+
+
+class TestSymmetryCorrectedLigandRMSDHeavyAtoms:
+    @pytest.mark.parametrize(
+        "smiles, n_all_atom, n_heavy_atom",
+        [
+            ("c1ccccc1", 12, 12),
+            ("Cc1ccccc1", 12, 2),
+            ("CCc1ccccc1", 24, 2),
+            ("CC(C)(C)c1ccccc1", 2592, 12),
+        ],
+    )
+    def test_reduces_isomorphisms(self, smiles, n_all_atom, n_heavy_atom):
+        """Hydrogen permutations are excluded but heavy-atom symmetry remains."""
+        ag, mol, _ = _universe_from_smiles(smiles)
+
+        all_atom = SymmetryCorrectedLigandRMSD(ag, rdmol=mol).run()
+
+        heavy_atom = SymmetryCorrectedLigandRMSD(ag, rdmol=mol, heavy_atoms_only=True).run()
+
+        assert len(all_atom._isomorphisms) == n_all_atom
+        assert len(heavy_atom._isomorphisms) == n_heavy_atom
+
+    def test_hydrogen_displacement_is_ignored(self):
+        """Moving only hydrogens does not affect heavy-atom RMSD."""
+        ag, mol, reference = _universe_from_smiles("CCO")
+
+        hydrogen_indices = [atom.GetIdx() for atom in mol.GetAtoms() if atom.GetAtomicNum() == 1]
+
+        displaced = reference.copy()
+        displaced[hydrogen_indices] += 2.0
+
+        ag.universe.load_new(np.array([reference, displaced]), order="fac")
+
+        heavy = SymmetryCorrectedLigandRMSD(ag, rdmol=mol, heavy_atoms_only=True).run()
+
+        all_atom = SymmetryCorrectedLigandRMSD(ag, rdmol=mol).run()
+
+        assert_allclose(heavy.results.rmsd, [0.0, 0.0], atol=1e-6)
+        assert all_atom.results.rmsd[1] > 0.0
+
+    @pytest.mark.parametrize("explicit_h", [True, False])
+    def test_zero_for_valid_heavy_atom_swap(self, explicit_h):
+        """Equivalent carboxylate oxygens remain interchangeable."""
+        ag, mol, reference = _universe_from_smiles("CC(=O)[O-]", explicit_h=explicit_h)
+
+        oxygen_indices = [atom.GetIdx() for atom in mol.GetAtoms() if atom.GetAtomicNum() == 8]
+
+        swapped = reference.copy()
+        swapped[oxygen_indices] = reference[oxygen_indices[::-1]]
+
+        ag.universe.load_new(np.array([reference, swapped]), order="fac")
+
+        corrected = SymmetryCorrectedLigandRMSD(ag, rdmol=mol, heavy_atoms_only=True).run()
+
+        naive = RMSDAnalysis(ag[ag.elements != "H"]).run()
+
+        assert naive.results.rmsd[1] > 0.0
+        assert_allclose(corrected.results.rmsd, [0.0, 0.0], atol=1e-6)
+
+    @pytest.mark.parametrize("explicit_h", [True, False])
+    @pytest.mark.parametrize(
+        "smiles, permutation",
+        [
+            ("CC(=O)O", [0, 1, 3, 2]),
+            ("c1c[nH]cn1", [1, 0, 4, 3, 2]),
+        ],
+    )
+    def test_hydrogen_environment_prevents_invalid_swap(self, smiles, permutation, explicit_h):
+        """Atoms with different hydrogen counts cannot be exchanged."""
+        ag, mol, reference = _universe_from_smiles(smiles, explicit_h=explicit_h)
+
+        heavy_indices = [atom.GetIdx() for atom in mol.GetAtoms() if atom.GetAtomicNum() > 1]
+
+        swapped = reference.copy()
+        swapped[heavy_indices] = reference[np.array(heavy_indices)[permutation]]
+
+        ag.universe.load_new(np.array([reference, swapped]), order="fac")
+
+        corrected = SymmetryCorrectedLigandRMSD(ag, rdmol=mol, heavy_atoms_only=True).run()
+
+        expected = rms.rmsd(
+            reference[heavy_indices],
+            swapped[heavy_indices],
+        )
+
+        assert len(corrected._isomorphisms) == 1
+        assert expected > 0.0
+        assert_allclose(
+            corrected.results.rmsd,
+            [0.0, expected],
+            atol=1e-6,
+        )

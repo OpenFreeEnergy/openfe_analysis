@@ -149,6 +149,16 @@ class SymmetryCorrectedLigandRMSD(AnalysisBase):
         used directly and ``guess_ligand_bonds`` does not need to be called.
         If ``None``, the RDKit molecule is derived from ``atomgroup`` via
         ``convert_to("RDKIT")``.
+    heavy_atoms_only : bool, default False
+        If True, compute the symmetry-corrected RMSD using
+        only heavy atoms. Hydrogen atoms are excluded from
+        the graph matching to avoid combinatorial growth
+        in the number of symmetry-equivalent mappings.
+
+        Heavy atoms are labelled by their atomic number
+        and number of attached hydrogens, preserving
+        hydrogen-dependent symmetry constraints (e.g.,
+        distinguishing the two nitrogen atoms in imidazole).
 
     Raises
     ------
@@ -164,6 +174,7 @@ class SymmetryCorrectedLigandRMSD(AnalysisBase):
         self,
         atomgroup: mda.AtomGroup,
         rdmol: Optional[Chem.Mol] = None,
+        heavy_atoms_only: bool = False,
         **kwargs,
     ):
         super().__init__(atomgroup.universe.trajectory, **kwargs)
@@ -186,18 +197,47 @@ class SymmetryCorrectedLigandRMSD(AnalysisBase):
                     f"{rdmol.GetNumAtoms()} atoms."
                 )
         self._mol = rdmol if rdmol is not None else atomgroup.convert_to("RDKIT")
-        self._aprops = np.array([atom.GetAtomicNum() for atom in self._mol.GetAtoms()])
         self._am = Chem.rdmolops.GetAdjacencyMatrix(self._mol)
+        self._atom_indices: np.ndarray | None = None
+        if heavy_atoms_only:
+            heavy_atoms = [atom for atom in self._mol.GetAtoms() if atom.GetAtomicNum() > 1]
+
+            if not heavy_atoms:
+                raise ValueError("No heavy atoms found in ligand.")
+
+            self._atom_indices = np.array(
+                [atom.GetIdx() for atom in heavy_atoms],
+                dtype=int,
+            )
+
+            # Preserve hydrogen-dependent symmetry constraints without
+            # enumerating permutations of the hydrogen atoms themselves.
+            self._aprops = np.array(
+                [
+                    atom.GetAtomicNum() + 1000 * atom.GetTotalNumHs(includeNeighbors=True)
+                    for atom in heavy_atoms
+                ]
+            )
+
+            self._am = self._am[np.ix_(self._atom_indices, self._atom_indices)]
+        else:
+            self._aprops = np.array([atom.GetAtomicNum() for atom in self._mol.GetAtoms()])
 
     def _prepare(self):
         self.results.rmsd = np.zeros(self.n_frames, dtype=np.float64)
         # reference is taken from the first analyzed frame, not necessarily frame 0
-        self._reference = self._ag.positions.copy()
+        self._reference = self._get_positions()
         self._isomorphisms: list | None = None
+
+    def _get_positions(self) -> np.ndarray:
+        positions = self._ag.positions
+        if self._atom_indices is not None:
+            return positions[self._atom_indices]
+        return positions.copy()
 
     def _single_frame(self) -> None:
         frame_rmsd, isomorphisms, _ = srmsd._rmsd_isomorphic_core(
-            coords1=self._ag.positions.copy(),
+            coords1=self._get_positions(),
             coords2=self._reference,
             aprops1=self._aprops,
             aprops2=self._aprops,
