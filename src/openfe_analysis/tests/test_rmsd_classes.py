@@ -224,12 +224,28 @@ def test_ligand_com_drift(ligand):
 
 
 class TestSymmetryCorrectedLigandRMSD:
-    def test_regression(self, ligand):
+    @pytest.mark.parametrize(
+        "heavy_atoms_only, expected",
+        [
+            pytest.param(
+                False,
+                [0.0, 0.75138, 2.09003, 0.95125, 1.54566, 2.00029],
+                id="all-atom",
+            ),
+            pytest.param(
+                True,
+                [0.0, 0.652655, 1.454710, 0.848810, 1.513418, 1.491772],
+                id="heavy-atom",
+            ),
+        ],
+    )
+    def test_regression(self, ligand, heavy_atoms_only, expected):
         state_lig = universe_utils.select_state_atoms(ligand.universe, end_state="A").select_atoms(
             "resname UNK"
         )
-        result = SymmetryCorrectedLigandRMSD(state_lig, heavy_atoms_only=True).run(step=10)
-        expected = [0.0, 0.75138, 2.09003, 0.95125, 1.54566, 2.00029]
+        result = SymmetryCorrectedLigandRMSD(state_lig, heavy_atoms_only=heavy_atoms_only).run(
+            step=10
+        )
         assert_allclose(result.results.rmsd[:6], expected, rtol=1e-3)
 
     def test_zero_for_valid_swap(self):

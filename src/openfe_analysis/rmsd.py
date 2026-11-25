@@ -159,6 +159,9 @@ class SymmetryCorrectedLigandRMSD(AnalysisBase):
         and number of attached hydrogens, preserving
         hydrogen-dependent symmetry constraints (e.g.,
         distinguishing the two nitrogen atoms in imidazole).
+        Note that heavy-atom RMSD values may differ from all-atom
+        RMSD values, as hydrogen displacements no longer contribute
+        to the calculation.
 
     Raises
     ------
@@ -201,9 +204,6 @@ class SymmetryCorrectedLigandRMSD(AnalysisBase):
         self._atom_indices: np.ndarray | None = None
         if heavy_atoms_only:
             heavy_atoms = [atom for atom in self._mol.GetAtoms() if atom.GetAtomicNum() > 1]
-
-            if not heavy_atoms:
-                raise ValueError("No heavy atoms found in ligand.")
 
             self._atom_indices = np.array(
                 [atom.GetIdx() for atom in heavy_atoms],
