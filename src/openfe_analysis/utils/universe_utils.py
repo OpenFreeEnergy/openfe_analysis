@@ -61,17 +61,17 @@ def select_state_atoms(
     return state
 
 
-def guess_ligand_bonds(
+def guess_atomgroup_bonds(
     atomgroup: mda.AtomGroup,
     delete_existing: bool = False,
 ) -> None:
     """
-    Guess bonds for a ligand AtomGroup in-place.
+    Guess bonds for a selected AtomGroup in-place.
 
     Parameters
     ----------
     atomgroup : mda.AtomGroup
-        Ligand atoms for which bonds will be guessed.
+        Atomgroup atoms for which bonds will be guessed.
     delete_existing : bool, optional
         If ``True``, delete existing bonds on the atomgroup before guessing.
         This may be necessary to avoid cross-state bonds in hybrid topologies.
