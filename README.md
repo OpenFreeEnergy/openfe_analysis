@@ -42,3 +42,28 @@ Installation is done via the conda package manager, simply:
 ```conda install -c conda-forge openfe-analysis```
 
 For further guidance on using the conda package manager, please consult our [installation guide](https://docs.openfree.energy/en/stable/installation.html)
+
+## Uploading test data to Cloudflare R2
+
+Test datasets are hosted at [data.openfe.org](https://data.openfe.org/) using content-addressed, immutable URLs.
+
+You will need [Pixi](https://pixi.prefix.dev/) installed and access to the OpenFE Cloudflare R2 bucket.
+
+**1. Authenticate with Cloudflare** (once per machine):
+
+```bash
+pixi run --locked -e r2-upload login-r2
+```
+
+This installs the required tooling and opens your browser to authenticate with Cloudflare.
+
+**2. Upload a file:**
+
+```bash
+pixi run --locked -e r2-upload upload-data path/to/file.tar.gz
+```
+
+The script automatically computes the file's SHA256 hash, checks whether the data already exists, and uploads it only if necessary.
+It then prints the permanent URL and corresponding Pooch registry entry.
+
+The script also bootstraps the wrangler installation so on first use it will install wrangler using the pixi managed npm binary.
